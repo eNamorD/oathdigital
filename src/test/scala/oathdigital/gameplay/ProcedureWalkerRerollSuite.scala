@@ -1,7 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.walker.{HiddenOutcomes, ProcedureWalker,
-  WalkerOutcome, WalkerStepRecorded}
+  WalkerOutcome}
+import oathdigital.testkit.RecordedOps
 import oathdigital.model._
 import oathdigital.testkit.ProcedureWalkerFixture._
 
@@ -22,8 +23,7 @@ class ProcedureWalkerRerollSuite extends munit.FunSuite:
       Vector(TwoShields))
     ProcedureWalker.advance(ready, tree, None, noPowers, dice) match
       case Right(WalkerOutcome.Finished(end, events)) =>
-        val recorded = events.collect { case step: WalkerStepRecorded =>
-          step.ops }.flatten
+        val recorded = RecordedOps.all(events)
         assert(recorded.contains(Reroll(recoverPool, Vector(1),
           Some(Vector(TwoShields)))))
         val outcome = end.game.current.rollOutcomes(recoverPool)

@@ -7,7 +7,7 @@ import oathdigital.gameplay.walker.{DeltaPayload, RollPayload,
   WalkerStepRecorded}
 import oathdigital.serialization.WalkerWireEvents.{encodedStream,
   encodedStreamThatRoundTrips, recordedOperation}
-import oathdigital.testkit.{CatalogNames, Table}
+import oathdigital.testkit.{CatalogNames, RecordedOps, Table}
 import oathdigital.testkit.Unwrap.{accepted, as}
 
 /** Walker step events on the wire: the operations, locations, pieces and
@@ -19,12 +19,12 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val event = recordedOperation(AdvanceVisionsDrawn)
     val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-    assertEquals(ujson.read(encoded)("payload")("ops")(0),
+    assertEquals(ujson.read(encoded)("payload")("step")("ops")(0),
       ujson.Obj("kind" -> "advance-visions-drawn"))
     val decoded = as[WalkerStepRecorded](
       accepted(GameEventWire.decode(encoded)).event)
     val base = Table.start.ready
-    val replayed = accepted(OperationPipeline.run(base, decoded.ops,
+    val replayed = accepted(OperationPipeline.run(base, RecordedOps.of(decoded),
       OperationPolicy.Permissive, Vector.empty)(Right(_))).state
     assertEquals(replayed.game.current.tracks.visionsDrawn,
       base.game.current.tracks.visionsDrawn + 1)
@@ -34,11 +34,10 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val run = accepted(OperationPipeline.run(withOneSupply,
       Vector(SpendSupply(Table.p1, 3, required = false)),
       OperationPolicy.Permissive, Vector.empty)(Right(_)))
-    val event = WalkerStepRecorded("0", DeltaPayload,
-      run.executed, Vector.empty)
+    val event = WalkerStepRecorded("0", DeltaPayload(run.executed), Vector.empty)
     val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-    assert(!ujson.read(encoded)("payload")("ops")(0).obj.contains("required"))
+    assert(!ujson.read(encoded)("payload")("step")("ops")(0).obj.contains("required"))
 
   test("a recorded move of a Vision to the shared bank round trips and replays"):
     val actor = Table.p1
@@ -51,7 +50,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     val decoded = as[WalkerStepRecorded](
       accepted(GameEventWire.decode(encoded)).event)
-    val replayed = accepted(OperationPipeline.run(prepared, decoded.ops,
+    val replayed = accepted(OperationPipeline.run(prepared, RecordedOps.of(decoded),
       OperationPolicy.Permissive, Vector.empty)(Right(_))).state
     assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
 
@@ -65,7 +64,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
     val stripped = ujson.read(ujson.write(encoded))
-    stripped("payload")("ops")(0).obj.remove("by")
+    stripped("payload")("step")("ops")(0).obj.remove("by")
     assertEquals(GameEventWire.decode(stripped).map(_.event),
       Right(recordedOperation(move.copy(by = None))))
 
@@ -96,12 +95,9 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       PositionedLocation(Location.PlayArea(player)),
       resultingOrientation = Some(Orientation.FaceDown), by = Some(player))
     val events = Vector[OathEvent](
-      WalkerStepRecorded("0", DeltaPayload,
-        Vector(ModifyDicePool(pool, 2)), Vector.empty),
-      WalkerStepRecorded("1.0.1", DeltaPayload,
-        Vector(SpendSupply(player, 1)), Vector.empty),
-      WalkerStepRecorded("2.1", DeltaPayload,
-        Vector(move), Vector.empty))
+      WalkerStepRecorded("0", DeltaPayload(Vector(ModifyDicePool(pool, 2))), Vector.empty),
+      WalkerStepRecorded("1.0.1", DeltaPayload(Vector(SpendSupply(player, 1))), Vector.empty),
+      WalkerStepRecorded("2.1", DeltaPayload(Vector(move)), Vector.empty))
 
     val encoded = encodedStreamThatRoundTrips("walker", events)
     assertEquals(ujson.read(encoded).arr.map(
@@ -115,7 +111,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     // here for exactly that reason.
     val event = recordedOperation(EnterPhase(Phase.Rest))
     val encoded = accepted(GameEventWire.encodeEvent("phase", 0L, event))
-    assertEquals(encoded("payload")("ops")(0)("phase").str, "rest")
+    assertEquals(encoded("payload")("step")("ops")(0)("phase").str, "rest")
     assertEquals(accepted(GameEventWire.decode(encoded)).event, event)
 
   test("Catacombs' recorded batch round-trips: a relic move off the top of " +
@@ -130,17 +126,16 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     val site = SiteId("site")
     val denizen = DenizenId("catacombs")
     val event: OathEvent = WalkerStepRecorded("0",
-      DeltaPayload,
-      Vector(
+      DeltaPayload(Vector(
         Move(Piece.Card(relic),
           PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
           PositionedLocation(Location.Site(site)),
           resultingOrientation = Some(Orientation.FaceDown)),
-        PayCost(player, Location.OnCard(denizen), Cost(secret = 1))),
+        PayCost(player, Location.OnCard(denizen), Cost(secret = 1)))),
       Vector(PowerId("denizen.catacombs")))
 
     val encoded = encodedStreamThatRoundTrips("walker", Vector(event))
-    val ops = ujson.read(encoded).arr.head("payload")("ops").arr
+    val ops = ujson.read(encoded).arr.head("payload")("step")("ops").arr
     assertEquals(ops.map(_("kind").str).toVector, Vector("move", "pay-cost"))
     assertEquals(ops(0)("from")("location")("deck").str, "relic")
     assertEquals(ops(0)("from")("position").str, "top")
@@ -182,7 +177,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
 
     val encoded = encodedStreamThatRoundTrips("walker", events)
     assertEquals(ujson.read(encoded).arr.map(
-      _("payload")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
+      _("payload")("step")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
       locations.map(_.getClass.getSimpleName).distinct.size)
 
   test("an unknown walker location kind, deck, operation kind or negative " +
@@ -196,17 +191,17 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     def refusing(edit: ujson.Value => Unit, refusal: WireError) =
       (edit, refusal)
     Vector(
-      refusing(_("payload")("ops")(0)("placedAt")("kind") = "not-a-location",
-        WireError.InvalidValue("$[0].payload.ops[0].placedAt.kind",
+      refusing(_("payload")("step")("ops")(0)("placedAt")("kind") = "not-a-location",
+        WireError.InvalidValue("$[0].payload.step.ops[0].placedAt.kind",
           "unknown recorded walker location 'not-a-location'")),
-      refusing(_("payload")("ops")(0)("placedAt")("deck") = "not-a-deck",
-        WireError.InvalidValue("$[0].payload.ops[0].placedAt.deck",
+      refusing(_("payload")("step")("ops")(0)("placedAt")("deck") = "not-a-deck",
+        WireError.InvalidValue("$[0].payload.step.ops[0].placedAt.deck",
           "unknown card deck 'not-a-deck'")),
-      refusing(_("payload")("ops")(0)("cost")("secret") = -1,
-        WireError.InvalidValue("$[0].payload.ops[0].cost.secret",
+      refusing(_("payload")("step")("ops")(0)("cost")("secret") = -1,
+        WireError.InvalidValue("$[0].payload.step.ops[0].cost.secret",
           "must be between 0 and 9007199254740991 inclusive")),
-      refusing(_("payload")("ops")(0)("kind") = "not-an-operation",
-        WireError.InvalidValue("$[0].payload.ops[0].kind",
+      refusing(_("payload")("step")("ops")(0)("kind") = "not-an-operation",
+        WireError.InvalidValue("$[0].payload.step.ops[0].kind",
           "unknown recorded walker operation 'not-an-operation'"))
     ).foreach { (corrupt, refusal) =>
       val injected = ujson.read(encoded).arr
@@ -224,27 +219,52 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       Vector(recordedOperation(draw)))
     def withPosition(edit: ujson.Value => Unit): String =
       val stream = ujson.read(encoded).arr
-      edit(stream(0)("payload")("ops")(0))
+      edit(stream(0)("payload")("step")("ops")(0))
       ujson.write(stream)
-    assertEquals(ujson.read(encoded).arr(0)("payload")("ops")(0)("position")
+    assertEquals(ujson.read(encoded).arr(0)("payload")("step")("ops")(0)("position")
       .str, "top")
     val oldJournal = withPosition(_.obj.remove("position"))
     assertEquals(accepted(GameEventWire.decodeStream(oldJournal))
       .map(_.event), Vector(recordedOperation(draw)))
     assertEquals(GameEventWire.decodeStream(withPosition(
       _("position") = "unspecified")), Left(WireError.InvalidValue(
-        "$[0].payload.ops[0].position",
+        "$[0].payload.step.ops[0].position",
         "a draw takes from the top or the bottom")))
 
   test("a WalkerStepRecorded carrying two contribution ids round-trips"):
     val pool = PoolKey("recover")
     val event: OathEvent = WalkerStepRecorded("0",
-      DeltaPayload, Vector(ModifyDicePool(pool, 2)),
+      DeltaPayload(Vector(ModifyDicePool(pool, 2))),
       Vector(PowerId("power.one"), PowerId("power.two")))
 
     val encoded = encodedStreamThatRoundTrips("walker", Vector(event))
     assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
       .map(_.str).toVector, Vector("power.one", "power.two"))
+
+  test("a delta's operations are written under its payload, and a step with " +
+      "a top-level ops key no longer decodes"):
+    val event: OathEvent = WalkerStepRecorded("0",
+      DeltaPayload(Vector(ModifyDicePool(PoolKey("recover"), 2))),
+      Vector.empty)
+    val encoded = encodedStreamThatRoundTrips("walker", Vector(event))
+    val written = ujson.read(encoded).arr.head("payload")
+    assertEquals(written("step")("ops")(0)("kind").str, "modify-dice-pool")
+    assert(!written.obj.contains("ops"), written)
+
+    // The shape written before this change: operations beside the payload
+    // rather than inside it. It fails on the key the payload now requires,
+    // which is a journal that does not load rather than one that silently
+    // replays without its batch.
+    val old = ujson.read(encoded)
+    val moved = old.arr.head("payload")("step")("ops")
+    old.arr.head("payload")("step").obj.remove("ops")
+    old.arr.head("payload")("ops") = moved
+    // The message is ujson's own wording for a missing key, so assert the
+    // path and the error type rather than the text.
+    GameEventWire.decodeStream(ujson.write(old)) match
+      case Left(WireError.InvalidValue(path, _)) =>
+        assertEquals(path, "$[0].payload")
+      case other => fail(s"expected an InvalidValue at the step, got $other")
 
   test("an unencodable die face returns a typed WireError, " +
       "not a thrown exception"):
@@ -266,8 +286,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     // Stub of DieFace: a face neither die family declares.
     case object UnknownDieFace extends DieFace
     val event = WalkerStepRecorded("0",
-      RollPayload(PoolKey("recover"), Vector(UnknownDieFace)),
-      Vector.empty, Vector.empty)
+      RollPayload(PoolKey("recover"), Vector(UnknownDieFace)), Vector.empty)
     GameEventWire.encodeEvent("walker", 0, event) match
       case Left(WireError.InvalidValue("$.payload", _)) => ()
       case other => fail(s"expected an invalid-payload WireError, got $other")
@@ -380,17 +399,17 @@ class WalkerOperationWireSuite extends munit.FunSuite:
 
     val encoded = encodedStreamThatRoundTrips("walker-ops", events)
     assertEquals(ujson.read(encoded).arr.map(
-      _("payload")("ops")(0)("kind").str).toVector.distinct.size,
+      _("payload")("step")("ops")(0)("kind").str).toVector.distinct.size,
       operations.map(_.getClass.getSimpleName).distinct.size)
 
   test("a walker roll payload round-trips attack and defense faces"):
     val events = Vector[OathEvent](
       WalkerStepRecorded("1", RollPayload(PoolKey("campaign.attack"),
         Vector(AttackDieFace.HollowSword, AttackDieFace.OneSword,
-          AttackDieFace.TwoSwordsSkull)), Vector.empty, Vector.empty),
+          AttackDieFace.TwoSwordsSkull)), Vector.empty),
       WalkerStepRecorded("2", RollPayload(PoolKey("campaign.defense"),
         Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank),
-        automatic = true), Vector.empty, Vector.empty))
+        automatic = true), Vector.empty))
     val encoded = encodedStreamThatRoundTrips("walker-rolls", events)
     // `automatic` is written only when set, so a parked roll's wire form is
     // unchanged.
@@ -418,7 +437,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
 
     val encoded = encodedStreamThatRoundTrips("walker-pieces", events)
     assertEquals(ujson.read(encoded).arr.map(
-      _("payload")("ops")(0)("piece")("kind").str).toVector.distinct.size,
+      _("payload")("step")("ops")(0)("piece")("kind").str).toVector.distinct.size,
       pieces.map(_.getClass.getSimpleName).distinct.size)
 
   test("a Take's leaving operations round trip, and a Take without them " +
@@ -438,7 +457,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         Location.PlayArea(player)))
     val events = takes.map(take => recordedOperation(take))
     val encoded = encodedStreamThatRoundTrips("take-leaving", events)
-    val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
+    val ops = ujson.read(encoded).arr.map(_("payload")("step")("ops")(0))
     assertEquals(ops(0)("leaving").arr.size, 2)
     assert(!ops(1).obj.contains("leaving"))
 
@@ -456,7 +475,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         PositionedLocation(Location.PlayArea(blue))))
     val events = moves.map(move => recordedOperation(move))
     val encoded = encodedStreamThatRoundTrips("secret-side", events)
-    val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
+    val ops = ujson.read(encoded).arr.map(_("payload")("step")("ops")(0))
     assertEquals(ops(0)("from")("side").str, "face-down")
     assertEquals(ops(1)("sourceSide").str, "face-up")
     assert(!ops(2)("from").obj.contains("side"))
@@ -470,7 +489,7 @@ class WalkerOperationWireSuite extends munit.FunSuite:
         None))
     val events = burns.map(burn => recordedOperation(burn))
     val encoded = encodedStreamThatRoundTrips("burn-by", events)
-    val ops = ujson.read(encoded).arr.map(_("payload")("ops")(0))
+    val ops = ujson.read(encoded).arr.map(_("payload")("step")("ops")(0))
     assertEquals(ops(0)("by").str, "red")
     assertEquals(ops(1)("by"), ujson.Null)
 
@@ -485,12 +504,12 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     }
     val deferral = accepted(GameEventWire.encodeEvent("walker", 0,
       recordedOperation(Defer(key, held))))
-    assertEquals(ujson.read(deferral)("payload")("ops")(0)("kind").str,
+    assertEquals(ujson.read(deferral)("payload")("step")("ops")(0)("kind").str,
       "defer")
 
   test("an as-if site round trips"):
     val event = recordedOperation(ActAsIf(CatalogNames.site("Deep Woods")))
     val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-    assertEquals(ujson.read(encoded)("payload")("ops")(0)("kind").str,
+    assertEquals(ujson.read(encoded)("payload")("step")("ops")(0)("kind").str,
       "act-as-if")

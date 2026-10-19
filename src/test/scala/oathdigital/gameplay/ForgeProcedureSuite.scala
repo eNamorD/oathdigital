@@ -11,7 +11,7 @@ import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, EmptyWindowModifier, Look, Outcomes,
-  Table, TestCards}
+  RecordedOps, Table, TestCards}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
@@ -250,7 +250,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val atPark = park.state
     val steps = park.steps
     assertEquals(steps.map(_.nodeId), Vector("1.0.0"))
-    assertEquals(steps.head.ops,
+    assertEquals(RecordedOps.of(steps.head),
       Vector[CoreOperation](SpendSupply(actor, 1)))
     assertEquals(Look(atPark).supply(actor), SupplyTrack.Maximum - 1)
 
@@ -318,7 +318,7 @@ class ForgeProcedureSuite extends munit.FunSuite
         if f.cost.favor > 0 then ForgeProcedure.favorSectionKey
         else ForgeProcedure.secretSectionKey
       assertEquals(steps.map(_.nodeId), Vector("1.0.0", "1.1"))
-      assertEquals(steps(1).ops, f.targets.map(target =>
+      assertEquals(RecordedOps.of(steps(1)), f.targets.map(target =>
         expectedPayment(actor, target.denizenId, section)) :+
         Play(f.relic,
           PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
@@ -448,8 +448,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(steps.head.payload,
       ChoicePayload(ForgeProcedure.assignmentDecisionId,
         PartitionAnswer(legal), actor): WalkerStepPayload)
-    assertEquals(steps.head.ops, Vector.empty[CoreOperation])
-    assertEquals(steps(1).ops, expected)
+    assertEquals(RecordedOps.of(steps(1)), expected)
 
     assertEquals(Look(finalState).supply(actor), SupplyTrack.Maximum - 1)
     assertEquals(finalState.game.current.map.sites(f.siteId).denizens.collect {
@@ -486,7 +485,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       resolveWith(f, atPark, tree, pending, placements))
     val finalState = finished.state
     val steps = finished.steps
-    assertEquals(steps(1).ops.init, placements.map { placement =>
+    assertEquals(RecordedOps.of(steps(1)).init, placements.map { placement =>
       val denizen = as[DecisionOptionRef.Denizen](placement.option).id
       expectedPayment(actor, denizen, placement.sectionKey)
     })
@@ -559,7 +558,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertNotEquals(newTop, f.relic)
     val steps = expectFinished(resolveWith(f, restacked, tree, pending, legal))
       .steps
-    assertEquals(steps(1).ops.last, Play(newTop,
+    assertEquals(RecordedOps.of(steps(1)).last, Play(newTop,
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
       Location.PlayArea(actor),
       Orientation.FaceDown): CoreOperation)

@@ -304,7 +304,7 @@ object WalkerSimulation:
 
   private def recordedOperations(events: Vector[OathEvent])
       : Vector[CoreOperation] = events.collect {
-    case step: WalkerStepRecorded => step.ops
+    case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops
   }.flatten
 
   // `ProcedureWalker` reports a broken resume position by throwing, and a

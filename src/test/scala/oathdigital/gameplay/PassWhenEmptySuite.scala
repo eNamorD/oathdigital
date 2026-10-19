@@ -66,7 +66,7 @@ class PassWhenEmptySuite extends munit.FunSuite:
         DecisionAnswer.ChooseOneAnswer(Decide.Pass), p1), powers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(events.collect {
-          case WalkerStepRecorded(_, choice: ChoicePayload, _, _) => choice
+          case WalkerStepRecorded(_, choice: ChoicePayload, _) => choice
         }, Vector(ChoicePayload(ask, DecisionAnswer.ChooseOneAnswer(
           Decide.Pass), p1)))
       case other => fail(s"expected a finished walk, got $other")

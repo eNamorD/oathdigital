@@ -20,7 +20,7 @@ class WalkerReplayGuardSuite extends munit.FunSuite:
     PositionedLocation(Location.RegionalDiscard(Region.Cradle), position))
 
   private def step(operation: CoreOperation) = WalkerStepRecorded("0",
-    DeltaPayload, Vector(operation), Vector.empty)
+    DeltaPayload(Vector(operation)), Vector.empty)
 
   test("a recorded discard with a stack position replays"):
     val replayed = ProcedureWalker.applyRecorded(OathState.Ready(held),
@@ -37,3 +37,14 @@ class WalkerReplayGuardSuite extends munit.FunSuite:
     assertEquals(replayed, Left(OathViolation.CoreOperationRejected(
       "invalid-stack-position",
       "stack destination must specify top or bottom")))
+
+  test("a recorded delta step carrying no operations is rejected on replay"):
+    // The one guard of the three that survives the payload move. The type
+    // cannot make an empty batch unrepresentable -- the wire is untrusted
+    // input -- so the check stays where decoded facts are applied. Nothing
+    // covered it before this plan.
+    assertEquals(
+      ProcedureWalker.applyRecorded(OathState.Ready(held),
+        WalkerStepRecorded("0", DeltaPayload(Vector.empty), Vector.empty)),
+      Left(OathViolation.InvalidEventOrder(
+        "recorded delta step must contain operations")))

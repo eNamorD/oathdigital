@@ -5,7 +5,7 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
   ModifierPicks, OfferReason, OptionRestriction, PowerCtx, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Outcomes, RecordedOps, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 
@@ -145,8 +145,7 @@ class ModifierChoiceSuite extends munit.FunSuite:
     val first = begin(table(favor = 3), on, walked)
     val second = answer(first, on, walked, decisionId,
       DecisionOptionRef.Denizen(alpha))
-    assert(second.events.collect { case step: WalkerStepRecorded => step.ops }
-      .flatten.exists {
+    assert(RecordedOps.all(second.events).exists {
         case PayCost(_, Location.OnCard(paid), _, _, _, _) => paid == alpha
         case _ => false
       })

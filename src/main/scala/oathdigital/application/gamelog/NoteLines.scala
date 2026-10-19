@@ -190,7 +190,7 @@ private[gamelog] final class NoteLines(words: LogWords,
 
   private def effect(journal: LogJournal, run: Run, index: Int): Boolean =
     journal.event(index) match
-      case WalkerStepRecorded(_, DeltaPayload, ops, _) =>
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) =>
         !ops.forall {
           case RecordPowerUse(_) => true
           case QueueProcedure(_, _) => true
@@ -202,7 +202,7 @@ private[gamelog] final class NoteLines(words: LogWords,
         }
       // A power's own question: its source is already known, so "Used"
       // comes before the "Chose" line its answer posts.
-      case WalkerStepRecorded(_, _: ChoicePayload, _, _) => true
+      case WalkerStepRecorded(_, _: ChoicePayload, _) => true
       case _ => false
 
   /** The source the player named when starting (kept on every park), else

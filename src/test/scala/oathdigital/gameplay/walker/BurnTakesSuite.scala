@@ -38,7 +38,7 @@ class BurnTakesSuite extends munit.FunSuite:
 
   /** Each recorded step's operations. */
   private def steps(events: Vector[OathEvent]): Vector[Vector[CoreOperation]] =
-    events.collect { case step: WalkerStepRecorded => step.ops }
+    events.collect { case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops }
 
   /** The test power's lines. */
   private def lines(events: Vector[OathEvent]): Vector[LogNote] =

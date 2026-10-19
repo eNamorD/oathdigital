@@ -30,8 +30,7 @@ class OutcomesSuite extends munit.FunSuite:
       .contains("NoPlayableOption"))
 
   test("recorded returns a recorded step and fails naming another event"):
-    val step = WalkerStepRecorded("0", DeltaPayload,
-      Vector.empty, Vector.empty)
+    val step = WalkerStepRecorded("0", DeltaPayload(Vector.empty), Vector.empty)
     assertEquals(recorded(step), step)
     assert(failure(recorded(WalkerCompleted(ActionRef.Recover)))
       .contains("WalkerCompleted"))

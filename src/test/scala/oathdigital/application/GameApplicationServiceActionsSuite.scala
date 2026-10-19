@@ -192,7 +192,7 @@ class GameApplicationServiceActionsSuite extends munit.FunSuite:
         OathkeeperProcedure.recipientDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Player(leaderB))))))
     assert(resolved.events.exists {
-      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _, _) => by == holder
+      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _) => by == holder
       case _ => false
     }, "the recorded choice must be answered by the holder")
     parkedAssertions.assertResumed(resolved.state, Phase.Act, active)

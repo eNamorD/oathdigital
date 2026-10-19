@@ -97,7 +97,7 @@ private[gamelog] final class StartLines(words: LogWords,
   /** The facedown adviser's pick: every modifier is picked by then. */
   val adviserPicked: Anchor = (journal, run, at) =>
     completing(journal, at) || (journal.event(at) match
-      case WalkerStepRecorded(_, ChoicePayload(id, _, _), _, _) =>
+      case WalkerStepRecorded(_, ChoicePayload(id, _, _), _) =>
         id == CardPlayProcedure.facedownAdviserDecisionId
       case _ => false)
 

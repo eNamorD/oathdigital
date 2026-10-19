@@ -5,8 +5,8 @@ import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ChoicePayload, ParkedDecisionAssertions,
-  WalkerCompleted, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload,
+  ParkedDecisionAssertions, WalkerCompleted, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.MenuPlay
@@ -48,8 +48,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
       .warbandsAt("Dunes", p3, 1).ready
     val traveled = accepted(travel(ready))
     assert(traveled.events.exists {
-      case step: WalkerStepRecorded =>
-        step.ops == Vector(SetOathkeeper(Some(leader)))
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops == Vector(SetOathkeeper(Some(leader)))
       case _ => false
     })
     assert(traveled.events.contains(
@@ -83,7 +82,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     // p2 gives the title to p3, a tied leader.
     val chosen = accepted(answer(holder, p3))
     assert(chosen.events.exists {
-      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _, _) => by == holder
+      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _) => by == holder
       case _ => false
     })
     walkerParked.assertResumed(chosen.state, Phase.Act, active)

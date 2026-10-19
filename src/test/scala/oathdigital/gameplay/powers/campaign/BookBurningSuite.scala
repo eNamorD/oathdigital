@@ -4,7 +4,8 @@ import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver._
-import oathdigital.gameplay.walker.{WalkerDice, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerDice,
+  WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look}
 
@@ -58,9 +59,9 @@ class BookBurningSuite extends munit.FunSuite:
     assertEquals(Look(done.state).faceUpSecrets(b.rival), 0)
     assertEquals(Look(done.state).faceDownSecrets(b.rival), 1)
     val burnt = done.events.collect {
-      case step: WalkerStepRecorded if step.ops.exists {
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) if ops.exists {
           case burn: Burn => burn.resource.isInstanceOf[Piece.Secrets]
-          case _ => false } => step.ops }
+          case _ => false } => ops }
     assertEquals(burnt, Vector(Vector[CoreOperation](
       Burn.secrets(2, PositionedLocation(Location.PlayArea(b.rival),
         side = Some(SecretSide.FaceDown)), Some(b.actor)))))

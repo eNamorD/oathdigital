@@ -150,7 +150,7 @@ class GameLogPropertiesSuite extends munit.FunSuite:
       case ((current, found), at) =>
         val procedure = current.orElse(journal.procedureAt(at))
         val more = (journal.event(at), procedure) match
-          case (WalkerStepRecorded(_, ChoicePayload(id, answer, _), _, _),
+          case (WalkerStepRecorded(_, ChoicePayload(id, answer, _), _),
               Some(ref)) if namesAnOption(answer) =>
             Vector((ref, id, journal.sequence(at)))
           case _ => Vector.empty

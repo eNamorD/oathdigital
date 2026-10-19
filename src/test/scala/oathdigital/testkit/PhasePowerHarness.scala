@@ -8,8 +8,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.powers.{DeclaredNotes, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions,
-  WalkerStepRecorded, WalkerPowers}
+import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.protocol.projection.{DecisionQueryProjection, PlayerBoardProjection}
 
@@ -95,7 +94,7 @@ object PhasePowerHarness:
 
   /** The operations the walk recorded, in order. */
   def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
-    events.collect { case step: WalkerStepRecorded => step.ops }.flatten
+    RecordedOps.all(events)
 
   /** A phase power the actor's phase menu offers available, and the source
     * its option names. */

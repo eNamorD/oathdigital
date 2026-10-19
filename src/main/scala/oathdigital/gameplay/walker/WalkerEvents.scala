@@ -4,24 +4,28 @@ import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptio
 
 /** What one recorded walker step recorded: the step applied operations, it
   * recorded an answer, or it recorded dice. Sealed so the set is closed and
-  * enumerable in one place, and so the wire encoder -- the one match over
-  * this family that must be total -- refuses to compile on a fourth rather
-  * than throwing on it at append time. The log and replay readers stay
-  * partial on purpose: each names the payloads it has a line or a rule for.
+  * enumerable in one place, and so the readers that must account for every
+  * member -- the wire encoder, and undo's barrier detection -- refuse to
+  * compile on a fourth rather than meeting it at runtime. The log and replay
+  * readers stay partial on purpose: each names the payloads it has a line or
+  * a rule for.
   * The three cases live in this file together, which sealing requires.
   */
 sealed trait WalkerStepPayload extends Product with Serializable
 
-/** Marks a step that executed a batch of operations, as opposed to a
-  * resolved choice or a submitted roll. It carries nothing: the step's
-  * `ops` are both the replay authority and the only description of what
-  * happened, and every reader works from them. */
-case object DeltaPayload extends WalkerStepPayload
+/** A step that executed a batch of operations, carrying the batch. `ops`
+  * holds the applied leaves (`PrimitiveOperation`s, which are
+  * `CoreOperation`s), so replay applies exactly the deltas that produced the
+  * step and every reader of what it did works from them. A choice or a roll
+  * records a state write instead and carries no batch -- which this family
+  * makes a fact of the type rather than a comment. */
+final case class DeltaPayload(ops: Vector[CoreOperation])
+    extends WalkerStepPayload
 
-/** Records a resolved parked decision (Task 5 ruling 5.3). The step's `ops`
-  * stay empty: appending the answer to `pending.answered` is a state write
-  * (the walker rebuilds `answered` from these events at replay), not an
-  * operation batch.
+/** Records a resolved parked decision (Task 5 ruling 5.3). Appending the
+  * answer to `pending.answered` is a state write -- the walker rebuilds
+  * `answered` from these events at replay -- so a choice carries no
+  * operation batch, which is why this payload has nowhere to put one.
   *
   * @param by who answered.
   */
@@ -30,10 +34,10 @@ final case class ChoicePayload(decisionId: String, answer: DecisionAnswer,
     extends WalkerStepPayload
 
 /** Faces the acting player rolled for `pool`, recorded when a `Roll` park is
-  * resumed through `ProcedureWalker.roll` (Task 4). The step's `ops` stay
-  * empty: the outcome is a state write (a `RollOutcome` into
-  * `CurrentGameState.rollOutcomes`), not an operation batch, so replay must
-  * re-derive the outcome from this payload rather than applying ops.
+  * resumed through `ProcedureWalker.roll` (Task 4). The outcome is a state
+  * write (a `RollOutcome` into `CurrentGameState.rollOutcomes`), not an
+  * operation batch, so replay re-derives it from this payload -- and, this
+  * payload carrying no batch, has nothing else it could apply.
   * `automatic` is true when the walker rolled the faces itself from its dice
   * source; replay then needs no durable park at the node.
   */
@@ -43,22 +47,20 @@ final case class RollPayload(pool: PoolKey, faces: Vector[DieFace],
 /** Container event: recorded once per delta, resolved choice, or submitted
   * roll the walker executes.
   *
-  * `ops` holds the applied leaves (`PrimitiveOperation`s, which are
-  * `CoreOperation`s), so replay applies exactly the deltas that produced this
-  * step; `nodeId` is the leaf's child-index path joined with `"."` (repeat
-  * passes of one body leaf repeat the same `nodeId` — events stay ordered in
-  * the journal). `contributions` is the deterministic order of powers whose
-  * gather produced this step's `ops` (spec decision 10f) — an AUDIT fact
-  * (who influenced this node), never a replay input: `ops` alone is the
-  * replay authority (spec decision 5), so `ProcedureWalker.applyRecorded`
-  * reads `ops` and ignores this field entirely. `Vector.empty` for a node
-  * with no window (no explicit default: every construction site must state
-  * what it recorded).
+  * `payload` is what the step recorded, and a [[DeltaPayload]] carries the
+  * operation batch; `nodeId` is the leaf's child-index path joined with
+  * `"."` (repeat passes of one body leaf repeat the same `nodeId` — events
+  * stay ordered in the journal). `contributions` is the deterministic order
+  * of powers whose gather produced this step (spec decision 10f) — an AUDIT
+  * fact (who influenced this node), never a replay input: a delta's `ops`
+  * alone is the replay authority (spec decision 5), so
+  * `ProcedureWalker.applyRecorded` reads the payload and ignores this field
+  * entirely. `Vector.empty` for a node with no window (no explicit default:
+  * every construction site must state what it recorded).
   */
 final case class WalkerStepRecorded(
     nodeId: String,
     payload: WalkerStepPayload,
-    ops: Vector[CoreOperation],
     contributions: Vector[PowerId]
 ) extends WalkerEvent
 

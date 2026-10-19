@@ -9,7 +9,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload, LogNoted,
   WalkerStepRecorded}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, RecordedOps, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
 
@@ -154,24 +154,21 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(steps.size, 5)
     assertEquals(steps.map(_.nodeId),
       Vector("0.0", "1.0.0.0", "1.0.1.0.0", "2.0", "2.1.0"))
-    assertEquals(steps(0).ops,
+    assertEquals(RecordedOps.of(steps(0)),
       Vector[CoreOperation](ModifyDicePool(pool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll))))
-    assertEquals(steps(1).payload, DeltaPayload)
-    assertEquals(steps(1).ops,
-      Vector[CoreOperation](SpendSupply(actor, 1)))
+    assertEquals(steps(1).payload,
+      DeltaPayload(Vector[CoreOperation](SpendSupply(actor, 1))))
     assertEquals(steps(2).payload, RollPayload(pool, highRoll, automatic = true))
-    assertEquals(steps(2).ops, Vector.empty[CoreOperation])
     assertEquals(steps(3).payload,
       ChoicePayload(RecoverProcedure.relicDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Relic(relic)), actor))
-    assertEquals(steps(3).ops, Vector.empty[CoreOperation])
-    assertEquals(steps(4).payload, DeltaPayload)
-    assertEquals(steps(4).ops, Vector[CoreOperation](Move(
+    assertEquals(steps(4).payload, DeltaPayload(Vector[CoreOperation](Move(
       Piece.Card(relic),
       PositionedLocation(Location.Site(recoverSite)),
       PositionedLocation(Location.PlayArea(actor)),
-      resultingOrientation = Some(Orientation.FaceDown), by = Some(actor))))
+      resultingOrientation = Some(Orientation.FaceDown),
+      by = Some(actor)))))
 
   test("multi-roll success: a failed roll parks Continue/Stop; Continue rolls " +
       "again and the cumulative score reaches the difficulty"):
@@ -202,7 +199,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(recordedSteps(relicWalk.events).head.payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor))
-    assertEquals(recordedSteps(relicWalk.events)(1).ops,
+    assertEquals(RecordedOps.of(recordedSteps(relicWalk.events)(1)),
       Vector[CoreOperation](SpendSupply(actor, 1)))
     val stateAtRelic = applyRecorded(stateAtChoice, relicWalk.events)
     assertEquals(Look(stateAtRelic).supply(actor), SupplyTrack.Maximum - 2)
@@ -262,7 +259,6 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(stopSteps.head.payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))
-    assertEquals(stopSteps.head.ops, Vector.empty[CoreOperation])
 
   test("an unaffordable Continue is not offered, and the pipeline rejects " +
       "it when probing is off"):

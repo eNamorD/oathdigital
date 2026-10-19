@@ -4,10 +4,9 @@ import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.travel.SpecialEnvoy
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, RecordedOps, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -33,7 +32,7 @@ class FollowUpSupplyWaiverSuite extends munit.FunSuite:
     .bandits(ancientCity, 2).supply(p1, supply)
 
   private def spent(events: Vector[OathEvent]): Vector[SpendSupply] =
-    events.collect { case step: WalkerStepRecorded => step.ops }.flatten
+    RecordedOps.all(events)
       .collect { case spend: SpendSupply => spend }
 
   test("a queued Campaign spends no Supply, even with none to spend"):

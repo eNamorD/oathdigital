@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Outcomes}
+import oathdigital.testkit.{CatalogNames, Outcomes, RecordedOps}
 import oathdigital.testkit.Outcomes.{finished, parked, recorded}
 import oathdigital.testkit.ProcedureWalkerFixture._
 import oathdigital.testkit.Unwrap.accepted
@@ -27,7 +27,7 @@ class ActAsIfSuite extends munit.FunSuite:
   test("a walk parked after it holds the site, and its events rebuild it"):
     val tree: Operation = Sequence(ActAsIf(site), decide)
     val park = parked(ProcedureWalker.advance(ready, tree, None, noPowers))
-    assertEquals(recorded(park.events.head).ops,
+    assertEquals(RecordedOps.of(recorded(park.events.head)),
       Vector[CoreOperation](ActAsIf(site)))
     assertEquals(applyEvents(ready, park.events).game.current.walkerAsIfSite,
       Some(site))

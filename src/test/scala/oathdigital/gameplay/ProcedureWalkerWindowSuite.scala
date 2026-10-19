@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 // ProcedureWalkerFixture's ready, with S3 cleared, replaces the fixture's.
 import oathdigital.model.TestGameFixtures.{ready as _, _}
-import oathdigital.testkit.PowerStubs
+import oathdigital.testkit.{PowerStubs, RecordedOps}
 import oathdigital.testkit.PowerStubs.{RestrictionStub, TransformStub}
 import oathdigital.testkit.Outcomes.{finished, recorded}
 import oathdigital.testkit.WalkerStubs._
@@ -40,7 +40,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
     val FinishedSteps(state, steps) = finishedSteps(ProcedureWalker.advance(
       ready, Sequence(hook), None, WalkerPowers(Vector(power))))
     assertEquals(supplyOf(state), SupplyTrack.Maximum - 1)
-    assertEquals(steps.map(_.ops), Vector(Vector[CoreOperation](
+    assertEquals(steps.map(RecordedOps.of(_)), Vector(Vector[CoreOperation](
       SpendSupply(actor, 1))))
 
   private def transformPower(id: String, hook: PowerWindow)(
@@ -69,7 +69,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
     val FinishedSteps(bare, bareSteps) = finishedSteps(
       ProcedureWalker.advance(ready, tree, None, noPowers))
     assertEquals(bareSteps.map(_.nodeId), Vector("0.0"))
-    assertEquals(bareSteps.map(_.ops),
+    assertEquals(bareSteps.map(RecordedOps.of(_)),
       Vector(Vector[CoreOperation](spendOneSupply)))
     assertEquals(bareSteps.map(_.contributions), Vector(Vector.empty[PowerId]))
     assertEquals(supplyOf(bare), SupplyTrack.Maximum - 1)
@@ -80,7 +80,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
     val FinishedSteps(finalState, steps) = finishedSteps(
       ProcedureWalker.advance(ready, tree, None, WalkerPowers(Vector(power))))
     assertEquals(steps.map(_.nodeId), Vector("0.0", "0.1"))
-    assertEquals(steps.map(_.ops), Vector(Vector[CoreOperation](movePawnToS3),
+    assertEquals(steps.map(RecordedOps.of(_)), Vector(Vector[CoreOperation](movePawnToS3),
       Vector[CoreOperation](spendOneSupply)))
     assertEquals(steps.map(_.contributions), Vector.fill(2)(Vector(powerId)))
     assertEquals(pawnSiteOf(finalState), Some(sites(2)))
@@ -106,7 +106,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
       ProcedureWalker.advance(ready, tree, None, WalkerPowers(Vector(power))))
     // Supply 7 -> 6 -> 5 -> 4: three passes, four guard evaluations.
     assertEquals(guardCalls, 4)
-    assertEquals(steps.map(_.ops),
+    assertEquals(steps.map(RecordedOps.of(_)),
       Vector[Vector[CoreOperation]](Vector(movePawnToS3),
       Vector(spendOneSupply), Vector(spendOneSupply), Vector(spendOneSupply)))
     assertEquals(steps.map(_.nodeId),
@@ -131,7 +131,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
     val FinishedSteps(finalState, steps) = finishedSteps(
       ProcedureWalker.advance(ready, tree, None, WalkerPowers(Vector(power))))
     assertEquals(selects, 1)
-    assertEquals(steps.map(_.ops), Vector(Vector[CoreOperation](movePawnToS3),
+    assertEquals(steps.map(RecordedOps.of(_)), Vector(Vector[CoreOperation](movePawnToS3),
       Vector[CoreOperation](spendOneSupply)))
     assertEquals(steps.map(_.nodeId), Vector("0.0", "0.1.0"))
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
@@ -157,7 +157,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
     assertEquals(parkEvents.size, 1)
     val paid = recorded(parkEvents.head)
     assertEquals(paid.nodeId, "0.0")
-    assertEquals(paid.ops, Vector[CoreOperation](spendOneSupply))
+    assertEquals(RecordedOps.of(paid), Vector[CoreOperation](spendOneSupply))
     assertEquals(paid.contributions, Vector(powerId))
 
     // Resuming re-derives the tree and re-applies the SAME fold, so the park

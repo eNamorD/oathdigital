@@ -20,7 +20,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     val answer = DecisionAnswer.ChooseManyAnswer(Vector(
       DecisionOptionRef.Site(SiteId("a")), DecisionOptionRef.Site(SiteId("c"))))
     val events = Vector[OathEvent](WalkerStepRecorded("1",
-      ChoicePayload("challenge.ribbon-site", answer, player), Vector.empty,
+      ChoicePayload("challenge.ribbon-site", answer, player),
       Vector.empty))
     assertStreamRoundTrips("forge", events)
 
@@ -28,7 +28,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     val player = PlayerId("red")
     val events = Vector[OathEvent](WalkerStepRecorded("2",
       ChoicePayload("challenge.amount", DecisionAnswer.ChooseAmountAnswer(4),
-        player), Vector.empty, Vector.empty))
+        player), Vector.empty))
     assertStreamRoundTrips("forge", events)
 
   test("walker choice steps round trip the negotiation answers"):
@@ -45,7 +45,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     val events = Vector[DecisionAnswer](DecisionAnswer.ProposeTerms(terms),
       DecisionAnswer.AcceptDeal, DecisionAnswer.DeclineDeal).map(answer =>
       WalkerStepRecorded("0.0.0", ChoicePayload("negotiation.deal", answer,
-        red), Vector.empty, Vector.empty): OathEvent)
+        red), Vector.empty): OathEvent)
     assertStreamRoundTrips("forge", events)
 
   test("every generic walker decision answer round trips on the step and on " +
@@ -68,14 +68,13 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       Answered("league-treaty.distribute", distribute, player))
     val events = Vector[OathEvent](
       WalkerStepRecorded("1",
-        ChoicePayload("forge.assignment", partition, player), Vector.empty,
+        ChoicePayload("forge.assignment", partition, player),
         Vector.empty),
       WalkerStepRecorded("2",
-        ChoicePayload("recover.relic", chooseOne, player), Vector.empty,
+        ChoicePayload("recover.relic", chooseOne, player),
         Vector.empty),
       WalkerStepRecorded("3",
-        ChoicePayload("league-treaty.distribute", distribute, player),
-        Vector.empty, Vector.empty),
+        ChoicePayload("league-treaty.distribute", distribute, player), Vector.empty),
       WalkerParked(ActionRef.Forge, Vector("2"), answered, Vector.empty))
     assertStreamRoundTrips("forge", events)
 
@@ -186,7 +185,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
       DecisionOptionRef.Banner(Banner.PeoplesFavor))
     val events = refs.zipWithIndex.map { case (ref, index) =>
       WalkerStepRecorded(index.toString,
-        ChoicePayload("d", ChooseOneAnswer(ref), player), Vector.empty,
+        ChoicePayload("d", ChooseOneAnswer(ref), player),
         Vector.empty): OathEvent }
     assertStreamRoundTrips("refs", events)
 
@@ -215,8 +214,7 @@ class WalkerDecisionWireSuite extends munit.FunSuite:
     val player = PlayerId("red")
     val event: OathEvent = WalkerStepRecorded("1",
       ChoicePayload("recover.choice",
-        ChooseOneAnswer(DecisionOptionRef.Button("continue")), player),
-      Vector.empty, Vector.empty)
+        ChooseOneAnswer(DecisionOptionRef.Button("continue")), player), Vector.empty)
     val encoded = encodedStream("legacy", Vector(event))
     Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
       val mutated = ujson.read(encoded).arr

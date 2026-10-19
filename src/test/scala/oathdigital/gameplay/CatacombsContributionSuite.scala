@@ -7,10 +7,11 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, RollPayload,
+  WalkerPowers, WalkerStepRecorded}
 import oathdigital.model.OathState.Ready
 import oathdigital.model._
-import oathdigital.testkit.{CatacombsGame, Look, Outcomes, Table}
+import oathdigital.testkit.{CatacombsGame, Look, Outcomes, RecordedOps, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 /** Catacombs as the first real walker contribution, exercised through
@@ -50,10 +51,10 @@ class CatacombsContributionSuite extends munit.FunSuite:
       "the power"):
     val fixture = reliclessSite(secrets = 2)
     val transition = started(fixture, Vector(catacombsId))
-    val acting = steps(transition.events).filter(_.ops.nonEmpty)
+    val acting = steps(transition.events).filter(RecordedOps.of(_).nonEmpty)
 
     // The pick's payment, onto the card.
-    assertEquals(acting.head.ops, Vector[CoreOperation](
+    assertEquals(RecordedOps.of(acting.head), Vector[CoreOperation](
       PayCost(fixture.actor, Location.OnCard(catacombsCard),
         Cost(secret = 1), matchingBank = catalog.suitOf(catacombsCard))))
     // The transform prepended ONE node to the Recover's children, so the
@@ -61,7 +62,7 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val placed = acting(1)
     assertEquals(placed.nodeId, "1.0")
     assertEquals(placed.contributions, Vector(catacombsId))
-    assertEquals(placed.ops, Vector[CoreOperation](
+    assertEquals(RecordedOps.of(placed), Vector[CoreOperation](
       Move(Piece.Card(fixture.topRelic),
         PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
         PositionedLocation(Location.Site(fixture.site)),
@@ -126,8 +127,11 @@ class CatacombsContributionSuite extends munit.FunSuite:
       Vector("1.0.0", "1.1.0.0.0", "1.1.0.1.0.0"))
     assertEquals(recorded.flatMap(_.contributions), Vector.empty[PowerId])
     // The roll itself records no operations: a Roll leaf writes its outcome
-    // as state (`ProcedureWalker.recordRoll`), not as an ops batch.
-    assertEquals(recorded.flatMap(_.ops), Vector[CoreOperation](
+    // as state (`ProcedureWalker.recordRoll`), not an operation batch. Read
+    // through `RecordedOps` that is true of any roll, so the payload is what
+    // carries the fact.
+    assert(recorded(2).payload.isInstanceOf[RollPayload], recorded(2).payload)
+    assertEquals(recorded.flatMap(RecordedOps.of(_)), Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll)),
       SpendSupply(fixture.actor, 1)))
@@ -157,10 +161,10 @@ class CatacombsContributionSuite extends munit.FunSuite:
     // The invariant under test: the resumed fold must address the SAME leaf
     // the walk parked at, not a re-derived tree shifted by a dropped/moved
     // Catacombs node. Pin the resumed answer's step to the exact parked
-    // path, and its ops (answering a Decide records none).
+    // path.
     val choiceStep = steps(resumed.events).head
+    assert(choiceStep.payload.isInstanceOf[ChoicePayload], choiceStep.payload)
     assertEquals(choiceStep.nodeId, parkedAt.get.mkString("."))
-    assertEquals(choiceStep.ops, Vector.empty[CoreOperation])
 
   test("a Restriction-only power does not make relic-less Recover illegal"):
     val fixture = reliclessSite(secrets = 2)

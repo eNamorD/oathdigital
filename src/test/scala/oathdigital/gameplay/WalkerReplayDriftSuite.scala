@@ -3,15 +3,14 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.testkit.{CatacombsGame, CatalogNames, Look, Outcomes,
-  Table}
+  RecordedOps, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, as}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{ProcedureWalker,
-  WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
+  WalkerOutcome, WalkerParked, WalkerPowers}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model._
 
@@ -160,7 +159,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val events = outcome match
       case WalkerOutcome.Parked(_, evs) => evs
       case WalkerOutcome.Finished(_, evs) => evs
-    events.collect { case s: WalkerStepRecorded => s.ops }.flatten
+    RecordedOps.all(events)
 
   /** Folds one command's recorded steps into the "live" state track via the
     * shared `WalkerRecordedOpsReducer` (also used by `RecoverProcedureSuite`

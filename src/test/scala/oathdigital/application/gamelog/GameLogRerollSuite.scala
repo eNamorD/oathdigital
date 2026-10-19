@@ -32,13 +32,12 @@ class GameLogRerollSuite extends munit.FunSuite:
   private def rolled(by: PlayerId, answer: DecisionOptionRef)
       : Vector[OathEvent] = Vector(
     WalkerStepRecorded("roll", RollPayload(pool, Vector(Blank, Blank),
-      automatic = true), Vector.empty, Vector.empty),
+      automatic = true), Vector.empty),
     WalkerStepRecorded("pick", ChoicePayload(decision,
-      ChooseOneAnswer(answer), by), Vector.empty, Vector.empty))
+      ChooseOneAnswer(answer), by), Vector.empty))
 
   private def rerollStep: OathEvent = WalkerStepRecorded("reroll",
-    DeltaPayload,
-    Vector(Reroll(pool, Vector(0, 1), Some(Vector(TwoShields, TwoShields)))),
+    DeltaPayload(Vector(Reroll(pool, Vector(0, 1), Some(Vector(TwoShields, TwoShields))))),
     Vector.empty)
 
   test("a reroll restates the throw, and its decision writes no line"):

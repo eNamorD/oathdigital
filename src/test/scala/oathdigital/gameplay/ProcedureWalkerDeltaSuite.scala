@@ -1,11 +1,11 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, ProcedureWalker,
+  WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 // ProcedureWalkerFixture's ready, with S3 cleared, replaces the fixture's.
 import oathdigital.model.TestGameFixtures.{ready as _, _}
-import oathdigital.testkit.Table
+import oathdigital.testkit.{RecordedOps, Table}
 import oathdigital.testkit.Outcomes.recorded
 import oathdigital.testkit.PowerStubs.OperationRestrictionStub
 import oathdigital.testkit.ProcedureWalkerFixture._
@@ -53,7 +53,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     assertEquals(events.size, 2)
     val steps = events.map(recorded)
     assertEquals(steps.map(_.nodeId), Vector("0", "1"))
-    assertEquals(steps.map(_.ops),
+    assertEquals(steps.map(RecordedOps.of(_)),
       Vector(Vector[CoreOperation](movePawnToS3),
       Vector[CoreOperation](spendOneSupply)))
     // Re-applying each recorded ops batch reproduces the walked state.
@@ -75,7 +75,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     ProcedureWalker.advance(six, tree, None, noPowers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
         assertEquals(
-          events.collect { case step: WalkerStepRecorded => step.ops },
+          events.collect { case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops },
           Vector(Vector[CoreOperation](GainSupply(actor, 1))))
       case other => fail(s"expected a Finished walk, got $other")
 
@@ -124,7 +124,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     ProcedureWalker.advance(source, tree, None, restricting(immunity)) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(
-          events.collect { case step: WalkerStepRecorded => step.ops },
+          events.collect { case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops },
           Vector(Vector[CoreOperation](second)))
         val replay = events.foldLeft[Either[OathViolation, OathState]](
           Right(OathState.Ready(source))) { (result, event) =>
@@ -183,7 +183,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     ProcedureWalker.advance(ready, Sequence(payment), None, noPowers) match
       case Right(WalkerOutcome.Finished(state, events)) =>
         assertEquals(
-          events.collect { case step: WalkerStepRecorded => step.ops },
+          events.collect { case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops },
           Vector(payment.children.collect { case child: Move => child }))
         assertEquals(state.game.current.players.find(_.player == actor).get
           .board.favor, tooMuchFavor - 2)

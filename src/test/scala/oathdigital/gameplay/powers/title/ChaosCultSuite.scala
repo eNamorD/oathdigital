@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.title
 import oathdigital.gameplay.{OathRules, TravelPlay}
 import oathdigital.gameplay.powers.{NoteText, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerPowers,
+  WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
@@ -65,7 +66,7 @@ class ChaosCultSuite extends munit.FunSuite:
     // The cultist keeps the 2 favor they started with.
     assertEquals(Look(done.state).favor(cultist), 2)
     assert(!done.events.exists {
-      case step: WalkerStepRecorded => step.ops.exists(_.isInstanceOf[Take])
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops.exists(_.isInstanceOf[Take])
       case _ => false
     })
     assertEquals(NoteText.said(power.id, power.noteKeys, done.events), Vector.empty)

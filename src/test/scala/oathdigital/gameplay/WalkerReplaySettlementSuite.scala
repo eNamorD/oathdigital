@@ -28,7 +28,7 @@ class WalkerReplaySettlementSuite extends munit.FunSuite:
 
   private def replay(pay: PayCost): ReadyGame = ProcedureWalker.applyRecorded(
     Ready(arranged), WalkerStepRecorded("0",
-      DeltaPayload, Vector(pay),
+      DeltaPayload(Vector(pay)),
       Vector.empty)) match
     case Right(Ready(state)) => state
     case other => fail(s"the recorded payment must replay, got $other")

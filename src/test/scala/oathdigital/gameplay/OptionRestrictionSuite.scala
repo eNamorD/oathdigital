@@ -2,8 +2,8 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, PowerCtx}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, ProcedureWalker,
+  WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 import oathdigital.testkit.Outcomes.parked
@@ -74,7 +74,10 @@ class OptionRestrictionSuite extends munit.FunSuite:
     val powers = WalkerPowers(Vector(forbid("test.no-all", "a", "b", "c")))
     ProcedureWalker.advance(ready, optionalPick, None, powers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
-        assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
+        assertEquals(events.count(_.isInstanceOf[WalkerStepRecorded]), 1)
+        assertEquals(
+          events.collect { case WalkerStepRecorded(_, DeltaPayload(ops), _) =>
+            ops },
           Vector(Vector[CoreOperation](after)))
       case other => fail(s"the emptied decision must be dropped, got $other")
 

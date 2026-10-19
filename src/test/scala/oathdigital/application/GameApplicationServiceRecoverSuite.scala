@@ -4,14 +4,15 @@ import oathdigital.testkit.MenuPlay
 import oathdigital.model._
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
 import oathdigital.gameplay.ModifierPlay
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.OathRules
-import oathdigital.testkit.{CatalogNames, Dice, Look, Outcomes, Table}
+import oathdigital.testkit.{CatalogNames, Dice, Look, Outcomes, RecordedOps,
+  Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, present}
 import ParkedServiceFixture.{firstPlayer, loaded, parkedAssertions,
@@ -127,7 +128,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
 
     // The menu's pick queued the Recover; the Recover's own steps follow.
     val recordedOps = (started.events ++ finished.events)
-      .collect { case step: WalkerStepRecorded => step.ops }.flatten
+      .collect { case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops }.flatten
       .filterNot(_.isInstanceOf[QueueProcedure])
     assertEquals(recordedOps, Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
@@ -332,7 +333,7 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
     // top of the relic deck, verbatim, survived encoding.
     assertEquals(started.events.collect {
       case step: WalkerStepRecorded => step
-    }.flatMap(_.ops).take(2), Vector[CoreOperation](
+    }.flatMap(RecordedOps.of(_)).take(2), Vector[CoreOperation](
       PayCost(actor, Location.OnCard(catacombs), Cost(secret = 1),
         matchingBank = catalog.suitOf(catacombs)),
       Move(Piece.Card(topRelic),

@@ -6,11 +6,11 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powers.{AdviserLimit, NoteText, PhasePowerCatalog,
   WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks,
-  PowerRules, Table}
+  PowerRules, RecordedOps, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.accepted
 import oathdigital.testkit.PhasePowerHarness
@@ -59,8 +59,7 @@ class InsomniaSuite extends munit.FunSuite:
       Insomnia.id)
     // Finishing Rest cleared the turn's uses, so the limit is checked on a
     // turn that holds the recorded use.
-    assert(used.events.collect { case step: WalkerStepRecorded => step.ops }
-      .flatten.contains(RecordPowerUse(ref)), used.events)
+    assert(RecordedOps.all(used.events).contains(RecordPowerUse(ref)), used.events)
     val spent = Table.from(ready).update(_.updateCurrent(current =>
       current.copy(turn = current.turn.copy(usedPowers = Set(ref))))).ready
     assertEquals(rules.startWalker(Ready(spent), use, p1, Vector(source))

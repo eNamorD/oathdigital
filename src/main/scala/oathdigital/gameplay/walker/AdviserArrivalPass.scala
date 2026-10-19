@@ -44,8 +44,7 @@ private[walker] object AdviserArrivalPass:
     ran.map { updated =>
       val step = Option.when(updated.executed.nonEmpty)(WalkerStepRecorded(
         nodeId = nodeId,
-        payload = DeltaPayload,
-        ops = updated.executed,
+        payload = DeltaPayload(updated.executed),
         contributions = Vector(power)))
       val note = followUp.note.build(NoteStates(updated.state,
         Some((ctx.state, updated.state)), ctx.answered)).flatMap(built =>

@@ -78,7 +78,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
       .resolveWalker(started.state, p1, RecoverProcedure.choiceDecisionId,
         DecisionAnswer.ChooseOneAnswer(WalkerStubs.continueOption)))
     assert(resumed.events.exists {
-      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _, _) => by == p1
+      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _) => by == p1
       case _ => false
     })
     val after = Outcomes.ready(resumed.state)

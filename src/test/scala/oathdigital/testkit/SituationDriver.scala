@@ -127,7 +127,7 @@ object SituationDriver:
 
   private def arranging(ops: Vector[CoreOperation])
       : WalkerStepRecorded =
-    WalkerStepRecorded("0", DeltaPayload, ops, Vector.empty)
+    WalkerStepRecorded("0", DeltaPayload(ops), Vector.empty)
 
   /** Calls `OathRules` directly, accepting exactly the commands
     * `GameApplicationService.applyCommand` accepts and dispatching them the

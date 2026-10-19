@@ -7,7 +7,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.powerresolver.ModifierPicks
-import oathdigital.gameplay.walker.{LogNoted, WalkerDice,
+import oathdigital.gameplay.walker.{DeltaPayload, LogNoted, WalkerDice,
   WalkerProcedureRegistry, WalkerRollFeedback, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseManyAnswer, ChooseOneAnswer}
@@ -135,8 +135,7 @@ class SilverCharmSuite extends munit.FunSuite:
     // The dice-pool change every Recover starts with does not round-trip
     // the wire (its window is not kept), so it is left out of the check.
     assertWireRoundTrips(events.filterNot {
-      case step: WalkerStepRecorded =>
-        step.ops.exists(_.isInstanceOf[ModifyDicePool])
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops.exists(_.isInstanceOf[ModifyDicePool])
       case _ => false
     })
 

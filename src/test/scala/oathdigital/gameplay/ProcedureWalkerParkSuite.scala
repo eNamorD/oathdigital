@@ -1,7 +1,8 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
-  WalkerOutcome, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload,
+  ProcedureWalker, WalkerOutcome, WalkerStepRecorded}
+import oathdigital.testkit.RecordedOps
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.Outcomes.{parked, recorded}
@@ -30,7 +31,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
     ProcedureWalker.resolve(ready, tree, parkedAt, answer, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
-        assertEquals(recorded(events.last).ops,
+        assertEquals(RecordedOps.of(recorded(events.last)),
           Vector[CoreOperation](spendOneSupply))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
         assertEquals(finalState.game.current.walkerPending, None)
@@ -150,7 +151,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
     assertEquals(parkedAt.at, Vector("1"))
     assertEquals(parkedAt.answered, Vector.empty[Answered])
     assertEquals(parkEvents.size, 1)
-    assertEquals(recorded(parkEvents.head).ops,
+    assertEquals(RecordedOps.of(recorded(parkEvents.head)),
       Vector[CoreOperation](spendOneSupply))
 
     // The caller folds the Parked events to obtain the state at the park.
@@ -182,7 +183,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
     assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 4)
     assertEquals(events.size, 4)
     assertEquals(events.collect {
-      case step: WalkerStepRecorded => step.ops
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops
     }, Vector.fill(4)(Vector[CoreOperation](spendOneSupply)))
 
   test("Repeat whose guard is false from the start walks nothing"):
@@ -218,7 +219,7 @@ class ProcedureWalkerParkSuite extends munit.FunSuite:
     ProcedureWalker.resolve(ready, tree, parkedAt, answer, noPowers) match
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
-        assertEquals(recorded(events.last).ops,
+        assertEquals(RecordedOps.of(recorded(events.last)),
           Vector[CoreOperation](spendOneSupply))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
       case other => fail(s"expected the resumed repeat to finish, got $other")

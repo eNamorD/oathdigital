@@ -68,8 +68,7 @@ private[walker] object WalkerSteps:
       val nodeId = if path.isEmpty then label else path.mkString(".")
       val step = Option.when(updated.executed.nonEmpty)(WalkerStepRecorded(
         nodeId = nodeId,
-        payload = DeltaPayload,
-        ops = updated.executed,
+        payload = DeltaPayload(updated.executed),
         contributions = contributions))
       val events = ctx.events ++ step ++
         swapped.lines(run.executed, ctx.actor, ctx.powers.declared)
@@ -108,12 +107,12 @@ private[walker] object WalkerSteps:
         events = ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId,
           payload = ChoicePayload(answer.decisionId, answer.answer, answer.by),
-          ops = Vector.empty,
           contributions = contributions))
 
   /** Records one roll step: the outcome is derived and validated by
     * [[WalkerRolls.outcomeFor]], merged into `ctx.state`, and the step carries
-    * a [[RollPayload]] with no ops (the outcome is a state write).
+    * a [[RollPayload]], which carries no operation batch (the outcome is a
+    * state write).
     */
   def recordRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
       faces: Vector[DieFace], contributions: Vector[PowerId],
@@ -127,7 +126,7 @@ private[walker] object WalkerSteps:
         previous = Some((ctx.state, written)),
         events = ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId, payload = RollPayload(roll.pool, faces, automatic),
-          ops = Vector.empty, contributions = contributions))
+          contributions = contributions))
     }
 
   /** Rolls an `Automatic` node: the faces come from the dice source and the

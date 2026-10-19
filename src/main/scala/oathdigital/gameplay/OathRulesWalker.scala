@@ -4,9 +4,9 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePowers}
-import oathdigital.gameplay.walker.{FollowUpOffer, FollowUpSkipped,
-  ModifierOffers, ParkedUses, ProcedureWalker, WalkerCompleted,
-  WalkerDice, WalkerOutcome, WalkerParked, WalkerPowers,
+import oathdigital.gameplay.walker.{DeltaPayload, FollowUpOffer,
+  FollowUpSkipped, ModifierOffers, ParkedUses, ProcedureWalker,
+  WalkerCompleted, WalkerDice, WalkerOutcome, WalkerParked, WalkerPowers,
   WalkerProcedureRegistry, WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
@@ -351,7 +351,7 @@ private[gameplay] trait OathRulesWalker:
     else outcome match
       case WalkerOutcome.Parked(pending, events) =>
         if events.exists {
-          case step: WalkerStepRecorded => step.ops.nonEmpty
+          case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops.nonEmpty
           case _ => false
         } then Left(InvalidEventOrder(s"${procedure.key} runs operations before " +
           "its first decision, so its start cannot be previewed"))
@@ -418,14 +418,15 @@ private[gameplay] trait OathRulesWalker:
     else transition.state match
       case Ready(ready) =>
         val actor = ready.game.current.turn.activePlayer
-        val sources = steps.collect { case step: WalkerStepRecorded =>
-          step.ops.collect:
-            case Play(card: WorldCardId, _, Location.Site(site),
-                Orientation.FaceUp, _) =>
-              RuleSourceRef.SiteCard(site, card)
-            case Play(card: WorldCardId, _, Location.PlayArea(player),
-                Orientation.FaceUp, _) =>
-              RuleSourceRef.Adviser(player, card)
+        val sources = steps.collect {
+          case WalkerStepRecorded(_, DeltaPayload(ops), _) =>
+            ops.collect:
+              case Play(card: WorldCardId, _, Location.Site(site),
+                  Orientation.FaceUp, _) =>
+                RuleSourceRef.SiteCard(site, card)
+              case Play(card: WorldCardId, _, Location.PlayArea(player),
+                  Orientation.FaceUp, _) =>
+                RuleSourceRef.Adviser(player, card)
         }.flatten.distinct
         sources.foldLeft[Either[OathViolation,
             Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {

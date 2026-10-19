@@ -10,7 +10,7 @@ class PayCostWireSuite extends munit.FunSuite:
     val original = recordedOperation(operation)
     val encoded = accepted(GameEventWire.encodeEvent("walker", 0, original))
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(original))
-    ujson.read(encoded)("payload")("ops")(0)
+    ujson.read(encoded)("payload")("step")("ops")(0)
 
   test("a default PayCost writes neither new field"):
     val op = roundTrip(PayCost(player, Location.OnCard(DenizenId("a")),

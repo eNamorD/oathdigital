@@ -6,11 +6,10 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.campaign.{PlanDriver, SecondWindCard}
 import oathdigital.gameplay.powers.travel.SpecialEnvoy
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  PhasePowerHarness, Table}
+  PhasePowerHarness, RecordedOps, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
@@ -35,7 +34,7 @@ class OffTurnWalkSuite extends munit.FunSuite:
     Table.start.offering(owedToP2(action))
 
   private def spent(events: Vector[OathEvent]): Vector[SpendSupply] =
-    events.collect { case step: WalkerStepRecorded => step.ops }.flatten
+    RecordedOps.all(events)
       .collect { case spend: SpendSupply => spend }
 
   /** Who the parked decision awaits, as the projection reads it. */

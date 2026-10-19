@@ -12,7 +12,7 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.CatalogNames
+import oathdigital.testkit.{CatalogNames, RecordedOps}
 import oathdigital.testkit.Unwrap.present
 
 /** Drives a Campaign through the rules with the production battle plans, for
@@ -71,7 +71,7 @@ object PlanDriver:
   def killedBeforeTheDefenseRoll(events: Vector[OathEvent],
       kill: CoreOperation): Boolean =
     val steps = events.collect { case step: WalkerStepRecorded => step }
-    val killed = steps.indexWhere(_.ops.contains(kill))
+    val killed = steps.indexWhere(RecordedOps.of(_).contains(kill))
     val rolled = steps.indexWhere(_.payload match
       case RollPayload(pool, _, _) => pool == CampaignIds.defensePool
       case _ => false)
@@ -99,8 +99,7 @@ object PlanDriver:
       ready(state).game.current.lastCampaignResult.map(_.attackerWins)
 
     /** The operations recorded so far, in order. */
-    def ops: Vector[CoreOperation] = events.collect {
-      case step: WalkerStepRecorded => step.ops }.flatten
+    def ops: Vector[CoreOperation] = RecordedOps.all(events)
 
     /** The operations recorded since `earlier`. */
     def since(earlier: Run): Vector[CoreOperation] = ops.drop(earlier.ops.size)

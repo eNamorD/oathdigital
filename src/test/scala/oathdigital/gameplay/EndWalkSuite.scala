@@ -1,7 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers, WalkerStepRecorded}
+  WalkerPowers}
+import oathdigital.testkit.RecordedOps
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -23,7 +24,6 @@ class EndWalkSuite extends munit.FunSuite:
       later, recording("last")))
     ProcedureWalker.advance(ready, walk, None, WalkerPowers.empty) match
       case Right(WalkerOutcome.Finished(_, events)) =>
-        assertEquals(events.collect { case step: WalkerStepRecorded =>
-          step.ops }.flatten,
+        assertEquals(RecordedOps.all(events),
           Vector[CoreOperation](recording("first"), recording("second")))
       case other => fail(s"expected the walk to finish at EndWalk, got $other")

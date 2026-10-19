@@ -23,11 +23,10 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
     case ActionBoundaryRan => ActionBoundaryRanType
 
   protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] =
-    case WalkerStepRecorded(nodeId, payload, ops, contributions) =>
+    case WalkerStepRecorded(nodeId, payload, contributions) =>
       ujson.Obj(
         "nodeId" -> nodeId,
         "step" -> encodeStepPayload(payload),
-        "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
         "contributions" -> stringArray(contributions.map(_.value)))
     case WalkerParked(procedure, at, answered, startArgs, startFacts) =>
       ujson.Obj(
@@ -85,7 +84,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
     payload match
-      case DeltaPayload => ujson.Obj("kind" -> "delta")
+      case DeltaPayload(ops) => ujson.Obj("kind" -> "delta",
+        "ops" -> ujson.Arr.from(ops.map(encodeOperation)))
       case ChoicePayload(decisionId, answer, by) => ujson.Obj(
         "kind" -> "choice", "decisionId" -> decisionId,
         "payload" -> DecisionAnswerCodec.encode(answer),
@@ -100,7 +100,11 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
   private def decodeStepPayload(value: ujson.Value,
       path: String): Either[WireError, WalkerStepPayload] =
     value("kind").str match
-      case "delta" => Right(DeltaPayload)
+      case "delta" =>
+        traverse(value("ops").arr.zipWithIndex.toVector) {
+          case (operation, index) =>
+            decodeOperation(operation, s"$path.ops[$index]")
+        }.map(DeltaPayload.apply)
       case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _,
           PlayerId(value("byPlayerId").str)))
@@ -267,12 +271,9 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec:
   private def decodeStepRecorded(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for
     step <- decodeStepPayload(value("step"), s"$path.step")
-    ops <- traverse(value("ops").arr.zipWithIndex.toVector):
-      case (operation, index) => decodeOperation(operation, s"$path.ops[$index]")
     contributions = value("contributions").arr.toVector.map(id =>
       PowerId(id.str))
-  yield WalkerStepRecorded(
-    value("nodeId").str, step, ops, contributions)
+  yield WalkerStepRecorded(value("nodeId").str, step, contributions)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker step"))) }
 

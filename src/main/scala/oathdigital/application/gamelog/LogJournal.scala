@@ -1,8 +1,8 @@
 package oathdigital.application.gamelog
 
 import oathdigital.engine.ReplayStep
-import oathdigital.gameplay.walker.{ChoicePayload, LogNoted, ProcedureWalker,
-  WalkerCompleted, WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload, LogNoted,
+  ProcedureWalker, WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 
 /** One operation of a recorded batch with the state just before and just
@@ -90,7 +90,7 @@ private[gamelog] final class LogJournal(
   /** Every answer `run` recorded from its first event through `at`. */
   def answers(run: Run, at: Int): Vector[Answered] =
     (run.first to at).toVector.map(event).collect {
-      case WalkerStepRecorded(_, ChoicePayload(id, answer, by), _, _) =>
+      case WalkerStepRecorded(_, ChoicePayload(id, answer, by), _) =>
         Answered(id, answer, by)
     }
 
@@ -118,8 +118,9 @@ private[gamelog] object LogJournal:
     * the last good state rather than losing its lines. */
   private def opSteps(step: ReplayStep[OathState, OathEvent]): Vector[OpStep] =
     (step.before, step.event.event) match
-      case (OathState.Ready(start), recorded: WalkerStepRecorded) =>
-        recorded.ops.foldLeft((start, Vector.empty[OpStep])) {
+      case (OathState.Ready(start),
+          WalkerStepRecorded(_, DeltaPayload(ops), _)) =>
+        ops.foldLeft((start, Vector.empty[OpStep])) {
           case ((state, done), operation) =>
             val next = ProcedureWalker.applyRecordedOperation(state, operation)
               .getOrElse(state)

@@ -5,7 +5,7 @@ import oathdigital.gameplay.powerresolver.Deferred
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.testkit.Outcomes
+import oathdigital.testkit.{Outcomes, RecordedOps}
 import oathdigital.testkit.Outcomes.{finished, parked, recorded}
 import oathdigital.testkit.ProcedureWalkerFixture._
 import oathdigital.testkit.Unwrap.accepted
@@ -43,7 +43,7 @@ class DeferralSuite extends munit.FunSuite:
       "replay"):
     val done = finished(ProcedureWalker.advance(ready,
       Defer(key, Vector(spendOneSupply)), None, noPowers))
-    assertEquals(recorded(done.events.head).ops,
+    assertEquals(RecordedOps.of(recorded(done.events.head)),
       Vector[CoreOperation](Defer(key, Vector(spendOneSupply))))
     assertEquals(done.treeless.game.current.walkerDeferred, Map.empty)
     val held = afterBatch(ready, Defer(key, Vector(spendOneSupply)))
@@ -65,7 +65,7 @@ class DeferralSuite extends munit.FunSuite:
     val done = finished(ProcedureWalker.resolve(atPark, tree, park.tree,
       Answered(decide.decisionId, ChooseOneAnswer(continueOption), actor),
       noPowers))
-    assertEquals(done.events.map(recorded(_).ops), Vector(
+    assertEquals(done.events.map(e => RecordedOps.of(recorded(e))), Vector(
       Vector.empty[CoreOperation], Vector[CoreOperation](spendOneSupply),
       Vector[CoreOperation](TakeDeferred(key))))
     assertEquals(supplyOf(done.treeless), supplyOf(ready) - 1)
@@ -74,5 +74,5 @@ class DeferralSuite extends munit.FunSuite:
     val tree: Operation = Sequence(
       Deferred.resolve(key)((_, _, _) => Vector(decide)), spendOneSupply)
     val done = finished(ProcedureWalker.advance(ready, tree, None, noPowers))
-    assertEquals(done.events.map(recorded(_).ops),
+    assertEquals(done.events.map(e => RecordedOps.of(recorded(e))),
       Vector(Vector[CoreOperation](spendOneSupply)))

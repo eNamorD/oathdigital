@@ -5,12 +5,12 @@ import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers, WalkerStepRecorded}
+  WalkerPowers}
 import oathdigital.gameplay.powers.{NoteText, PhasePowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, PlacementPicks,
-  PowerRules, Refusals, Table}
+  PowerRules, RecordedOps, Refusals, Table}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 import oathdigital.testkit.PhasePowerHarness
 
@@ -62,8 +62,7 @@ class SilverTongueSuite extends munit.FunSuite:
       SilverTongue.id)
     // Finishing Rest cleared the turn's uses, so the limit is checked on a
     // turn that holds the recorded use.
-    assert(used.events.collect { case step: WalkerStepRecorded => step.ops }
-      .flatten.contains(RecordPowerUse(ref)), used.events)
+    assert(RecordedOps.all(used.events).contains(RecordPowerUse(ref)), used.events)
     val spent = Table.from(ready).update(_.updateCurrent(current =>
       current.copy(turn = current.turn.copy(usedPowers = Set(ref))))).ready
     assertEquals(rules.startWalker(Ready(spent), use, actor, Vector(source))

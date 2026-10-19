@@ -10,7 +10,8 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
+import oathdigital.gameplay.walker.{DeltaPayload, ParkedDecisionAssertions,
+  WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes,
   TakeWealthFixture, Table}
@@ -191,7 +192,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
       case _: oathdigital.gameplay.walker.WalkerCompleted => false
       case _ => true
     }.collect {
-      case step: oathdigital.gameplay.walker.WalkerStepRecorded => step.ops
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops
     }.flatten
     assertEquals(recorded, Vector(
       Move(Piece.Favor(1), PositionedLocation(Location.Site(home)),

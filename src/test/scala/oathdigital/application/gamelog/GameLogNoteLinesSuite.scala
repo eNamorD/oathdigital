@@ -8,8 +8,8 @@ import oathdigital.gameplay.powers.action.{DreamThief, GamblingHall, MagicCarpet
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.powers.wake.Hunger
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ChoicePayload, LogNoted, WalkerCompleted,
-  WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload, LogNoted,
+  WalkerCompleted, WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.protocol.projection.{LogEntry, LogKind, LogSpan}
 import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
@@ -78,7 +78,7 @@ class GameLogNoteLinesSuite extends munit.FunSuite:
 
   /** Silver Tongue's take: the step that moves favor out of a bank. */
   private def take(steps: Steps): Int = steps.indexWhere(_.event.event match
-    case step: WalkerStepRecorded => step.ops.exists {
+    case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops.exists {
       case Move(Piece.Favor(_), PositionedLocation(Location.FavorBank(_), _, _),
           _, _, _) => true
       case _ => false
@@ -237,7 +237,7 @@ class GameLogNoteLinesSuite extends munit.FunSuite:
     val steps = silverTongueSteps
     def pressed(ref: DecisionOptionRef) = inserted(steps, take(steps),
       WalkerStepRecorded("inspect", ChoicePayload("power.scryer.inspect",
-        DecisionAnswer.ChooseOneAnswer(ref), script.actor), Vector.empty,
+        DecisionAnswer.ChooseOneAnswer(ref), script.actor),
         Vector.empty))
     def chose(lines: Vector[String]) = lines.count(_.startsWith("Chose "))
     val before = chose(lines(steps))
@@ -375,7 +375,7 @@ class GameLogNoteLinesSuite extends munit.FunSuite:
     val script = woken
     val steps = script.history.steps
     val placed = steps.indexWhere(_.event.event match
-      case step: WalkerStepRecorded => step.ops.exists {
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops.exists {
         case Move(Piece.Pawn(_), _, _, _, _) => true
         case _ => false
       }

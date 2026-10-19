@@ -67,28 +67,24 @@ private[walker] object WalkerReplay:
       // `contributions` is deliberately unmatched (`_`) below: replay applies
       // `ops` only and must never consult which powers produced them (spec
       // decision 5) -- see `WalkerStepRecorded.contributions`'s doc.
-      case step @ WalkerStepRecorded(_, RollPayload(pool, faces, automatic), ops, _) =>
+      case step @ WalkerStepRecorded(_,
+          RollPayload(pool, faces, automatic), _) =>
         for
           _ <- if automatic then validateStep(step)
             else validateParkedStep(step).map(_ => ())
-          _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
-            "recorded RollPayload must not contain operations"))
           outcome <- WalkerRolls.outcomeForRecorded(ready, pool, faces)
         yield WalkerRolls.write(ready, outcome)
 
       case step @ WalkerStepRecorded(_,
-          ChoicePayload(decisionId, payload, by), ops, _) =>
+          ChoicePayload(decisionId, payload, by), _) =>
         for
           pending <- validateParkedStep(step)
-          _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
-            "recorded ChoicePayload must not contain operations"))
           answered = pending.copy(answered = pending.answered :+
             Answered(decisionId, payload, by))
         yield ready.copy(game = ready.game.copy(current =
           ready.game.current.copy(walkerPending = Some(answered))))
 
-      case step @ WalkerStepRecorded(_,
-          DeltaPayload, ops, _) =>
+      case step @ WalkerStepRecorded(_, DeltaPayload(ops), _) =>
         for
           _ <- validateStep(step)
           _ <- Either.cond(ops.nonEmpty, (), OathViolation.InvalidEventOrder(

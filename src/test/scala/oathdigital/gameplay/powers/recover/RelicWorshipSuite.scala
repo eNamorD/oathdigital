@@ -3,7 +3,8 @@ package oathdigital.gameplay.powers.recover
 import oathdigital.gameplay.{ModifierPlay, OathRules, WalkerDiceFixture}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.WalkerDice
+import oathdigital.gameplay.walker.{DeltaPayload, WalkerDice,
+  WalkerStepRecorded}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
@@ -71,8 +72,7 @@ class RelicWorshipSuite extends munit.FunSuite:
     // The dice-pool change every Recover starts with does not round-trip the
     // wire (its window is not kept), so it is left out of the check.
     assertWireRoundTrips(events.filterNot {
-      case step: oathdigital.gameplay.walker.WalkerStepRecorded =>
-        step.ops.exists(_.isInstanceOf[ModifyDicePool])
+      case WalkerStepRecorded(_, DeltaPayload(ops), _) => ops.exists(_.isInstanceOf[ModifyDicePool])
       case _ => false
     })
 

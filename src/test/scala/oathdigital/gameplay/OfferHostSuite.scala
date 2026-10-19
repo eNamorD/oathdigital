@@ -6,7 +6,7 @@ import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, Offe
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
   WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Table}
+import oathdigital.testkit.{Look, RecordedOps, Table}
 import oathdigital.testkit.Outcomes.{finished, parked}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{accepted, as}
@@ -89,7 +89,8 @@ class OfferHostSuite extends munit.FunSuite:
     // 1 at the start, 1 from the transform and 2 from the expansion.
     assertEquals(Look(done.treeless).supply(p1), 4)
     // The transform's gain is recorded before the expansion's.
-    assertEquals(done.events.map(as[WalkerStepRecorded](_).ops),
+    assertEquals(done.events.map(e =>
+      RecordedOps.of(as[WalkerStepRecorded](e))),
       Vector(Vector[CoreOperation](GainSupply(p1, 1)),
         Vector[CoreOperation](GainSupply(p1, 2))))
 

@@ -1,7 +1,7 @@
 package oathdigital.application
 
-import oathdigital.gameplay.walker.{HiddenOutcomes, RollPayload,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload,
+  HiddenOutcomes, RollPayload, WalkerStepRecorded}
 import oathdigital.model._
 
 /** Whether a closed command batch is a barrier that undo never takes back
@@ -19,8 +19,10 @@ private[application] object UndoBarrier:
       case _ => true
 
   private def reveals(event: OathEvent): Boolean = event match
-    case step: WalkerStepRecorded =>
-      step.payload.isInstanceOf[RollPayload] || step.ops.exists(hidden)
+    case WalkerStepRecorded(_, payload, _) => payload match
+      case _: RollPayload => true
+      case DeltaPayload(ops) => ops.exists(hidden)
+      case _: ChoicePayload => false
     case _ => false
 
   /** A composite operation hides when it or any leaf inside it does. */

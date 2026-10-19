@@ -116,7 +116,7 @@ class ArcaneArmorSuite extends munit.FunSuite:
     assertEquals(done.result.defenseFaces, Vector(TwoShields, TwoShields))
     assertEquals(done.result.defenseScore, 6)
     val rolled = done.events.collect {
-      case WalkerStepRecorded(_, RollPayload(pool, _, _), _, _) => pool }
+      case WalkerStepRecorded(_, RollPayload(pool, _, _), _) => pool }
     assertEquals(rolled, Vector(CampaignIds.attackPool))
     assertEquals(lines(done), Vector(setLine("2 defense dice")))
 

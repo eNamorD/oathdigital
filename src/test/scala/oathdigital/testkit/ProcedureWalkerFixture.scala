@@ -50,7 +50,7 @@ object ProcedureWalkerFixture:
   def applyEvents(state: ReadyGame, events: Vector[OathEvent])(
       using munit.Location): ReadyGame =
     events.foldLeft(state) { (current, event) =>
-      accepted(OperationPipeline.run(current, recorded(event).ops,
+      accepted(OperationPipeline.run(current, RecordedOps.of(recorded(event)),
         OperationPolicy.Permissive, Vector.empty)(Right(_))).state
     }
 

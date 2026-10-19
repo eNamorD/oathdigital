@@ -27,7 +27,7 @@ private[gamelog] final class DetailLines(words: LogWords,
 
   private def roll(journal: LogJournal, at: Int): Vector[Posted] =
     journal.event(at) match
-      case WalkerStepRecorded(_, RollPayload(pool, faces, _), _, _) =>
+      case WalkerStepRecorded(_, RollPayload(pool, faces, _), _) =>
         rolled(pool, faces)
       case _: WalkerStepRecorded => journal.ops(at).collectFirst {
         case OpStep(Reroll(pool, _, Some(_)), _, after) =>
@@ -45,7 +45,7 @@ private[gamelog] final class DetailLines(words: LogWords,
   private def decision(journal: LogJournal, run: Run, at: Int,
       viewer: Option[PlayerId], log: ProcedureLog): Vector[Posted] =
     journal.event(at) match
-    case WalkerStepRecorded(_, ChoicePayload(id, answer, by), _, _)
+    case WalkerStepRecorded(_, ChoicePayload(id, answer, by), _)
         if !log.narrates(id) && !DetailLines.crossCutting(id) &&
           !narratedByPowers(id) =>
       val refs = answer match

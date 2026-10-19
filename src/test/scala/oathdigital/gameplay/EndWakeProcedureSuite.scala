@@ -8,9 +8,9 @@ import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerCompleted,
-  WalkerParked, WalkerStepRecorded}
+  WalkerParked}
 import oathdigital.model._
-import oathdigital.testkit.{Look, MenuPlay, Outcomes, Table}
+import oathdigital.testkit.{Look, MenuPlay, Outcomes, RecordedOps, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
@@ -44,9 +44,7 @@ class EndWakeProcedureSuite extends munit.FunSuite:
     // The Act menu is parked once End Wake is done.
     assertEquals(ended.events.map(_.productPrefix),
       Vector("WalkerStepRecorded", "WalkerCompleted", "WalkerParked"))
-    assertEquals(ended.events.collect {
-      case step: WalkerStepRecorded => step.ops
-    }.flatten, Vector[oathdigital.model.CoreOperation](
+    assertEquals(RecordedOps.all(ended.events), Vector[oathdigital.model.CoreOperation](
       EnterPhase(Phase.Act)))
     assert(ended.events.contains(WalkerCompleted(PhaseTransitionRef.EndWake)),
       ended.events)

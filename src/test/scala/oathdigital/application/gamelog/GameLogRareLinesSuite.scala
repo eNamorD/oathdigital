@@ -28,8 +28,7 @@ class GameLogRareLinesSuite extends munit.FunSuite:
   private def posted(procedure: ProcedureRef, ops: CoreOperation*)
       : Vector[String] =
     val tail = Vector[OathEvent](
-      WalkerStepRecorded("batch", DeltaPayload,
-        ops.toVector, Vector.empty),
+      WalkerStepRecorded("batch", DeltaPayload(ops.toVector), Vector.empty),
       WalkerCompleted(procedure))
     texts(formatAppended(script, tail).filter(_.sequence >= steps.size))
 

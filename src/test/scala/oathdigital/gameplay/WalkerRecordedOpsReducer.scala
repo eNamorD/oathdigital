@@ -1,7 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.walker.{LogNoted, RollPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaPayload, LogNoted,
+  RollPayload, WalkerStepRecorded}
 import oathdigital.model._
 
 /** Test-only scaffolding shared by `RecoverProcedureSuite` and
@@ -52,12 +53,13 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
                   derive(accumulatedFaces)._2, throws = previous.throws + 1)
           current.updateCurrent(_.copy(rollOutcomes =
               current.game.current.rollOutcomes.updated(pool, accumulated)))
-        case _ if step.ops.isEmpty => current
-        case _ =>
-          OperationPipeline.run(current, step.ops,
+        case DeltaPayload(ops) if ops.isEmpty => current
+        case DeltaPayload(ops) =>
+          OperationPipeline.run(current, ops,
             OperationPolicy.Permissive, Vector.empty)(Right(_)) match
             case Right(updated) => updated.state
             case Left(violation) =>
               self.fail(s"$failureContext: $violation")
+        case _: ChoicePayload => current
     }
 }

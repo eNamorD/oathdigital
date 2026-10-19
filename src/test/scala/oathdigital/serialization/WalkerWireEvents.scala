@@ -10,8 +10,7 @@ import oathdigital.testkit.Unwrap.accepted
 object WalkerWireEvents:
   /** The walker step at path "0" that records `operation` as applied. */
   def recordedOperation(operation: CoreOperation): OathEvent =
-    WalkerStepRecorded("0", DeltaPayload,
-      Vector(operation), Vector.empty)
+    WalkerStepRecorded("0", DeltaPayload(Vector(operation)), Vector.empty)
 
   /** `events` written as one stream of game `label`, numbered from 0. Fails
     * with the WireError if the codec refuses to write it. */

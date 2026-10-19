@@ -2,6 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.powerresolver.{Contribution, ExecutedBatch,
   ExecutedTrigger}
+import oathdigital.testkit.RecordedOps
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.testkit.Outcomes.{finished, parked, recorded}
@@ -52,7 +53,7 @@ class ExecutedTriggersSuite extends munit.FunSuite:
     val park = parked(ProcedureWalker.advance(ready, movedThenSpent, None,
       asking))
     assertEquals(park.tree.at, Vector("0", "0", "0"))
-    assertEquals(park.events.map(recorded(_).ops),
+    assertEquals(park.events.map(e => RecordedOps.of(recorded(e))),
       Vector(Vector[CoreOperation](movePawnToS3, heldMove)))
     assertEquals(park.events.map(recorded(_).nodeId), Vector("0"))
 
@@ -65,7 +66,7 @@ class ExecutedTriggersSuite extends munit.FunSuite:
     val done = finished(ProcedureWalker.resolve(atPark, movedThenSpent,
       park.tree, Answered(decide.decisionId, ChooseOneAnswer(continueOption),
         actor), asking))
-    assertEquals(done.events.map(recorded(_).ops), Vector(
+    assertEquals(done.events.map(e => RecordedOps.of(recorded(e))), Vector(
       Vector.empty[CoreOperation], Vector[CoreOperation](spendOneSupply),
       Vector[CoreOperation](TakeDeferred(ExecutedTriggers.key)),
       Vector[CoreOperation](spendOneSupply)))
@@ -79,7 +80,7 @@ class ExecutedTriggersSuite extends munit.FunSuite:
       "no follow-up"):
     val done = finished(ProcedureWalker.advance(ready, movedThenSpent, None,
       WalkerPowers(Vector(MovesThePawnBack))))
-    assertEquals(done.events.map(recorded(_).ops), Vector(
+    assertEquals(done.events.map(e => RecordedOps.of(recorded(e))), Vector(
       Vector[CoreOperation](movePawnToS3, heldMove),
       Vector[CoreOperation](movePawnBack),
       Vector[CoreOperation](TakeDeferred(ExecutedTriggers.key)),

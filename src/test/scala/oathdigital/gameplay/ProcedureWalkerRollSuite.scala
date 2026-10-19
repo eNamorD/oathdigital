@@ -2,6 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.walker.{ProcedureWalker, RollPayload,
   WalkerOutcome, WalkerStepRecorded}
+import oathdigital.testkit.RecordedOps
 import oathdigital.model._
 import oathdigital.testkit.Outcomes.{parked, recorded}
 import oathdigital.testkit.ProcedureWalkerFixture._
@@ -90,7 +91,6 @@ class ProcedureWalkerRollSuite extends munit.FunSuite:
           case recorded: WalkerStepRecorded => recorded
           case other => fail(s"expected a WalkerStepRecorded, got $other")
         assertEquals(step.payload, RollPayload(recoverPool, faces))
-        assertEquals(step.ops, Vector.empty[CoreOperation])
         assertEquals(finalState.game.current.walkerPending, None)
         assertEquals(finalState.game.current.rollPools,
           Map.empty[PoolKey, DicePoolState])
@@ -150,7 +150,7 @@ class ProcedureWalkerRollSuite extends munit.FunSuite:
         assertEquals(recorded(events.head).payload,
           RollPayload(recoverPool, faces))
         val delta = recorded(events(1))
-        assertEquals(delta.ops, Vector[CoreOperation](spendOneSupply))
+        assertEquals(RecordedOps.of(delta), Vector[CoreOperation](spendOneSupply))
         assertEquals(delta.nodeId, "2")
         assertEquals(finalState.game.current.rollOutcomes(recoverPool).score,
           DefenseDieFace.score(Vector(DefenseDieFace.OneShield,

@@ -7,11 +7,10 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.campaign.PlanDriver.{awaits, commit,
   winningDice}
 import oathdigital.gameplay.powers.targeting.TargetingFixture
-import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  Table}
+  RecordedOps, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
@@ -46,7 +45,7 @@ class BrassArmyMovesSuite extends munit.FunSuite:
 
   /** Every operation the steps in `events` recorded. */
   private def recordedOps(events: Vector[OathEvent]): Vector[CoreOperation] =
-    events.collect { case step: WalkerStepRecorded => step.ops }.flatten
+    RecordedOps.all(events)
 
   test("a Travel asks the holder at once, and flipping turns one secret " +
       "facedown, with its line"):

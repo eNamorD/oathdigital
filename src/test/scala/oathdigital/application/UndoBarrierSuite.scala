@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.gameplay.walker.{DeltaPayload, RollPayload,
-  WalkerStepPayload, WalkerStepRecorded}
+  WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
@@ -14,13 +14,14 @@ class UndoBarrierSuite extends munit.FunSuite:
   private val relicCard: CardId = CatalogNames.card("Sticky Fire")
   private val peaks: SiteId = CatalogNames.site("Broken Peaks")
 
-  private def step(payload: WalkerStepPayload, ops: CoreOperation*)
-      : WalkerStepRecorded =
-    WalkerStepRecorded("n", payload, ops.toVector, Vector.empty)
-
   /** A walker step recording a delta that applies `ops`. */
   private def deltaStep(ops: CoreOperation*): WalkerStepRecorded =
-    step(DeltaPayload, ops*)
+    WalkerStepRecorded("n", DeltaPayload(ops.toVector), Vector.empty)
+
+  /** A walker step recording a submitted roll, which applies nothing. */
+  private def rollStep(payload: RollPayload): WalkerStepRecorded =
+    WalkerStepRecorded("n", payload, Vector.empty)
+
   private def blocks(events: OathEvent*): Boolean =
     UndoBarrier.blocks(events.toVector, before, before)
 
@@ -30,7 +31,7 @@ class UndoBarrierSuite extends munit.FunSuite:
       Orientation.FaceDown))))
 
   test("a roll is a barrier"):
-    assert(blocks(step(RollPayload(PoolKey("attack"), Vector.empty,
+    assert(blocks(rollStep(RollPayload(PoolKey("attack"), Vector.empty,
       automatic = true))))
 
   test("a shuffle, a peek, a reveal and a faceup flip are barriers"):

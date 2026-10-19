@@ -24,8 +24,7 @@ class FollowUpReplaySuite extends munit.FunSuite:
       queue = entries.toVector))).state
 
   test("queueing appends to the back of the queue"):
-    val step = WalkerStepRecorded("0", DeltaPayload,
-      Vector(QueueProcedure(travel)), Vector.empty)
+    val step = WalkerStepRecorded("0", DeltaPayload(Vector(QueueProcedure(travel))), Vector.empty)
     assertEquals(ProcedureWalker.applyRecorded(queued(campaign), step)
       .map(current(_).queue), Right(Vector(campaign, travel)))
 
