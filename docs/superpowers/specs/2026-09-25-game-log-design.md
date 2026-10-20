@@ -15,7 +15,12 @@
 > from is recorded under "Resolved decisions". Its "Wire contract"
 > section is superseded by the [typed log span wire design](2026-10-15-typed-log-span-wire-design.md),
 > confirmed 2026-10-15, which replaces the flat span record with a sealed
-> family.
+> family. The operation application its "Input" section describes is
+> made strict by the
+> [log operation strictness decision](2026-10-19-log-operation-strictness-decision.md),
+> decided 2026-10-19, which also records that the fallback this design shipped
+> was unreachable from production and was covering two tests staging illegal
+> boards.
 
 ## Why now
 
