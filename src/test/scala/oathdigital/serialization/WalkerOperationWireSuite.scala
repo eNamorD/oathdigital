@@ -270,18 +270,24 @@ class WalkerOperationWireSuite extends munit.FunSuite:
       "not a thrown exception"):
     // The append path must report a value it cannot write as a WireError,
     // exactly like an unrecognized value on the decode side
-    // (`encodePayloadSafe`, GameEventWire.scala). This is the only test
-    // that reaches that catch: the other encode-direction failures are
-    // envelope rejections from `validateEnvelope`, which never enter it.
+    // (`encodePayloadSafe`, GameEventWire.scala). This is the only test that
+    // reaches that catch: every other encode-direction failure is an
+    // envelope rejection, which is refused before it.
     //
     // The stub is a DieFace rather than a WalkerStepPayload because the
     // payload family is sealed and a fourth member is a compile error, not a
     // runtime one. DieFace stays open (DieFace.scala) and RollPayload holds
     // a plain Vector[DieFace], so an unknown face still reaches
     // `encodeDieFace`'s throw inside the protected encode. The event itself
-    // must be one the encoder registers -- `encodeEvent` resolves the
-    // discriminator before `encodePayloadSafe`, so an unregistered event
-    // escapes as a raw MatchError and never reaches the catch.
+    // must be one the encoder registers, since an unregistered event is
+    // refused by `discriminator` first (GameEventWireEnvelopeSuite pins
+    // that).
+    //
+    // So `encodeDieFace`'s fallback is the last throw this boundary can be
+    // provoked through. Sealing DieFace would remove it and leave the
+    // boundary untestable from any public entry point -- loudly, since this
+    // stub stops compiling in the same build that -Werror deletes the
+    // fallback, but weigh it there rather than discovering it here.
 
     // Stub of DieFace: a face neither die family declares.
     case object UnknownDieFace extends DieFace

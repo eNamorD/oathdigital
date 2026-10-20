@@ -57,15 +57,17 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
       sequence: Long,
       event: OathEvent
   ): Either[WireError, ujson.Value] =
-    encode(
-      GameEventEnvelope(
-        FormatVersion,
-        gameId,
-        sequence,
-        discriminator(event),
-        event
+    discriminator(event).flatMap { eventType =>
+      encode(
+        GameEventEnvelope(
+          FormatVersion,
+          gameId,
+          sequence,
+          eventType,
+          event
+        )
       )
-    )
+    }
 
   def encode(
       envelope: GameEventEnvelope
@@ -92,6 +94,12 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     * generic `NonFatal` fallback: the walker's control vocabulary is not a
     * `CoreOperation`, so the shapes that once needed one cannot reach the
     * encoder at all.
+    *
+    * This boundary covers a value that fails *inside* an encoder, which the
+    * two dispatches being composed separately still allows: a vocabulary
+    * registering a discriminator arm without an encoder arm lands here. An
+    * event no vocabulary registers at all never reaches it, because
+    * [[discriminator]] reports that as a typed error first.
     */
   private def encodePayloadSafe(
       event: OathEvent
@@ -236,13 +244,14 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
         if envelope.gameId.trim.nonEmpty then Right(())
         else Left(InvalidValue("$.gameId", "gameId must not be blank"))
       _ <- validateSequence(envelope.sequence, "$.sequence")
+      expected <- discriminator(envelope.event)
       _ <-
-        if envelope.eventType == discriminator(envelope.event) then Right(())
+        if envelope.eventType == expected then Right(())
         else
           Left(
             InvalidValue(
               "$.eventType",
-              s"must be '${discriminator(envelope.event)}' for this event"
+              s"must be '$expected' for this event"
             )
           )
     yield ()
@@ -255,8 +264,23 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     .orElse(endingEncoder).orElse(walkerEncoder).orElse(undoEncoder)
     .orElse(consentEncoder)
 
-  private def discriminator(event: OathEvent): String =
-    discriminatorDispatch(event)
+  /** The wire type for `event`, or a typed error when no vocabulary in this
+    * build registers one. `discriminatorDispatch` is a composed
+    * `PartialFunction` and `WalkerEvent` is open, so an event with no arm is
+    * constructible -- `OathRulesEvolveSuite` declares one on purpose for
+    * `evolve`. Returning that partiality instead of applying the dispatch is
+    * what keeps it off the append path's exception channel: both callers
+    * resolve the type before anything is written, which is outside
+    * [[encodePayloadSafe]]'s boundary, so a `MatchError` here would escape
+    * the very guarantee that method documents.
+    */
+  private def discriminator(event: OathEvent): Either[WireError, String] =
+    discriminatorDispatch.lift(event).toRight(
+      InvalidValue(
+        "$.eventType",
+        s"no wire type is registered for ${event.productPrefix}"
+      )
+    )
 
   private def encodePayload(event: OathEvent): ujson.Value =
     encoderDispatch(event)

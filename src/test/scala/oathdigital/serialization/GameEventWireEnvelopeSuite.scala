@@ -237,6 +237,36 @@ class GameEventWireEnvelopeSuite extends munit.FunSuite:
       GameEventWire.MaxSafeSequence
     )
 
+  test("an event no vocabulary registers an encoder for is refused, " +
+      "not thrown"):
+    // All three append entry points resolve the wire type before
+    // `encodePayloadSafe`'s boundary -- `encodeEvent` as a constructor
+    // argument, `encode` again inside `validateEnvelope` -- and the dispatch
+    // that resolves it is a composed PartialFunction. Applying it directly
+    // let this shape escape as a raw MatchError, which is what
+    // `encodePayloadSafe`'s doc promises the append path never does.
+    //
+    // The shape is constructible because `WalkerEvent` is open;
+    // `OathRulesEvolveSuite` declares one for the same reason. In the stream
+    // case the path carries no index, matching the payload boundary beside
+    // it.
+    case object UnregisteredWalkerEvent extends WalkerEvent
+    val refusal = WireError.InvalidValue("$.eventType",
+      "no wire type is registered for UnregisteredWalkerEvent")
+
+    assertEquals(
+      GameEventWire.encodeEvent("game", 0L, UnregisteredWalkerEvent),
+      Left(refusal))
+    assertEquals(
+      GameEventWire.encodeStream("game",
+        Vector(RecordedEvent(0L, UnregisteredWalkerEvent))),
+      Left(refusal))
+    assertEquals(
+      GameEventWire.encode(GameEventEnvelope(GameEventWire.FormatVersion,
+        "game", 0L, GameEventWire.WalkerStepRecordedType,
+        UnregisteredWalkerEvent)),
+      Left(refusal))
+
   private def encodedBanditsRefilled(): ujson.Value =
     accepted(GameEventWire
       .encodeEvent("game", 0L, OathEvent.BanditsRefilled(Vector.empty)))
