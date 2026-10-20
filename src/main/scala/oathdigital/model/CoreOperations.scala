@@ -679,6 +679,12 @@ final case class DeferralKey(value: String)
   * [[TakeDeferred]]; the walker drops whatever is left when the action
   * ends. They are held as the journal records them, so a game reloaded from
   * its events holds the same ops. It writes no Game Log line.
+  *
+  * It is a leaf, so [[Operation.flatten]] stops here and never descends
+  * into `ops`. That is what holding them means: nothing under a `Defer`
+  * runs, is screened, or counts as a hidden outcome until a later step
+  * returns those ops as operations of its own (hidden outcome depth
+  * decision).
   */
 final case class Defer(key: DeferralKey, ops: Vector[CoreOperation])
     extends PrimitiveOperation

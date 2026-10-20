@@ -64,9 +64,11 @@ Other players see what was taken back.
 
 A batch is a barrier when any of these holds:
 
-- It holds an operation that `WalkerSearch.hides` reports: `Roll`,
-  `Shuffle`, `Draw`, `Peek`, `Reveal`, or a `Flip` to faceup. Undo shares
-  that one predicate with the legality search, so the two cannot drift.
+- It holds an operation that `HiddenOutcomes.hidesAnywhere` reports: a
+  `Roll`, `Reroll`, `Shuffle`, `Draw`, `Peek`, `Reveal` or `Flip` to
+  faceup, at the operation itself or at any leaf beneath it. Undo shares
+  that one predicate with the legality search's own batch-level check, so
+  the two cannot drift (hidden outcome depth decision).
 - It holds a legacy minor-action reveal: `SiteRelicsPeeked` or
   `OwnedRelicRevealed`.
 - It hands the turn over. That is every `FinishRest` batch, along with its
@@ -226,7 +228,8 @@ these holds:
 
 - it is the Begin batch: its state before is `NoGame`;
 - an operation of one of its `WalkerStepRecorded` steps satisfies
-  `WalkerSearch.hides`, or one of its steps carries a `RollPayload`;
+  `HiddenOutcomes.hidesAnywhere`, or one of its steps carries a
+  `RollPayload`;
 - it holds `SiteRelicsPeeked` or `OwnedRelicRevealed`;
 - the active player differs between its states before and after. This
   catches `FinishRest`, a `BeginRest` that finishes Rest on its own, and any

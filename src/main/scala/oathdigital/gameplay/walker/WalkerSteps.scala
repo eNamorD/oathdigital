@@ -31,7 +31,7 @@ private[walker] object WalkerSteps:
       contributions: Vector[PowerId]): Either[OathViolation, Step] =
     val tree = PendingTree(at = path, answered = ctx.answered)
     build.build(ctx.state, tree).flatMap { ops =>
-      if ctx.searching && ops.exists(WalkerSearch.hides) then
+      if ctx.searching && ops.exists(HiddenOutcomes.hidesAnywhere) then
         Right(Stopped(ctx))
       else if ops.isEmpty then
         Right(Done(ctx.copy(previous = Some((ctx.state, ctx.state)))))

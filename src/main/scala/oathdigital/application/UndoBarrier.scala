@@ -21,11 +21,6 @@ private[application] object UndoBarrier:
   private def reveals(event: OathEvent): Boolean = event match
     case WalkerStepRecorded(_, payload, _) => payload match
       case _: RollPayload => true
-      case DeltaPayload(ops) => ops.exists(hidden)
+      case DeltaPayload(ops) => ops.exists(HiddenOutcomes.hidesAnywhere)
       case _: ChoicePayload => false
     case _ => false
-
-  /** A composite operation hides when it or any leaf inside it does. */
-  private def hidden(operation: Operation): Boolean =
-    HiddenOutcomes.hides(operation) ||
-      Operation.flatten(operation).exists(HiddenOutcomes.hides)

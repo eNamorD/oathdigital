@@ -14,11 +14,14 @@ import oathdigital.model.{Answered, CoreOperation, DecisionAnswer, DecisionOptio
 sealed trait WalkerStepPayload extends Product with Serializable
 
 /** A step that executed a batch of operations, carrying the batch. `ops`
-  * holds the applied leaves (`PrimitiveOperation`s, which are
-  * `CoreOperation`s), so replay applies exactly the deltas that produced the
-  * step and every reader of what it did works from them. A choice or a roll
-  * records a state write instead and carries no batch -- which this family
-  * makes a fact of the type rather than a comment. */
+  * holds the operations the pipeline ran, canonicalised -- whole operations
+  * as the batch declared them, a composite among them, not the leaves they
+  * flatten to. So replay applies exactly the deltas that produced the step
+  * and every reader of what it did works from them, and a reader asking
+  * what an operation did must flatten it rather than read the vector flat
+  * (hidden outcome depth decision). A choice or a roll records a state
+  * write instead and carries no batch -- which this family makes a fact of
+  * the type rather than a comment. */
 final case class DeltaPayload(ops: Vector[CoreOperation])
     extends WalkerStepPayload
 

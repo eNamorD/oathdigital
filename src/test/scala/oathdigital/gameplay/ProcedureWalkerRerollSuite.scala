@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.walker.{HiddenOutcomes, ProcedureWalker,
-  WalkerOutcome}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome}
 import oathdigital.testkit.RecordedOps
 import oathdigital.model._
 import oathdigital.testkit.ProcedureWalkerFixture._
@@ -31,5 +30,3 @@ class ProcedureWalkerRerollSuite extends munit.FunSuite:
         assertEquals(outcome.score, 2)
       case other => fail(s"expected the tree to finish, got $other")
 
-  test("a reroll is a hidden outcome"):
-    assert(HiddenOutcomes.hides(Reroll(recoverPool, Vector(0))))

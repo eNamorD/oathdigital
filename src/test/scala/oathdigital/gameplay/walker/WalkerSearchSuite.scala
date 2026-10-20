@@ -93,18 +93,6 @@ class WalkerSearchSuite extends munit.FunSuite:
     assertEquals(WalkerSearch.reach(asked, only(_ => false)),
       Right(WalkerSearch.Reach.Skipped))
 
-  test("peeks, reveals, draws and cards turned faceup hide the outcome; " +
-      "other operations do not"):
-    assert(WalkerSearch.hides(Peek(p1, card, Location.PlayArea(p1))))
-    assert(WalkerSearch.hides(Reveal(card, Location.PlayArea(p1))))
-    assert(WalkerSearch.hides(Flip(card, Location.PlayArea(p1),
-      Orientation.FaceUp)))
-    assert(WalkerSearch.hides(Roll(PoolKey("test.roll"),
-      DiceSpec(DiceKind.Attack), RollMode.Automatic)))
-    assert(!WalkerSearch.hides(Flip(card, Location.PlayArea(p1),
-      Orientation.FaceDown)))
-    assert(!WalkerSearch.hides(GainSupply(p1, 1)))
-
   private val because = OptionReason.Written("Not now")
 
   test("an option the search drops is kept unavailable when its reason is known"):

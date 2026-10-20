@@ -333,7 +333,7 @@ object ProcedureWalker:
       resume: Resume, hooks: WalkerHooks): Either[OathViolation, Step] =
     // A search stops at a composite that shows hidden information (a `Draw`,
     // a `Reveal`) before any of it runs.
-    if ctx.searching && cursor.isEmpty && WalkerSearch.hides(composite) then
+    if ctx.searching && cursor.isEmpty && HiddenOutcomes.hides(composite) then
       Right(Stopped(ctx))
     else composite match
       // A burn or a cost a power claims runs whole as one batch, where
@@ -685,7 +685,7 @@ object ProcedureWalker:
                   s"is not a Decide/Roll park (leaf ${WalkerSteps.leafLabel(leaf)})")
       case None =>
         (leaf match
-            case hidden if ctx.searching && WalkerSearch.hides(hidden) =>
+            case hidden if ctx.searching && HiddenOutcomes.hides(hidden) =>
               Right(Stopped(ctx))
             case roll: Roll if roll.mode == RollMode.Automatic =>
               WalkerSteps.runAutomaticRoll(roll, ctx, path, contributions).map(Done(_))
