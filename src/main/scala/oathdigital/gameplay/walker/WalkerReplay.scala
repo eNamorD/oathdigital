@@ -38,10 +38,22 @@ private[walker] object WalkerReplay:
     PayCostSettlement.prepare(ready, operation).flatMap(prepared =>
       new OperationExecutor().execute(ready, prepared).left.map(_.toViolation))
 
+  /** Every state a recorded batch passes through: the state after each of
+    * `ops`, in order, so the vector is as long as `ops`. Replay keeps only
+    * the last; the game log reads them all, to judge a line about one
+    * operation against the states around that operation. One fold serves
+    * both, so the two cannot drift.
+    */
+  def applyBatch(ready: ReadyGame, ops: Vector[CoreOperation])
+      : Either[OathViolation, Vector[ReadyGame]] =
+    ops.foldLeft[Either[OathViolation, Vector[ReadyGame]]](Right(Vector.empty)):
+      (result, operation) => result.flatMap(done =>
+        applyOperation(done.lastOption.getOrElse(ready), operation)
+          .map(done :+ _))
+
   private def executeRecorded(ready: ReadyGame, ops: Vector[CoreOperation])
       : Either[OathViolation, ReadyGame] =
-    ops.foldLeft[Either[OathViolation, ReadyGame]](Right(ready)):
-      (result, operation) => result.flatMap(applyOperation(_, operation))
+    applyBatch(ready, ops).map(_.lastOption.getOrElse(ready))
 
   private def applyRecordedReady(ready: ReadyGame,
       event: WalkerEvent): Either[OathViolation, ReadyGame] =

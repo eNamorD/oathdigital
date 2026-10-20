@@ -113,17 +113,24 @@ private[gamelog] object LogJournal:
       .fold(0)(_.board.supply.supply)
 
   /** A step's batch applied one operation at a time from the state before
-    * the step. Replay already applied it whole, so a failure here cannot
-    * happen on a journal that loaded; if it did, the rest of the batch keeps
-    * the last good state rather than losing its lines. */
+    * the step, through the fold replay uses.
+    *
+    * A journal that loaded has had this batch applied already, so a
+    * rejection here is a programming error rather than a damaged journal:
+    * `history` and `load` share one `reconstruct`, and a journal that fails
+    * it yields no history to format. Only a hand-built step can reach this,
+    * and swallowing the rejection let a test narrate lines from a state its
+    * operations never reached (log operation strictness decision). */
   private def opSteps(step: ReplayStep[OathState, OathEvent]): Vector[OpStep] =
     (step.before, step.event.event) match
       case (OathState.Ready(start),
           WalkerStepRecorded(_, DeltaPayload(ops), _)) =>
-        ops.foldLeft((start, Vector.empty[OpStep])) {
-          case ((state, done), operation) =>
-            val next = ProcedureWalker.applyRecordedOperation(state, operation)
-              .getOrElse(state)
-            (next, done :+ OpStep(operation, state, next))
-        }._2
+        val states = ProcedureWalker.applyRecordedBatch(start, ops) match
+          case Right(applied) => applied
+          case Left(violation) => throw new IllegalStateException(
+            s"the recorded batch at journal position ${step.event.index} " +
+              s"does not apply: $violation")
+        ops.zip(start +: states).zip(states).map {
+          case ((operation, before), after) => OpStep(operation, before, after)
+        }
       case _ => Vector.empty
