@@ -133,6 +133,55 @@ class TableSuite extends munit.FunSuite:
       Table.start.ready.game.current.commonCards.worldDeck.size - 1)
     intercept[munit.FailException](lost.ready)
 
+  test("a table continued from a state loses a card and ready names it"):
+    val joinedEarlier = CatalogNames.denizen("Alchemist")
+    // The first game does not deal the Alchemist, so a check against the
+    // first game's cards alone would not miss it.
+    assert(!accepted(CardIndex.from(Table.start.ready.game)).ids(
+      joinedEarlier))
+    val base = Table.start.adviser(p1, joinedEarlier).ready
+    val lost = Table.from(base).update(_.updateCurrent(c => c.copy(
+      players = c.players.map(p =>
+        if p.player == p1 then p.copy(advisers = Vector.empty) else p))))
+    val failure = intercept[munit.FailException](lost.ready)
+    assert(failure.getMessage.contains("Alchemist"), failure.getMessage)
+
+  test("a card a step placed is expected from then on, and losing it is " +
+      "named"):
+    val joining = CatalogNames.denizen("Forced Labor")
+    // The first game does not deal Forced Labor, so only the step that
+    // placed it makes the table expect it.
+    assert(!accepted(CardIndex.from(Table.start.ready.game)).ids(joining))
+    val lost = Table.start.adviser(p1, joining).update(_.updateCurrent(c =>
+      c.copy(players = c.players.map(p =>
+        if p.player == p1 then p.copy(advisers = Vector.empty) else p))))
+    val failure = intercept[munit.FailException](lost.ready)
+    assert(failure.getMessage.contains("Forced Labor"), failure.getMessage)
+
+  test("a continued table is checked against the state it continued from, " +
+      "not against the cards the first game dealt"):
+    // A base this table did not assemble may hold fewer cards than the first
+    // game dealt; what it holds is what its steps must keep.
+    val short = Table.start.ready.updateCurrent(c => c.copy(commonCards =
+      c.commonCards.copy(worldDeck = c.commonCards.worldDeck.tail)))
+    Table.from(short).favor(p1, 2).ready
+    val lostAfter = Table.from(short).update(_.updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(
+        worldDeck = c.commonCards.worldDeck.tail))))
+    assert(intercept[munit.FailException](lostAfter.ready).getMessage
+      .contains("is missing"))
+
+  test("a continued table whose state already holds a card twice is refused"):
+    // The expected set seeds empty for a state that does not index, so this
+    // pins that `from` reads that index without demanding it succeeded.
+    val card = CatalogNames.denizen("Alchemist")
+    val twice = Table.start.adviser(p1, card).ready.updateCurrent(c =>
+      c.copy(players = c.players.map(p => if p.player == p2 then
+        p.copy(advisers = Vector(DenizenState(card, Orientation.FaceUp,
+          Tokens.empty))) else p)))
+    val failure = intercept[munit.FailException](Table.from(twice).ready)
+    assert(failure.getMessage.contains("Alchemist"), failure.getMessage)
+
   test("more warbands than the printed supply are rejected when the state is read"):
     // Bandits print 24, so 25 at one site are one too many.
     val bandits = intercept[munit.FailException](

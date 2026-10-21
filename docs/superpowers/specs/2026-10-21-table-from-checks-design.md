@@ -22,9 +22,13 @@ local helper that returned a `Table`, and 1 is `TableSuite` proving that
 That distribution has one cause. `Table` holds the cards that joined it since
 `Table.start`, and checks the state against the first game's inventory plus
 those. A `Table` entered through `from` holds a `ReadyGame`, which carries no
-record of what joined it earlier, so `from` seeds that set empty and `ready`
-would report every earlier arrival as a missing card. `from`'s own doc says
-so, and sends its callers to `unchecked`.
+record of how it was assembled, so `from` seeds that set empty and the check
+falls back to the first game's inventory alone. That is wrong in both
+directions. A base the fixture did not build from that first game — a smaller
+game assembled for a walker test — is refused for every card the first game
+dealt and this one does not hold. A card that joined a first-game base earlier
+is not expected at all, so losing it again goes unnoticed. `from`'s own doc
+says the result could be refused, and sends its callers to `unchecked`.
 
 So `unchecked` is not an escape hatch that grew into an interface by neglect.
 It is the only exit `from` offers, and 182 states are assembled with no
@@ -139,10 +143,12 @@ Out of scope:
   the new check caught or a mistake in the sweep, and the two are told apart
   by reading the failure.
 - `TableSuite` gains tests that the new check actually catches what it claims:
-  a table entered through `from` that loses a card fails and names it; one
-  that takes a card out and puts it back passes; a card that joined before the
-  `from` is not reported missing after it; and a table entered through `from`
-  whose state already holds a duplicate is named as a duplicate.
+  a table entered through `from` that loses a card fails and names it; a step
+  on such a table moves a card rather than copying it; a table entered from a
+  state that holds fewer cards than the first game dealt is checked against
+  that state and not against the first game, and still catches a card lost
+  after that point; and one entered from a state that already holds a card
+  twice is named as a duplicate.
 - The sites that failed the new check are listed with what each turned out to
   be.
 
