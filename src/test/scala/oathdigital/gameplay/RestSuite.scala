@@ -31,8 +31,8 @@ class RestSuite extends munit.FunSuite:
       under: OathRules = rules) =
     MenuPlay.started(under, state, player, PhaseTransitionRef.BeginRest)
 
-  private def inRest(ready: ReadyGame) =
-    Table.from(ready).turn(p1, Phase.Rest).unchecked
+  private def inRest(ready: ReadyGame)(using munit.Location) =
+    Table.from(ready).turn(p1, Phase.Rest).ready
 
   test("Rest returns controlled resources reveals secrets refreshes and wakes next"):
     val siteCard = CatalogNames.denizen("Errand Boy")
@@ -196,7 +196,7 @@ class RestSuite extends munit.FunSuite:
           "ignored-rule diagnostics do not match authoritative discovery")))
     }
     val siteState = Table.from(act).denizen("Naysayers", at = ancientCity)
-      .unchecked
+      .ready
     val siteRecorded = as[IgnoredRulesRecorded](
       accepted(rest(Ready(siteState), p1)).events.head)
     assert(siteRecorded.diagnostics.head.source.stableKey
@@ -204,10 +204,11 @@ class RestSuite extends munit.FunSuite:
 
   test("altered banner and Foundation types record stable fallback identities"):
     val base = act
-    def diagnostic(ready: ReadyGame) = as[IgnoredRulesRecorded](
+    def diagnostic(ready: ReadyGame)(using munit.Location) =
+        as[IgnoredRulesRecorded](
       accepted(rest(Ready(ready), p1)).events.head).diagnostics.head
     val banner = Table.from(base).peoplesFavor(None, favor = 1,
-      face = PeoplesFavorFace.GrandCouncil).unchecked
+      face = PeoplesFavorFace.GrandCouncil).ready
     assertEquals(diagnostic(banner).source.stableKey, "banner:peoples-favor")
 
     val number = base.game.campaign.foundations.keys.head
@@ -223,7 +224,7 @@ class RestSuite extends munit.FunSuite:
     // The quiet table's turn order is p1, p2, p3, so p3 rests last.
     val last = p3
     // No Table step sets the round.
-    val roundEight = Table.from(act).turn(last, Phase.Act).unchecked
+    val roundEight = Table.from(act).turn(last, Phase.Act).ready
       .updateCurrent(c => c.copy(tracks = c.tracks.copy(round = 8)))
 
     val deterministic = new OathRules(catalog,
@@ -257,7 +258,7 @@ class RestSuite extends munit.FunSuite:
   test("the last player's Rest ends the round and wakes the first player"):
     val act = this.act
     // The quiet table's turn order is p1, p2, p3.
-    val last = Table.from(act).turn(p3, Phase.Act).unchecked
+    val last = Table.from(act).turn(p3, Phase.Act).ready
     val rested = accepted(rest(Ready(last), p3))
     val round = act.game.current.tracks.round
     assertEquals(rested.events.collect { case ended: OathEvent.RoundEnded =>

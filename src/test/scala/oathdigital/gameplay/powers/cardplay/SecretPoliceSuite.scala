@@ -22,9 +22,9 @@ class SecretPoliceSuite extends munit.FunSuite:
 
   /** A Search drawing `vision`, on the quiet table as `arrange` lays it. */
   private def search(vision: VisionId = VisionRules.Faith)(
-      arrange: Table => Table): OathTransition =
+      arrange: Table => Table)(using munit.Location): OathTransition =
     val drawing = SearchFixture.staged(Vector(vision), supply = 5)
-    searched(arrange(Table.from(drawing)).unchecked, vision)
+    searched(arrange(Table.from(drawing)).ready, vision)
 
   private def hidden(from: OathTransition): Vector[NoteText.Said] =
     val power = SecretPolice

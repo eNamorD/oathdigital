@@ -158,7 +158,8 @@ object TestGameFixtures:
     * `blueRelics`. Red holds the People's Favor, which carries 1 favor.
     * Seated by [[ReadyGames.of]], so every suit bank holds 5 favor.
     */
-  def redAndBlue(blueRelics: Vector[RelicState] = Vector.empty): ReadyGame =
+  def redAndBlue(blueRelics: Vector[RelicState] = Vector.empty)(
+      using munit.Location): ReadyGame =
     val blue = PlayerState(blueId, blueLineage, pawnSite = Some(sites(1)),
       board = PlayerBoardState(favor = 2, faceUpSecrets = 1,
         faceDownSecrets = 0, warbands = 2, supply = SupplyTrack.full),
@@ -169,4 +170,4 @@ object TestGameFixtures:
           Vector.empty, Vector.empty))),
       current = game.current.copy(players = game.current.players :+ blue))
     Table.from(ReadyGames.of(seated)).peoplesFavor(Some(playerId), favor = 1)
-      .unchecked
+      .ready

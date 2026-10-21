@@ -12,7 +12,7 @@ class SearchSuite extends munit.FunSuite:
     val base = ready
     Vector(0 -> 2, 1 -> 3, 2 -> 3, 3 -> 4, 4 -> 4, 5 -> 4).foreach:
       case (visions, expected) =>
-        val state = Table.from(base).visionsDrawn(visions).unchecked
+        val state = Table.from(base).visionsDrawn(visions).ready
         assertEquals(SearchRules.cost(state, SearchSource.WorldDeck),
           expected)
         assertEquals(SearchRules.cost(state,

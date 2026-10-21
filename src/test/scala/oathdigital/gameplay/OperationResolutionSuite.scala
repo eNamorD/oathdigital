@@ -21,7 +21,7 @@ class OperationResolutionSuite extends munit.FunSuite:
       Gain.Favor(playerId, Suit.Order, 5))))
 
   test("optional spend shrinks but required spend rejects"):
-    val oneSupply = Table.from(ready).supply(playerId, 1).unchecked
+    val oneSupply = Table.from(ready).supply(playerId, 1).ready
     assertEquals(OperationResolution.resolve(oneSupply,
       SpendSupply(playerId, 3, required = false), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(
@@ -32,7 +32,7 @@ class OperationResolutionSuite extends munit.FunSuite:
         "a supply spend of 3 exceeds the 1 available")))
 
   test("zero available optional gain skips while wrong card source rejects"):
-    val empty = Table.from(ready).bankFavor(Suit.Order, 0).unchecked
+    val empty = Table.from(ready).bankFavor(Suit.Order, 0).ready
     assertEquals(accepted(OperationResolution.resolve(empty,
       Gain.Favor(playerId, Suit.Order, 2), OperationPolicy.Permissive,
       Vector.empty)), OperationResolution.Skip(Vector(OperationReason(
@@ -125,17 +125,17 @@ class OperationResolutionSuite extends munit.FunSuite:
         ModifyDicePool(PoolKey("recover"), Int.MaxValue - 2))))
 
   test("Supply gain shrinks at the track maximum"):
-    val six = Table.from(ready).supply(playerId, 6).unchecked
+    val six = Table.from(ready).supply(playerId, 6).ready
     assertEquals(OperationResolution.resolve(six,
       GainSupply(playerId, 3), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(GainSupply(playerId, 1))))
     // A gain that fits under the maximum is left as asked, not raised to it.
-    val five = Table.from(ready).supply(playerId, 5).unchecked
+    val five = Table.from(ready).supply(playerId, 5).ready
     assertEquals(OperationResolution.resolve(five,
       GainSupply(playerId, 1), OperationPolicy.Permissive, Vector.empty),
       Right(OperationResolution.Execute(GainSupply(playerId, 1))))
     val full =
-      Table.from(ready).supply(playerId, SupplyTrack.Maximum).unchecked
+      Table.from(ready).supply(playerId, SupplyTrack.Maximum).ready
     assert(accepted(OperationResolution.resolve(full,
       GainSupply(playerId, 1), OperationPolicy.Permissive, Vector.empty))
       .isInstanceOf[OperationResolution.Skip])

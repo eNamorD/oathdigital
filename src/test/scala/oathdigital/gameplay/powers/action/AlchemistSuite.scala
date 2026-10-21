@@ -106,7 +106,7 @@ class AlchemistSuite extends munit.FunSuite:
   test("the cost needs two faceup secrets, and facedown ones do not count"):
     Vector((1, 0), (1, 5), (0, 5)).foreach { case (up, down) =>
       val ready = Table.from(staged(Suit.Nomad -> 9)).secrets(actor, up, down)
-        .unchecked
+        .ready
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
       assertEquals(use(ready, Alchemist, source).left.toOption,
         Some(OathViolation.InsufficientSecrets(2, up)))

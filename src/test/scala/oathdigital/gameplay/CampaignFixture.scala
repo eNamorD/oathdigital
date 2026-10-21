@@ -83,8 +83,8 @@ object CampaignFixture:
 
   /** `b` continued by Table steps. Suites build further on a board by hand,
     * so nothing is checked here. */
-  def on(b: Board)(steps: Table => Table): Board =
-    b.copy(ready = steps(Table.from(b.ready)).unchecked)
+  def on(b: Board)(steps: Table => Table)(using munit.Location): Board =
+    b.copy(ready = steps(Table.from(b.ready)).ready)
 
   /** Battle plans are powers, so a Campaign runs with the walker power
     * catalog. */

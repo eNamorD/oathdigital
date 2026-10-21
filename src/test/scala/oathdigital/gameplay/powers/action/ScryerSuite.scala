@@ -85,7 +85,7 @@ class ScryerSuite extends munit.FunSuite:
           "which was empty.", covers = true)))
 
   test("it is unusable without a faceup secret"):
-    val broke = Table.from(staged).secrets(actor, 0, 1).unchecked
+    val broke = Table.from(staged).secrets(actor, 0, 1).ready
     assert(!usableNow(broke).exists(_.power.id == Scryer.id))
     assertEquals(use(broke, Scryer, source).left.toOption,
       Some(OathViolation.InsufficientSecrets(1, 0)))

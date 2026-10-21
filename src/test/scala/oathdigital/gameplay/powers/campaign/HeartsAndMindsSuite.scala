@@ -27,9 +27,10 @@ class HeartsAndMindsSuite extends munit.FunSuite:
 
   /** `run` with its parked state changed by Table steps, as if something
     * earlier in the Campaign had changed the board. */
-  private def runWithTableChanged(run: Run)(steps: Table => Table): Run =
+  private def runWithTableChanged(run: Run)(steps: Table => Table)(
+      using munit.Location): Run =
     run.copy(transition = run.transition.copy(state =
-      OathState.Ready(steps(Table.from(ready(run.state))).unchecked)))
+      OathState.Ready(steps(Table.from(ready(run.state))).ready)))
 
   test("the defender wins without a roll, the attacker loses half the " +
       "force, and the People's Favor keeps the card"):

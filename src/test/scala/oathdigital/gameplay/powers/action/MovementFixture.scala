@@ -17,10 +17,11 @@ object MovementFixture:
   /** A ruined Beast edifice (Hiding Place) at Deep Woods and a ruined Hearth
     * one (Squalid District) at Golden Valley, as the first game stands them
     * at its Homelands; no other card lies at any site. */
-  def homelands(ready: ReadyGame): ReadyGame = Table.from(ready)
+  def homelands(ready: ReadyGame)(using munit.Location): ReadyGame =
+      Table.from(ready)
     .edifice("Hiding Place", EdificeSide.Ruined, at = "Deep Woods")
     .edifice("Squalid District", EdificeSide.Ruined, at = "Golden Valley")
-    .unchecked
+    .ready
 
   /** The relic `id` in `holder`'s play area, if it is there. */
   def relicOf(ready: ReadyGame, id: RelicId,

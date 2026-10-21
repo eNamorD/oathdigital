@@ -151,7 +151,7 @@ class ForgeProcedureSuite extends munit.FunSuite
 
   test("build rejects a site the actor does not rule"):
     val f = forgeable
-    val contested = Table.from(f.ready).bandits(f.siteId, 1).unchecked
+    val contested = Table.from(f.ready).bandits(f.siteId, 1).ready
     assertEquals(
       rejects(ForgeProcedure.build(catalog, contested, actor)),
       OathViolation.ForgeUnavailable(
@@ -163,7 +163,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val plain = CatalogNames.site("Broken Peaks")
     assertEquals(catalog.site(plain).flatMap(_.forgeRequirements), None)
     val state = Table.from(f.ready).warbandsAt(plain, actor, 1)
-      .pawn(actor, plain).unchecked
+      .pawn(actor, plain).ready
     assertEquals(rejects(ForgeProcedure.build(catalog, state, actor)),
       OathViolation.ForgeUnavailable(
         "site has no printed Forge cost"): OathViolation)
@@ -193,12 +193,12 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("build rejects an actor with no supply"):
     val f = forgeable
     assertEquals(rejects(ForgeProcedure.build(catalog,
-      Table.from(f.ready).supply(actor, 0).unchecked, actor)),
+      Table.from(f.ready).supply(actor, 0).ready, actor)),
       OathViolation.InsufficientSupply(1, 0): OathViolation)
 
   test("build rejects an empty relic deck"):
     val f = forgeable
-    val empty = Table.from(f.ready).relicDeckEmptied.unchecked
+    val empty = Table.from(f.ready).relicDeckEmptied.ready
     assertEquals(rejects(ForgeProcedure.build(catalog, empty, actor)),
       OathViolation.ForgeUnavailable("relic deck is empty"): OathViolation)
 
@@ -207,9 +207,10 @@ class ForgeProcedureSuite extends munit.FunSuite
     // A Forge that starts unable to pay would spend Supply, walk to its last
     // node and fail there with nothing recoverable, so this is a start gate.
     val f = forgeable
-    def withFunds(favor: Int, faceUp: Int, faceDown: Int = 0) =
+    def withFunds(favor: Int, faceUp: Int, faceDown: Int = 0)(
+        using munit.Location) =
       Table.from(f.ready).favor(actor, favor)
-        .secrets(actor, faceUp = faceUp, faceDown = faceDown).unchecked
+        .secrets(actor, faceUp = faceUp, faceDown = faceDown).ready
     def build(state: ReadyGame) =
       ForgeProcedure.build(catalog, state, actor)
     // Exactly enough of each resource is affordable.
@@ -405,7 +406,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val legal = legalPlacements(f)
 
     val moved = Table.from(atPark).tokens(f.targets.head.denizenId, favor = 1)
-      .unchecked
+      .ready
 
     assertEquals(ForgeProcedure.eligibleTargets(moved, actor),
       f.targets.drop(1))
@@ -503,7 +504,7 @@ class ForgeProcedureSuite extends munit.FunSuite
   test("a Forge started with exactly one supply is still resumable and " +
       "answerable"):
     val f = forgeable
-    val poor = Table.from(f.ready).supply(actor, 1).unchecked
+    val poor = Table.from(f.ready).supply(actor, 1).ready
     val tree = accepted(ForgeProcedure.build(catalog, poor, actor))
     val park = parkAtAssignment(poor, tree)
     val pending = park.pending
@@ -564,7 +565,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       Orientation.FaceDown): CoreOperation)
 
     // An emptied deck fails the leaf rather than forging nothing silently.
-    val emptied = Table.from(atPark).relicDeckEmptied.unchecked
+    val emptied = Table.from(atPark).relicDeckEmptied.ready
     assertEquals(resolveWith(f, emptied, tree, pending, legal),
       Left(OathViolation.ForgeUnavailable("relic deck is empty"))
         : Either[OathViolation, WalkerOutcome])

@@ -336,7 +336,7 @@ class GameLogNoteLinesSuite extends munit.FunSuite:
     assertOwnerHoldsHiddenFacedown(last)
     // p2 holds Birdsong alone, so turning it faceup keeps its slot.
     val shown = Table.from(last)
-      .adviser(hiddenOwner, hiddenAdviser, facedown = false).unchecked
+      .adviser(hiddenOwner, hiddenAdviser, facedown = false).ready
     val words = new LogWords(catalog, presentation)
     val viewer = Some(script.actor)
     assertEquals(words.seen(hiddenAdviser, Vector(last), viewer),

@@ -25,7 +25,7 @@ class OperationExecutorSuite extends munit.FunSuite:
     val once = accepted(executor.execute(ready, AdvanceVisionsDrawn))
     assertEquals(once.game.current.tracks.visionsDrawn,
       ready.game.current.tracks.visionsDrawn + 1)
-    val maximum = Table.from(ready).visionsDrawn(Int.MaxValue).unchecked
+    val maximum = Table.from(ready).visionsDrawn(Int.MaxValue).ready
     assertEquals(rejectionCode(maximum, AdvanceVisionsDrawn),
       "visions-drawn-overflow")
 
@@ -87,7 +87,7 @@ class OperationExecutorSuite extends munit.FunSuite:
 
   test("Draw removes a top prefix and preserves top-first hand order"):
     val source = Table.from(ready)
-      .worldDeckTop(worldDenizen, extraDenizen).unchecked
+      .worldDeckTop(worldDenizen, extraDenizen).ready
     val draw = Draw(playerId, Vector(worldDenizen, extraDenizen),
       Location.Deck(CardDeck.World), Location.Hand(playerId))
     val result = accepted(executor.execute(source, draw))
@@ -97,7 +97,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       Vector(worldDenizen, extraDenizen))
 
   test("a drained temporary hand keeps its always-keyed empty vector"):
-    val source = Table.from(ready).hand(playerId, worldDenizen).unchecked
+    val source = Table.from(ready).hand(playerId, worldDenizen).ready
     val discard = Move(
       Piece.Card(worldDenizen),
       PositionedLocation(Location.Hand(playerId)),
@@ -114,7 +114,7 @@ class OperationExecutorSuite extends munit.FunSuite:
 
   test("deck and regional-discard stack conventions preserve insertion order"):
     val source = Table.from(ready)
-      .worldDeckTop(worldDenizen, extraDenizen).unchecked
+      .worldDeckTop(worldDenizen, extraDenizen).ready
     def discard(id: DenizenId) = Move(
       Piece.Card(id),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
@@ -189,7 +189,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       .exists(_.id == siteDenizen.id))
 
   test("relic discard preserves composite secret orientation semantics"):
-    val source = Table.from(ready).tokens(siteRelic.id, secrets = 1).unchecked
+    val source = Table.from(ready).tokens(siteRelic.id, secrets = 1).ready
     val discard = Discard.Relic(
       siteRelic.id,
       PositionedLocation(Location.Site(sites(1))),
@@ -283,7 +283,7 @@ class OperationExecutorSuite extends munit.FunSuite:
 
   test("secret moves preserve orientation and reject ambiguous mixed sources"):
     val mixed =
-      Table.from(ready).secrets(playerId, faceUp = 1, faceDown = 1).unchecked
+      Table.from(ready).secrets(playerId, faceUp = 1, faceDown = 1).ready
     val ambiguous = Move(Piece.Secrets(1),
       PositionedLocation(Location.PlayArea(playerId)),
       PositionedLocation(Location.PlayArea(blueId)))
@@ -300,8 +300,8 @@ class OperationExecutorSuite extends munit.FunSuite:
     assertEquals(result.game.current.map.sites(sites.head).tokens.secrets, 1)
 
   test("secret burn consumes only faceup secrets and never facedown"):
-    def holder(faceUp: Int, faceDown: Int) =
-      Table.from(ready).secrets(playerId, faceUp, faceDown).unchecked
+    def holder(faceUp: Int, faceDown: Int)(using munit.Location) =
+      Table.from(ready).secrets(playerId, faceUp, faceDown).ready
     val mixed = accepted(executor.execute(holder(1, 1), Burn.secrets(1,
       PositionedLocation(Location.PlayArea(playerId)), None)))
     val actor = Look(mixed).player(playerId)
@@ -321,7 +321,7 @@ class OperationExecutorSuite extends munit.FunSuite:
   test("a secret move naming its side takes only that side, and the " +
       "secrets keep it"):
     val mixed =
-      Table.from(ready).secrets(playerId, faceUp = 1, faceDown = 2).unchecked
+      Table.from(ready).secrets(playerId, faceUp = 1, faceDown = 2).ready
     val blueBefore = Look(mixed).player(blueId).board
     val taken = accepted(executor.execute(mixed, Take(Piece.Secrets(2),
       blueId, Location.PlayArea(playerId), Location.PlayArea(blueId),
@@ -392,7 +392,7 @@ class OperationExecutorSuite extends munit.FunSuite:
     val facedown = DenizenState(DenizenId("D6"), Orientation.FaceDown,
       Tokens.empty)
     val revealable = Table.from(ready)
-      .adviser(playerId, facedown.id, facedown = true).unchecked
+      .adviser(playerId, facedown.id, facedown = true).ready
     val revealed = accepted(executor.execute(revealable,
       Reveal(facedown.id, Location.PlayArea(playerId))))
     assert(Look(revealed).player(playerId).advisers
@@ -400,7 +400,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       .exists(_.orientation == Orientation.FaceUp))
 
   test("pawn banner and warband moves update their concrete storage"):
-    val movable = Table.from(ready).bandits(sites(2), 0).unchecked
+    val movable = Table.from(ready).bandits(sites(2), 0).ready
     val moves = Vector[CoreOperation](
       Move(Piece.Pawn(playerId),
         PositionedLocation(Location.Site(sites.head)),
@@ -422,7 +422,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       SiteForces.Occupied(redForce, 2))
 
   test("an unheld banner is claimed from the shared bank by a banner move"):
-    val unheld = Table.from(ready).peoplesFavor(None, favor = 2).unchecked
+    val unheld = Table.from(ready).peoplesFavor(None, favor = 2).ready
     val claim = Move(Piece.Banner(Banner.PeoplesFavor),
       PositionedLocation(Location.SharedBank),
       PositionedLocation(Location.PlayArea(blueId)))
@@ -449,7 +449,7 @@ class OperationExecutorSuite extends munit.FunSuite:
       .isInstanceOf[OathViolation.CoreOperationRejected])
 
   test("constructor failures become typed operation rejections"):
-    val saturated = Table.from(ready).favor(playerId, Int.MaxValue).unchecked
+    val saturated = Table.from(ready).favor(playerId, Int.MaxValue).ready
     val execution = executor.execute(saturated,
       Gain.Favor(playerId, Suit.Order, 1))
     assertEquals(execution.left.toOption.map(_.code),

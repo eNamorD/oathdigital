@@ -166,3 +166,34 @@ as the two commits of decision 9, and merges into local `main`. No separate
 implementation plan: the reasoning is this document, the `Table` change is
 four lines, and the sweep's correctness is proved by the gate rather than by
 review judgment.
+
+## Record
+
+The sweep converted 194 call sites across 88 files: 189 read the table with
+`ready`, and 5 in the economy suites read the two geography accessors
+instead.
+
+One site failed, and it was the warband-supply check, not the card check.
+`GameApplicationServiceProjectionSuite` patches an Imperial warband into its
+fixture after reading it, because no `Table` step places Imperial warbands
+and `ready` refuses them: Imperial has no printed supply, since
+`MaterialBankState.printedWarbandSupply` prints one for each Exile lineage in
+play plus the bandits. A step continued from the patched state, so the check
+reached it. The fixture now names the state before the patch and continues
+from that one — decision 6, the state fixed rather than the check. Exempting
+Imperial inside `ready` was the shorter route and would have been wrong: both
+of the check's branches skip a kind with no printed supply, so the exemption
+would have left Imperial warbands unchecked everywhere, in existence and in
+number, to spare one fixture.
+
+No state failed the card check. The 182 unchecked states were whole, so the
+hole was hiding the absence of a check rather than broken states. What the
+change buys is that losing a card from any of them is caught from now on.
+
+The script inserted 56 `(using munit.Location)` clauses, and 3 were given
+back: their definitions build no table, so the parameter would be unused and
+`-Werror` refuses that. With the clause on each of the two new accessors, the
+tree holds 55 more than before.
+
+The gate is green at 4,386 root tests and 639 frontend tests, and its
+wall-clock time did not move.

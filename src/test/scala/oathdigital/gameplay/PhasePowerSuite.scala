@@ -33,8 +33,8 @@ class PhasePowerSuite extends munit.FunSuite:
       Vector(source))
   /** `state`'s turn put back in Wake, its uses kept: a once-per-turn power
     * that was Wake's last option ended Wake. */
-  private def rewoken(state: OathState): OathState =
-    Ready(Table.from(Outcomes.ready(state)).backInPhase(Phase.Wake).unchecked)
+  private def rewoken(state: OathState)(using munit.Location): OathState =
+    Ready(Table.from(Outcomes.ready(state)).backInPhase(Phase.Wake).ready)
   /** The bandits on every site of `state`. */
   private def banditsOf(state: OathState): Map[SiteId, SiteForces] =
     Outcomes.ready(state).game.current.map.sites.map((site, board) =>
@@ -226,9 +226,10 @@ class PhasePowerSuite extends munit.FunSuite:
     // The power the People's Favor prints on its Grand Council face.
     val bannerPower = PowerId("banner.peoples-favor.grand-council")
     val power = TestPower(bannerPower, PowerTiming.Act)
-    def state(holder: Option[PlayerId]) = Table.from(holding(Phase.Act))
+    def state(holder: Option[PlayerId])(using munit.Location) =
+        Table.from(holding(Phase.Act))
       .peoplesFavor(holder, favor = 1, face = PeoplesFavorFace.GrandCouncil)
-      .unchecked
+      .ready
     val powers = PhasePowers(Vector(power))
     assertEquals(PhasePowerHarness.menuPowers(catalog, state(Some(p1)), p1,
         powers, WalkerPowers.empty).map(_.ref),

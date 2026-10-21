@@ -15,18 +15,14 @@ class FriendlyFamiliarSuite extends munit.FunSuite:
   private val friends = CatalogNames.denizen("Small Friends")
   private val merchants = CatalogNames.denizen("Skilled Merchants")
   private val library = CatalogNames.denizen("Map Library")
-  private val map = Table.start.unchecked.game.current.map
   /** p1's pawn site. */
   private val home = CatalogNames.site("Ancient City")
   /** Another site in play in the pawn's region. */
-  private val homeNeighbour = map.inPlay.find(site => site != home &&
-    map.regionOf(site) == map.regionOf(home)).get
+  private val homeNeighbour = Table.otherSiteInRegionOf(home)
   /** A site in play in another region. */
-  private val away = map.inPlay.find(site =>
-    map.regionOf(site) != map.regionOf(home)).get
+  private val away = Table.siteInAnotherRegionThan(home)
   /** Another site in play in `away`'s region. */
-  private val awayNeighbour = map.inPlay.find(site => site != away &&
-    map.regionOf(site) == map.regionOf(away)).get
+  private val awayNeighbour = Table.otherSiteInRegionOf(away)
   /** A plain Beast denizen. */
   private val errandBoy = CatalogNames.denizen("Errand Boy")
   /** A plain Order denizen. */

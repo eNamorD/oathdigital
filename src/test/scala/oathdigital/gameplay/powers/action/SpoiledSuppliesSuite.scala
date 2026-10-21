@@ -48,7 +48,7 @@ class SpoiledSuppliesSuite extends munit.FunSuite:
         covers = false)))
 
   test("two players at the site each lose 1 Supply, each with a line"):
-    val ready = Table.from(staged()).pawn(second, "Ancient City").unchecked
+    val ready = Table.from(staged()).pawn(second, "Ancient City").ready
     val done = accepted(use(ready, SpoiledSupplies, source))
     assertEquals(supplyOf(after(done), first), 2)
     assertEquals(supplyOf(after(done), second), 2)

@@ -25,8 +25,9 @@ class WelcomingPartySuite extends munit.FunSuite:
   private def partyAtHome(top: Vector[WorldCardId]): Table =
     Table.from(SearchFixture.staged(top, supply = 5)).pawn(actor, home)
       .denizen(party, at = home)
-  private def withParty(top: Vector[WorldCardId]): ReadyGame =
-    partyAtHome(top).unchecked
+  private def withParty(top: Vector[WorldCardId])(
+      using munit.Location): ReadyGame =
+    partyAtHome(top).ready
 
   private def favor(ready: ReadyGame): Int = Look(ready).favor(actor)
   private def hearthBank(ready: ReadyGame): Int =
@@ -46,7 +47,7 @@ class WelcomingPartySuite extends munit.FunSuite:
   test("beside Vow of Wisdom, a play to a site still gains the Hearth " +
       "favor, and the play's own favor becomes a secret"):
     val ready = partyAtHome(plain)
-      .adviser(actor, CatalogNames.denizen("Vow of Wisdom")).unchecked
+      .adviser(actor, CatalogNames.denizen("Vow of Wisdom")).ready
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
       PlayedAs.AtSite))
     assertEquals(hearthBank(after), hearthBank(ready) - 1)
@@ -113,7 +114,7 @@ class WelcomingPartySuite extends munit.FunSuite:
       window = PowerWindow.ActionCardPlayedFacedown)))
 
   test("an empty Hearth bank gives nothing"):
-    val ready = partyAtHome(plain).bankFavor(Suit.Hearth, 0).unchecked
+    val ready = partyAtHome(plain).bankFavor(Suit.Hearth, 0).ready
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
       PlayedAs.Faceup))
     assertEquals(favor(after), favor(ready))

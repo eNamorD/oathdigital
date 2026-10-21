@@ -57,7 +57,7 @@ class CrystalVialSuite extends munit.FunSuite:
       "at the actor's site, and nobody else's"):
     val ready = Table.from(staged).adviser(actor, elders)
       .adviser(actor, faith, facedown = true).denizen(inn, at = "Ancient City")
-      .unchecked
+      .ready
     val t = accepted(use(ready, power, source))
     assertEquals(offered(t, actor).map(_.toSet), Some(Set(
       "denizen" -> held.value, "denizen" -> elders.value,
@@ -66,7 +66,7 @@ class CrystalVialSuite extends munit.FunSuite:
   test("an adviser is buried at the bottom of the world deck, and its favor " +
       "and secrets return"):
     val ready = Table.from(staged).tokens(held, favor = 2, secrets = 1)
-      .unchecked
+      .ready
     val suit = Suit.Order // Wrestlers' printed suit
     val t = accepted(use(ready, power, source))
     val done = accepted(answer(t, actor, CrystalVial.decisionId,
@@ -80,7 +80,7 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("a Vision adviser can be buried"):
     val ready = Table.from(staged).adviser(actor, faith, facedown = true)
-      .unchecked
+      .ready
     val t = accepted(use(ready, power, source))
     val done = accepted(answer(t, actor, CrystalVial.decisionId,
       pick(DecisionOptionRef.Vision(faith))))
@@ -89,7 +89,7 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("a denizen at the site is buried with its favor and secrets returned"):
     val ready = Table.from(staged).denizen(inn, at = "Ancient City")
-      .tokens(inn, favor = 1, secrets = 1).unchecked
+      .tokens(inn, favor = 1, secrets = 1).ready
     val suit = Suit.Hearth // Wayside Inn's printed suit
     val t = accepted(use(ready, power, source))
     val done = accepted(answer(t, actor, CrystalVial.decisionId,
@@ -103,7 +103,7 @@ class CrystalVialSuite extends munit.FunSuite:
     Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
       val edifice = CatalogNames.edifice("Marble Fountains")
       val ready = Table.from(staged).edifice(edifice, side, at = "Ancient City")
-        .unchecked
+        .ready
       val t = accepted(use(ready, power, source))
       val done = accepted(answer(t, actor, CrystalVial.decisionId,
         pick(DecisionOptionRef.Edifice(edifice))))
@@ -132,7 +132,7 @@ class CrystalVialSuite extends munit.FunSuite:
 
   test("it needs two faceup secrets"):
     Vector((1, 0), (1, 5)).foreach { case (up, down) =>
-      val ready = Table.from(staged).secrets(actor, up, down).unchecked
+      val ready = Table.from(staged).secrets(actor, up, down).ready
       assertEquals(usableNow(ready), Vector.empty, s"$up up, $down down")
       assertEquals(use(ready, power, source).left.toOption,
         Some(OathViolation.InsufficientSecrets(2, 1)))

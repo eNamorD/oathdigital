@@ -25,10 +25,8 @@ class OldSongsSuite extends munit.FunSuite:
   /** A plain Beast denizen, holding nothing. */
   private val errandBoy = CatalogNames.denizen("Errand Boy")
   private val merchants = CatalogNames.denizen("Skilled Merchants")
-  private val map = Table.start.unchecked.game.current.map
   /** Another site in play in the pawn's region. */
-  private val near = map.inPlay.find(site => site != home &&
-    map.regionOf(site) == map.regionOf(home)).get
+  private val near = Table.otherSiteInRegionOf(home)
   private val rules = PowerRules.withWalkerPowers
 
   /** p1 at Ancient City holding Old Songs faceup, with the start's 1 faceup

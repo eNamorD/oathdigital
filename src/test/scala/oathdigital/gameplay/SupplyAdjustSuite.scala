@@ -14,8 +14,9 @@ class SupplyAdjustSuite extends munit.FunSuite:
   private def supply(state: ReadyGame, player: PlayerId): Int =
     Look(state).supply(player)
 
-  private def withSupply(player: PlayerId, value: Int): ReadyGame =
-    Table.from(ready).supply(player, value).unchecked
+  private def withSupply(player: PlayerId, value: Int)(
+      using munit.Location): ReadyGame =
+    Table.from(ready).supply(player, value).ready
 
   test("an exact spend reduces supply"):
     val result = accepted(executor.execute(ready,

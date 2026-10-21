@@ -403,11 +403,10 @@ final case class Table private (private val game: ReadyGame,
 
   def state(using munit.Location): OathState = Ready(ready)
 
-  /** The state with nothing checked, for a fixture helper that wraps a step
-    * inside a state its caller is still assembling by hand (a card taken out
-    * to be put back later, say). A test that builds a table itself reads it
-    * with `ready`. */
-  def unchecked: ReadyGame = game
+  /** The state with nothing checked, for the suite that proves `ready`
+    * refuses a broken table. Every other reader uses `ready`, including a
+    * table continued from a state through [[Table.from]]. */
+  private[testkit] def unchecked: ReadyGame = game
 
   /** A fresh in-memory service whose streams begin at this table, and its
     * repository. `catalog` may be an edited copy of the fixture's with the
@@ -485,6 +484,21 @@ object Table:
   def quietPawnSite(player: PlayerId)(using munit.Location): SiteId =
     CatalogNames.site(homes.getOrElse(player, munit.Assertions.fail(
       s"no player $player at the table")))
+
+  /** Another site the quiet table has in play in `site`'s region. */
+  def otherSiteInRegionOf(site: SiteId)(using munit.Location): SiteId =
+    val map = start.game.game.current.map
+    map.inPlay.find(other => other != site &&
+      map.regionOf(other) == map.regionOf(site)).getOrElse(
+      munit.Assertions.fail("the quiet table has no second site in play in " +
+        s"${site.value}'s region"))
+
+  /** A site the quiet table has in play in another region than `site`'s. */
+  def siteInAnotherRegionThan(site: SiteId)(using munit.Location): SiteId =
+    val map = start.game.game.current.map
+    map.inPlay.find(other => map.regionOf(other) != map.regionOf(site))
+      .getOrElse(munit.Assertions.fail("the quiet table has no site in play " +
+        s"outside ${site.value}'s region"))
 
   /** Steps continued from `ready`, a state a fixture helper already holds.
     * The cards `ready` holds are the cards the steps must keep: `ready`

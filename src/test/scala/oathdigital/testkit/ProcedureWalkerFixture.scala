@@ -32,7 +32,7 @@ object ProcedureWalkerFixture:
     * there is unambiguously legal (mirrors the OperationExecutorSuite fixture).
     */
   val ready: ReadyGame =
-    Table.from(ReadyGames.of(game)).bandits(sites(2), 0).unchecked
+    Table.from(ReadyGames.of(game)).bandits(sites(2), 0).ready
 
   val movePawnToS3: Move = Move(Piece.Pawn(actor),
     PositionedLocation(Location.Site(sites.head)),

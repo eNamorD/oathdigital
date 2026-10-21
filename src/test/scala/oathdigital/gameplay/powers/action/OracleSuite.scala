@@ -103,7 +103,7 @@ class OracleSuite extends munit.FunSuite:
     }, located.toString)
 
   test("a faceup Vow of Obedience holder may not play it faceup"):
-    val holding = Table.from(staged()).adviser(actor, vow).unchecked
+    val holding = Table.from(staged()).adviser(actor, vow).ready
     val t = accepted(start(holding))
     assert(!buttons(t).contains(PlayedAs.Faceup), buttons(t).toString)
     assert(buttons(t).contains(PlayedAs.Facedown))
@@ -131,7 +131,7 @@ class OracleSuite extends munit.FunSuite:
       "used.none", "The world deck held no Vision.", covers = false)))
 
   test("it is unusable without two faceup secrets"):
-    val broke = Table.from(staged()).secrets(actor, 1, 1).unchecked
+    val broke = Table.from(staged()).secrets(actor, 1, 1).ready
     assert(!usableNow(broke).exists(_.power.id == Oracle.id))
     assertEquals(start(broke).left.toOption,
       Some(OathViolation.InsufficientSecrets(2, 1)))

@@ -26,8 +26,9 @@ class GossipSuite extends munit.FunSuite:
       facedown = orientation == Orientation.FaceDown)
       .bankFavor(Suit.Discord, 3)
   private def held(top: Vector[WorldCardId],
-      orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    heldTable(top, orientation).unchecked
+      orientation: Orientation = Orientation.FaceUp)(
+          using munit.Location): ReadyGame =
+    heldTable(top, orientation).ready
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
     Look(ready).player(id).board.favor
@@ -76,7 +77,7 @@ class GossipSuite extends munit.FunSuite:
     assertEquals(favor(after, holder), favor(ready, holder))
 
   test("an empty Discord bank gives nothing"):
-    val ready = heldTable(plain).bankFavor(Suit.Discord, 0).unchecked
+    val ready = heldTable(plain).bankFavor(Suit.Discord, 0).ready
     val after = SearchFixture.after(play(ready, Vector.empty, plain.head,
       PlayedAs.Facedown))
     assertEquals(favor(after, holder), favor(ready, holder))

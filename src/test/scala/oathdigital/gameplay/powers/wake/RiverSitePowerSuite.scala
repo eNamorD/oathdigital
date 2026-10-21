@@ -51,7 +51,7 @@ class RiverSitePowerSuite extends munit.FunSuite:
     val dry = CatalogNames.site("Broken Peaks")
     assert(ready.game.current.map.inPlay.contains(dry))
     assert(!RiverSitePower.isRiver(dry))
-    val away = Table.from(ready).pawn(actor, dry).unchecked
+    val away = Table.from(ready).pawn(actor, dry).ready
     assertEquals(rivers(away), Vector.empty)
     assertEquals(use(away).left.toOption,
       Some(Refusals.inaccessibleSource(river.id, source)))
@@ -88,11 +88,11 @@ class RiverSitePowerSuite extends munit.FunSuite:
     // The driver has parked the Wake menu, which is not the subject here.
     val unparked = Table.from(after(done)).update(_.updateCurrent(_.copy(
       walkerPending = None, walkerProcedure = None)))
-    val back = unparked.pawn(actor, ancientCity).unchecked
+    val back = unparked.pawn(actor, ancientCity).ready
     assertEquals(use(back).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
     // Riverbank's River is another source, so it is still usable.
-    assertEquals(rivers(unparked.unchecked).map(_._2),
+    assertEquals(rivers(unparked.ready).map(_._2),
       Vector(DecisionOptionRef.Site(riverbank)))
 
   test("it writes where it placed the pawn"):

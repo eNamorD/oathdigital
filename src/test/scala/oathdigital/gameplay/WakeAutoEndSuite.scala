@@ -28,9 +28,9 @@ class WakeAutoEndSuite extends munit.FunSuite:
   private def completed(events: Vector[OathEvent]) =
     events.collect { case WalkerCompleted(procedure) => procedure }
   /** One favor at p2's and p3's sites, so whoever wakes next can take it. */
-  private def withFavor(ready: ReadyGame): ReadyGame =
+  private def withFavor(ready: ReadyGame)(using munit.Location): ReadyGame =
     Table.from(ready).siteTokens("Broken Peaks", favor = 1)
-      .siteTokens("Buried Giant", favor = 1).unchecked
+      .siteTokens("Buried Giant", favor = 1).ready
   private def replayed(from: ReadyGame, events: Vector[OathEvent]) =
     Ready(ActPowerHarness.replayed(rules, from, events))
 
@@ -40,7 +40,7 @@ class WakeAutoEndSuite extends munit.FunSuite:
     val restedReady = Outcomes.ready(rested.state)
     val next = restedReady.game.current.turn
     assertNotEquals(next.activePlayer, actor)
-    val inWake = Table.from(restedReady).backInPhase(Phase.Wake).unchecked
+    val inWake = Table.from(restedReady).backInPhase(Phase.Wake).ready
     assertEquals(PhasePowerHarness.menuPowers(catalog, inWake,
         next.activePlayer, PhasePowerCatalog.default(catalog),
         WalkerPowers.empty), Vector.empty)

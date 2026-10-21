@@ -21,8 +21,8 @@ class SacredGroundSuite extends munit.FunSuite:
   private val elsewhere = CatalogNames.site("Broken Peaks")
 
   private def withE08(ready: ReadyGame, site: SiteId,
-      side: EdificeSide = EdificeSide.Intact): ReadyGame =
-    Table.from(ready).edifice(e08, side, at = site).unchecked
+      side: EdificeSide = EdificeSide.Intact)(using munit.Location): ReadyGame =
+    Table.from(ready).edifice(e08, side, at = site).ready
 
   private def search(site: SiteId, vision: VisionId = VisionRules.Faith,
       side: EdificeSide = EdificeSide.Intact): OathTransition =
@@ -51,7 +51,7 @@ class SacredGroundSuite extends munit.FunSuite:
     val drawingFaith = SearchFixture.staged(Vector(VisionRules.Faith),
       supply = 5)
     val ruled = Table.from(withE08(drawingFaith, elsewhere))
-      .warbandsAt(elsewhere, actor, 2).unchecked
+      .warbandsAt(elsewhere, actor, 2).ready
     assert(!offered(searched(ruled, VisionRules.Faith))
       .contains(PlayedAs.Faceup))
 

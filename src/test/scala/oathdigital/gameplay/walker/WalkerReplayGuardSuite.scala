@@ -12,7 +12,7 @@ import oathdigital.testkit.Unwrap.accepted
   */
 class WalkerReplayGuardSuite extends munit.FunSuite:
   /** TestGameFixtures' red holding D1, the world deck's only card. */
-  private val held = Table.from(ready).hand(playerId, worldDenizen).unchecked
+  private val held = Table.from(ready).hand(playerId, worldDenizen).ready
 
   private def discard(position: StackPosition) = Move(
     Piece.Card(worldDenizen),

@@ -15,15 +15,12 @@ import oathdigital.testkit.Unwrap.accepted
 class MapLibrarySuite extends munit.FunSuite:
   private val library = CatalogNames.denizen("Map Library")
   private val selected = Vector(MapLibrary.id)
-  private val map = Table.start.unchecked.game.current.map
   /** p1's pawn site. */
   private val home = CatalogNames.site("Ancient City")
   /** Another site in play in the pawn's region. */
-  private val near = map.inPlay.find(site => site != home &&
-    map.regionOf(site) == map.regionOf(home)).get
+  private val near = Table.otherSiteInRegionOf(home)
   /** A site in play in another region. */
-  private val away = map.inPlay.find(site =>
-    map.regionOf(site) != map.regionOf(home)).get
+  private val away = Table.siteInAnotherRegionThan(home)
   /** A plain Order denizen. */
   private val wrestlers = CatalogNames.denizen("Wrestlers")
   /** A plain Beast denizen. */

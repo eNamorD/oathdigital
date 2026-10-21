@@ -157,7 +157,7 @@ class NegotiationProcedureSuite extends munit.FunSuite:
     val theirs = accepted(say(proposed.state, p2, AcceptDeal))
     // p1 drops to 1 favor while the deal is open.
     val broke = Ready(Table.from(Outcomes.ready(theirs.state)).favor(p1, 1)
-      .unchecked)
+      .ready)
     assertEquals(say(broke, p1, AcceptDeal).left.toOption,
       Some(OathViolation.InsufficientFavor(3, 1)))
     // The deal stayed open: p1, with the favor back, can still accept.

@@ -21,15 +21,16 @@ class BrassHorseSuite extends munit.FunSuite:
     * secrets; Buried Giant lies in the Provinces. `homelands` stands a
     * ruined Beast edifice at Deep Woods and a ruined Hearth one at Golden
     * Valley, and no other card lies at any site. */
-  private def staged = Table.from(homelands(quietTable)).turn(actor, Phase.Act)
+  private def staged(using munit.Location) =
+      Table.from(homelands(quietTable)).turn(actor, Phase.Act)
     .pawn(actor, "Ancient City").relic(actor, horse).secrets(actor, 2)
-    .unchecked
+    .ready
   // Three denizens no site, hand or discard of the quiet table holds.
   private val beastTop = CatalogNames.denizen("Insect Swarm")
   private val beastElsewhere = CatalogNames.denizen("Vow of Union")
   private val nomadTop = CatalogNames.denizen("Oracle")
-  private def cradleTopped(card: WorldCardId) =
-    Table.from(staged).discarded(Region.Cradle, card).unchecked
+  private def cradleTopped(card: WorldCardId)(using munit.Location) =
+    Table.from(staged).discarded(Region.Cradle, card).ready
   private def site(name: String) =
     DecisionOptionRef.Site(CatalogNames.site(name))
   private def reveals(events: Vector[OathEvent]) = ops(events).collect {
@@ -113,7 +114,7 @@ class BrassHorseSuite extends munit.FunSuite:
   test("the region is the one the pawn's site is in"):
     val provincesTop = beastTop
     val start = Table.from(staged).pawn(actor, "Buried Giant")
-      .discarded(Region.Provinces, provincesTop).unchecked
+      .discarded(Region.Provinces, provincesTop).ready
     val done = accepted(use(start, BrassHorse.id, horse))
     assertEquals(reveals(done.events), Vector(
       Reveal(provincesTop, Location.RegionalDiscard(Region.Provinces))))
@@ -123,7 +124,7 @@ class BrassHorseSuite extends munit.FunSuite:
   test("it is unusable without a secret"):
     val id = BrassHorse.id
     val start = cradleTopped(beastTop)
-    val broke = Table.from(start).secrets(actor, 0).unchecked
+    val broke = Table.from(start).secrets(actor, 0).ready
     assert(usableIds(start).contains(id))
     assert(!usableIds(broke).contains(id))
     assertEquals(use(broke, id, horse).left.toOption,

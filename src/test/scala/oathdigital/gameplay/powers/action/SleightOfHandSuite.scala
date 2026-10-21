@@ -86,14 +86,14 @@ class SleightOfHandSuite extends munit.FunSuite:
     assertEquals(Look(after(t)).player(actor).board.favor, 0)
 
   test("a player at another site is not a target"):
-    val ready = Table.from(staged(3, 0)).pawn(victim, "Buried Giant").unchecked
+    val ready = Table.from(staged(3, 0)).pawn(victim, "Buried Giant").ready
     val t = accepted(use(ready, SleightOfHand, source))
     parked.assertNotParked(t.state)
     assertEquals(secretsOf(after(t), victim), (3, 0))
 
   test("every eligible player is offered"):
     val ready = Table.from(staged(2, 0)).pawn(bystander, "Ancient City")
-      .secrets(bystander, 2, 0).unchecked
+      .secrets(bystander, 2, 0).ready
     val t = accepted(use(ready, SleightOfHand, source))
     assertEquals(offered(t, actor).map(_.toSet),
       Some(Set("player" -> victim.value, "player" -> bystander.value)))

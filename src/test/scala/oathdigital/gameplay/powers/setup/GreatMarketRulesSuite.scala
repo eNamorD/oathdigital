@@ -17,15 +17,16 @@ class GreatMarketRulesSuite extends munit.FunSuite:
 
   // The Setup walk is the subject (the edifice's effect runs when the walk
   // reaches it), so these tests start from the fresh Setup, not a Table.
-  private def stagedAt(side: EdificeSide): ReadyGame =
+  private def stagedAt(side: EdificeSide)(using munit.Location): ReadyGame =
     Table.from(FirstGameSetupFixture.freshReady)
-      .edifice(edifice, side, at = site).unchecked
+      .edifice(edifice, side, at = site).ready
 
   /** Bandits rule exactly `bandited`, one each; every other site is empty.
     * The fresh deal fills every site with bandits to its capacity. */
-  private def banditsOnlyAt(ready: ReadyGame, bandited: SiteId*): ReadyGame =
+  private def banditsOnlyAt(ready: ReadyGame, bandited: SiteId*)(
+      using munit.Location): ReadyGame =
     FirstGameSetupFixture.sites.foldLeft(Table.from(ready))((table, s) =>
-      table.bandits(s, if bandited.contains(s) then 1 else 0)).unchecked
+      table.bandits(s, if bandited.contains(s) then 1 else 0)).ready
 
   private def finish(ready: ReadyGame): ReadyGame =
     val tree = accepted(SetupProcedure.build(catalog, ready,
@@ -93,7 +94,7 @@ class GreatMarketRulesSuite extends munit.FunSuite:
   test("Bandit Market places favor from the shared supply when the banks are empty"):
     val staged = banditsOnlyAt(stagedAt(EdificeSide.Ruined), banditSite)
     val empty = Suit.all.foldLeft(Table.from(staged))((table, suit) =>
-      table.bankFavor(suit, 0)).unchecked
+      table.bankFavor(suit, 0)).ready
     assertEquals(finish(empty).game.current.map.sites(banditSite).tokens.favor, 1)
     assertEquals(NoteText.said(bandit.id, bandit.noteKeys, events(empty)),
       Vector(NoteText.Said("placed", "Placed 1 favor on the bandit site.",

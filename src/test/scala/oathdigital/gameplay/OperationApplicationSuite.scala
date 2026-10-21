@@ -39,7 +39,7 @@ class OperationApplicationSuite extends munit.FunSuite:
   test("wrong requested stack source position is an invalid-stack-position"):
     // D5 lies under D1.
     val source = Table.from(ready)
-      .worldDeckTop(worldDenizen, extraDenizen).unchecked
+      .worldDeckTop(worldDenizen, extraDenizen).ready
     val operation = Move(
       Piece.Card(extraDenizen),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),

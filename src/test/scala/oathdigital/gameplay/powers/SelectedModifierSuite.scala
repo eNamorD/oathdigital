@@ -53,10 +53,10 @@ class SelectedModifierSuite extends munit.FunSuite:
   test("it is not offered when the player may not use its card"):
     assert(!selectable(quietTable, free))
     val faceDown = Table.from(asAdviser(quietTable, card, Orientation.FaceDown))
-      .favor(actor, 1).unchecked
+      .favor(actor, 1).ready
     assert(!selectable(faceDown, free))
     assert(selectable(Table.from(asAdviser(quietTable, card)).favor(actor, 1)
-      .unchecked, free))
+      .ready, free))
 
   test("a cost must be payable: enough favor, and an empty card"):
     val priced = Probe(card, Cost(favor = 1), travel)

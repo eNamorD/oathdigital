@@ -140,7 +140,7 @@ class CardKnowledgeSuite extends munit.FunSuite:
     val top = CatalogNames.denizen("Threatening Roar")
     val next = CatalogNames.denizen("Fae Merchant")
     val staged = Table.from(board).worldDeckTop(top)
-      .discarded(Region.Cradle, next).unchecked
+      .discarded(Region.Cradle, next).ready
     val peeked = Vector(Peek(owner, top, Location.Deck(CardDeck.World)),
       Peek(owner, next, Location.RegionalDiscard(Region.Cradle)))
       .foldLeft(staged)(executed)

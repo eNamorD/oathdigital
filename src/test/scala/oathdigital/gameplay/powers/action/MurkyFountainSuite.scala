@@ -86,7 +86,7 @@ class MurkyFountainSuite extends munit.FunSuite:
     walkerParked.assertResumed(done.state, Phase.Act, actor)
 
   test("it is unusable without a faceup secret"):
-    val noSecret = Table.from(staged(supply = 1)).secrets(actor, 0).unchecked
+    val noSecret = Table.from(staged(supply = 1)).secrets(actor, 0).ready
     assert(!usableIds(noSecret).contains(MurkyFountain.id))
     assertEquals(use(rules(), noSecret, MurkyFountain.id, source).left.toOption,
       Some(OathViolation.InsufficientSecrets(1, 0)))

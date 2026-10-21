@@ -60,7 +60,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
     assertEquals(applyEvents(ready, events), finalState)
 
   test("all-skipped BuildOps records no delta step"):
-    val empty = Table.from(ready).bankFavor(Suit.Order, 0).unchecked
+    val empty = Table.from(ready).bankFavor(Suit.Order, 0).ready
     val tree = BuildOps((_, _) =>
       Right(Vector(Gain.Favor(actor, Suit.Order, 1))))
     ProcedureWalker.advance(empty, tree, None, noPowers) match
@@ -70,7 +70,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
       case other => fail(s"expected a Finished walk, got $other")
 
   test("BuildOps records actual reduced count"):
-    val six = Table.from(ready).supply(actor, 6).unchecked
+    val six = Table.from(ready).supply(actor, 6).ready
     val tree = BuildOps((_, _) => Right(Vector(GainSupply(actor, 3))))
     ProcedureWalker.advance(six, tree, None, noPowers) match
       case Right(WalkerOutcome.Finished(_, events)) =>
@@ -113,7 +113,7 @@ class ProcedureWalkerDeltaSuite extends munit.FunSuite:
       Suit.Order, 0, 0, actor)
     // D1 leaves the world deck for S2.
     val source = Table.from(ready).denizen(worldDenizen, at = sites(1))
-      .unchecked
+      .ready
     /** Stub of OperationRestriction: refuses `first` as immune. */
     val immunity = new OperationRestriction:
       override def reason(state: ReadyGame, operation: CoreOperation) =
