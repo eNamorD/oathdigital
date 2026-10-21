@@ -30,8 +30,9 @@ class SaddleMakersSuite extends munit.FunSuite:
       facedown = orientation == Orientation.FaceDown)
       .bankFavor(Suit.Nomad, 3)
   private def held(top: Vector[WorldCardId],
-      orientation: Orientation = Orientation.FaceUp): ReadyGame =
-    heldTable(top, orientation).unchecked
+      orientation: Orientation = Orientation.FaceUp)(
+          using munit.Location): ReadyGame =
+    heldTable(top, orientation).ready
 
   private def favor(ready: ReadyGame, id: PlayerId): Int =
     Look(ready).player(id).board.favor
@@ -98,13 +99,13 @@ class SaddleMakersSuite extends munit.FunSuite:
 
   test("a bank holding 1 favor gives 1, and an empty bank gives nothing and " +
       "writes no line"):
-    val low = heldTable(nomad).bankFavor(Suit.Nomad, 1).unchecked
+    val low = heldTable(nomad).bankFavor(Suit.Nomad, 1).ready
     val one = play(low, Vector.empty, nomad.head, PlayedAs.Faceup)
     val afterOne = SearchFixture.after(one)
     assertEquals(favor(afterOne, holder), favor(low, holder) + 1)
     assertEquals(said(one.events), Vector(NoteText.Said("gained",
       s"${holder.value} gained 1 favor from the Nomad bank.", covers = true)))
-    val empty = heldTable(nomad).bankFavor(Suit.Nomad, 0).unchecked
+    val empty = heldTable(nomad).bankFavor(Suit.Nomad, 0).ready
     val none = play(empty, Vector.empty, nomad.head, PlayedAs.Faceup)
     assertEquals(favor(SearchFixture.after(none), holder), favor(empty, holder))
     assertEquals(said(none.events), Vector.empty)

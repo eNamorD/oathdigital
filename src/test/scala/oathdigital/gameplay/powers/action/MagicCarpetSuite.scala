@@ -18,9 +18,10 @@ class MagicCarpetSuite extends munit.FunSuite:
   /** p1's Act at Ancient City holding Magic Carpet; p2 stands at Broken
     * Peaks and p3 at Buried Giant. `homelands` adds the ruined edifices at
     * Deep Woods and Golden Valley. */
-  private def staged = Table.from(homelands(quietTable)).turn(actor, Phase.Act)
+  private def staged(using munit.Location) =
+      Table.from(homelands(quietTable)).turn(actor, Phase.Act)
     .pawn(actor, "Ancient City").pawn(p2, "Broken Peaks")
-    .pawn(p3, "Buried Giant").relic(actor, carpet).unchecked
+    .pawn(p3, "Buried Giant").relic(actor, carpet).ready
   private def site(name: String) =
     DecisionOptionRef.Site(CatalogNames.site(name))
 
@@ -82,7 +83,7 @@ class MagicCarpetSuite extends munit.FunSuite:
 
   test("with nobody eligible the Carpet is discarded without a second question"):
     val crowded = Table.from(staged).pawn(p3, "Deep Woods").pawn(p2,
-      "Deep Woods").unchecked
+      "Deep Woods").ready
     val Placed(_, placed) = placedAt(crowded, "Deep Woods")
     val after = ready(placed.state)
     assert(backToActing(placed))
@@ -90,7 +91,7 @@ class MagicCarpetSuite extends munit.FunSuite:
     assertEquals(relicOf(after, carpet), None)
 
   test("a secret on the Carpet returns to its holder facedown when it is discarded"):
-    val start = Table.from(staged).tokens(carpet, secrets = 1).unchecked
+    val start = Table.from(staged).tokens(carpet, secrets = 1).ready
     val Placed(_, placed) = placedAt(start, "Deep Woods")
     val done = accepted(choose(placed.state, MagicCarpet.fateDecisionId,
       MagicCarpet.discard))
@@ -98,7 +99,7 @@ class MagicCarpetSuite extends munit.FunSuite:
       Look(start).player(actor).board.faceDownSecrets + 1)
 
   test("it costs nothing and needs no secret"):
-    assert(usableIds(Table.from(staged).secrets(actor, 0).unchecked)
+    assert(usableIds(Table.from(staged).secrets(actor, 0).ready)
       .contains(MagicCarpet.id))
 
   test("it writes where the pawn went, then that it was discarded"):

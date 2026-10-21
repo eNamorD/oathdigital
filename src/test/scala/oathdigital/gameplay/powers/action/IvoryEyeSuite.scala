@@ -46,7 +46,7 @@ class IvoryEyeSuite extends munit.FunSuite:
       "of every player, and no faceup one"):
     val ready = Table.from(staged)
       .adviser(target, elders)
-      .adviser(actor, faith, facedown = true).unchecked
+      .adviser(actor, faith, facedown = true).ready
     val t = accepted(use(ready, IvoryEye, source))
     assert(awaits(t, IvoryEye.decisionId),
       parked.parkedDecision(t.state).toString)
@@ -94,7 +94,7 @@ class IvoryEyeSuite extends munit.FunSuite:
 
   test("a facedown Vision can be peeked"):
     val ready = Table.from(staged).adviser(target, faith, facedown = true)
-      .unchecked
+      .ready
     val t = accepted(use(ready, IvoryEye, source))
     val slot = Look(ready).player(target).advisers.indexWhere(_.id == faith)
     val done = accepted(answer(t, actor, IvoryEye.decisionId, peekAt(target,
@@ -103,7 +103,7 @@ class IvoryEyeSuite extends munit.FunSuite:
 
   test("only the acting player answers, with an offered adviser"):
     val ready = Table.from(staged)
-      .adviser(target, elders).unchecked
+      .adviser(target, elders).ready
     val t = accepted(use(ready, IvoryEye, source))
     assertEquals(
       answer(t, target, IvoryEye.decisionId, peekAt(target, 0)).left.toOption,
@@ -122,7 +122,7 @@ class IvoryEyeSuite extends munit.FunSuite:
     assertEquals(Look(after(t)).tokensOn(eye), Tokens(0, 1))
 
   test("it is unusable without a faceup secret"):
-    val broke = Table.from(staged).secrets(actor, 0, 3).unchecked
+    val broke = Table.from(staged).secrets(actor, 0, 3).ready
     assertEquals(usableNow(broke), Vector.empty)
     assertEquals(use(broke, IvoryEye, source).left.toOption,
       Some(OathViolation.InsufficientSecrets(1, 0)))

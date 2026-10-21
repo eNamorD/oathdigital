@@ -44,7 +44,7 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
 
   test("it places on the site the pawn is at, whichever site that is"):
     val start = Table.from(holdingFlameWithSecrets(faceUp = 1))
-      .pawn(actor, brokenPeaks).unchecked
+      .pawn(actor, brokenPeaks).ready
     val end = after(accepted(use(start, power, darkestSecretOption)))
     assertEquals(Look(end).siteTokens(brokenPeaks).secrets,
       Look(start).siteTokens(brokenPeaks).secrets + 1)
@@ -100,7 +100,7 @@ class WanderingFlamePlaceSuite extends munit.FunSuite:
 
   test("the Move power and the place power are separate uses of one banner"):
     val start = Table.from(holdingFlameWithSecrets(faceUp = 1))
-      .siteTokens(brokenPeaks, secrets = 1).unchecked
+      .siteTokens(brokenPeaks, secrets = 1).ready
     assertEquals(ActPowerHarness.usableIds(start).toSet,
       Set(WanderingFlameMove.id, WanderingFlamePlace.id))
 

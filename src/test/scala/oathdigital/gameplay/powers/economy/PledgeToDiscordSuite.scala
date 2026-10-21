@@ -74,7 +74,7 @@ class PledgeToDiscordSuite extends munit.FunSuite:
       .map(CatalogNames.denizen(_))
     val ready = Table.from(SearchFixture.staged(Vector(beast) ++ fillers,
       supply = 5)).denizen(wildCry, at = home).adviser(actor, pledge)
-      .unchecked
+      .ready
     // 5 Supply less the world Search's 2.
     val faceup = SearchFixture.after(SearchFixture.play(ready,
       Vector(WildCry.id), beast, PlayedAs.Faceup))

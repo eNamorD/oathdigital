@@ -107,7 +107,7 @@ class CropRotationSuite extends munit.FunSuite:
   test("it covers a ruined edifice too: an edifice is a denizen for placement"):
     val hall = CatalogNames.edifice("Hall of Ministers")
     val ready = Table.from(staged(Vector(fillers(0))))
-      .edifice(hall, EdificeSide.Ruined, at = home).unchecked
+      .edifice(hall, EdificeSide.Ruined, at = home).ready
     assertEquals(siteSlots(toPlacement(ready)),
       Vector(None, Some(fillers(0)), Some(hall)))
 
@@ -130,7 +130,7 @@ class CropRotationSuite extends munit.FunSuite:
   test("with the Mob as well, two cards may go, each credited to the " +
       "permission it spent"):
     val ready = Table.from(staged(Vector(fillers(0), fillers(1))))
-      .peoplesFavor(Some(p1), 1).unchecked
+      .peoplesFavor(Some(p1), 1).ready
     val replaced = accepted(placeReplacing(toPlacement(ready), played,
       PlayedAs.AtSite, fillers(0)))
     // The slot spent one permission; the other is offered as a follow-up.

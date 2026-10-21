@@ -96,7 +96,7 @@ class OathkeeperProcedureSuite extends munit.FunSuite:
     // Emptying Desolate Shore again makes a boundary observable: if one ran
     // on the resolving command, it would refill bandits there.
     val emptied = Table.from(Outcomes.ready(parked.state))
-      .bandits("Desolate Shore", 0).unchecked
+      .bandits("Desolate Shore", 0).ready
     assert(StateBasedEvaluation.banditRefill(catalog, Ready(emptied))
       .toOption.flatten.nonEmpty, "precondition: a boundary would refill here")
     val chosen = accepted(rules.resolveWalker(Ready(emptied), holder,

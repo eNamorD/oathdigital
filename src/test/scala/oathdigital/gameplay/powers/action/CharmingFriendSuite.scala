@@ -71,7 +71,7 @@ class CharmingFriendSuite extends munit.FunSuite:
         covers = false)))
 
   test("with nobody at the site the cost is paid and nothing else happens"):
-    val ready = Table.from(staged()).pawn(victim, "Buried Giant").unchecked
+    val ready = Table.from(staged()).pawn(victim, "Buried Giant").ready
     val t = accepted(use(ready, CharmingFriend, source))
     parked.assertNotParked(t.state)
     assertEquals(Look(after(t)).tokensOn(friend), Tokens(0, 1))
@@ -81,7 +81,7 @@ class CharmingFriendSuite extends munit.FunSuite:
         covers = false)))
 
   test("every other player at the site is offered"):
-    val ready = Table.from(staged()).pawn(bystander, "Ancient City").unchecked
+    val ready = Table.from(staged()).pawn(bystander, "Ancient City").ready
     val t = accepted(use(ready, CharmingFriend, source))
     assertEquals(offered(t, actor).map(_.toSet),
       Some(Set("player" -> victim.value, "player" -> bystander.value)))

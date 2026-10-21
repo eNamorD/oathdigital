@@ -30,9 +30,10 @@ class CardPlayReasonsSuite extends munit.FunSuite:
 
   /** A Search by p1 that drew Faith, parked on its placement, on the table
     * `arrange` sets. */
-  private def searchedFaith(arrange: Table => Table): OathTransition =
+  private def searchedFaith(arrange: Table => Table)(
+      using munit.Location): OathTransition =
     VisionPlayFixture.searched(arrange(Table.from(
-      SearchFixture.staged(Vector(VisionRules.Faith), supply = 5))).unchecked,
+      SearchFixture.staged(Vector(VisionRules.Faith), supply = 5))).ready,
       VisionRules.Faith)
 
   /** The power whose note hid the revealed Vision spot at `state`. */
@@ -71,7 +72,7 @@ class CardPlayReasonsSuite extends munit.FunSuite:
     // drawn Errand Boy means replacing one of them: Replace rows exist.
     val ready = Vector("Rain Boots", "Ancient Binding").foldLeft(Table.from(
       SearchFixture.staged(Vector(errandBoy), supply = 5)))(
-      _.adviser(p1, _, facedown = true)).adviser(p1, sealingWard).unchecked
+      _.adviser(p1, _, facedown = true)).adviser(p1, sealingWard).ready
     // The Search may draw more than one card: keep Errand Boy.
     val parked = accepted(SearchFixture.start(ready)
       .flatMap(SearchFixture.keep(_, errandBoy)))

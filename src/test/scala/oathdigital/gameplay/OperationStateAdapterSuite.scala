@@ -39,7 +39,7 @@ class OperationStateAdapterSuite extends munit.FunSuite:
         Piece.Card(worldDenizen), Location.PlayArea(playerId)))
 
   test("temporary hands are not part of a player's play area"):
-    val inHand = Table.from(ready).hand(playerId, worldDenizen).unchecked
+    val inHand = Table.from(ready).hand(playerId, worldDenizen).ready
 
     assertEquals(OperationStateAdapter.card(inHand, worldDenizen,
       Location.Hand(playerId)).map(_.location),

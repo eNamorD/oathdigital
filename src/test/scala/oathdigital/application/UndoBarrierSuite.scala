@@ -49,7 +49,7 @@ class UndoBarrierSuite extends munit.FunSuite:
     // Last-resort `update`: no builder step sets the game result, and only
     // this test needs one.
     val won = OathState.Ready(table.update(_.updateCurrent(
-      _.copy(result = Some(GameResult(p1))))).unchecked)
+      _.copy(result = Some(GameResult(p1))))).ready)
     assert(UndoBarrier.blocks(Vector.empty, before, won))
 
   test("a batch begun before the game started is a barrier"):

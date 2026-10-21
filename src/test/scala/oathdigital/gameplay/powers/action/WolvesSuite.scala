@@ -49,7 +49,7 @@ class WolvesSuite extends munit.FunSuite:
 
   test("the kill is best-effort: a board with no warbands loses nothing and " +
       "the cost stays paid"):
-    val empty = Table.from(staged()).boardWarbands(victim, 0).unchecked
+    val empty = Table.from(staged()).boardWarbands(victim, 0).ready
     val t = accepted(use(empty, Wolves, source))
     val done = accepted(answer(t, actor, Wolves.decisionId, choose(victim)))
     assertEquals(Look(after(done)).player(victim).board.warbands, 0)
@@ -77,7 +77,7 @@ class WolvesSuite extends munit.FunSuite:
       NoteKey.Used, s"Killed 1 ${victim.value} warband.", covers = false)))
 
   test("a board with no warband is written as such"):
-    val empty = Table.from(staged()).boardWarbands(victim, 0).unchecked
+    val empty = Table.from(staged()).boardWarbands(victim, 0).ready
     val t = accepted(use(empty, Wolves, source))
     val done = accepted(answer(t, actor, Wolves.decisionId, choose(victim)))
     assertEquals(NoteText.said(Wolves, done.events), Vector(NoteText.Said(

@@ -15,16 +15,18 @@ object PowerFixture:
   /** The site the actor's pawn stands on. */
   def actorsSite(ready: ReadyGame): SiteId = Look(ready).pawn(actor)
 
-  def inPhase(ready: ReadyGame, phase: Phase): ReadyGame =
-    Table.from(ready).turn(actor, phase).unchecked
+  def inPhase(ready: ReadyGame, phase: Phase)(using munit.Location): ReadyGame =
+    Table.from(ready).turn(actor, phase).ready
 
   def asAdviser(ready: ReadyGame, id: DenizenId,
-      orientation: Orientation = Orientation.FaceUp): ReadyGame =
+      orientation: Orientation = Orientation.FaceUp)(
+          using munit.Location): ReadyGame =
     Table.from(ready).adviser(actor, id,
-      facedown = orientation == Orientation.FaceDown).unchecked
+      facedown = orientation == Orientation.FaceDown).ready
 
-  def atSite(ready: ReadyGame, id: DenizenId, site: SiteId): ReadyGame =
-    Table.from(ready).denizen(id, at = site).unchecked
+  def atSite(ready: ReadyGame, id: DenizenId, site: SiteId)(
+      using munit.Location): ReadyGame =
+    Table.from(ready).denizen(id, at = site).ready
 
   /** `id` at the site the actor's pawn stands on. */
   def atActorsSite(ready: ReadyGame, id: DenizenId): ReadyGame =
@@ -34,14 +36,15 @@ object PowerFixture:
     * from whichever site holds it.
     */
   def withRelic(ready: ReadyGame, id: RelicId,
-      orientation: Orientation = Orientation.FaceUp): ReadyGame =
+      orientation: Orientation = Orientation.FaceUp)(
+          using munit.Location): ReadyGame =
     Table.from(ready).relic(actor, id,
-      facedown = orientation == Orientation.FaceDown).unchecked
+      facedown = orientation == Orientation.FaceDown).ready
 
   /** An edifice from the edifice deck, placed at `site` on `side`. */
   def withEdifice(ready: ReadyGame, id: EdificeId, side: EdificeSide,
-      site: SiteId): ReadyGame =
-    Table.from(ready).edifice(id, side, at = site).unchecked
+      site: SiteId)(using munit.Location): ReadyGame =
+    Table.from(ready).edifice(id, side, at = site).ready
 
   /** Warbands of `kind` still in the bank: the printed supply less every
     * board and site.
@@ -57,6 +60,7 @@ object PowerFixture:
   /** Moves warbands from the bank onto the actor's board until the bank
     * holds `left`.
     */
-  def leaveInBank(ready: ReadyGame, kind: ForceKind, left: Int): ReadyGame =
+  def leaveInBank(ready: ReadyGame, kind: ForceKind, left: Int)(
+      using munit.Location): ReadyGame =
     Table.from(ready).boardWarbands(actor, Look(ready).boardWarbands(actor) +
-      warbandBank(ready, kind) - left).unchecked
+      warbandBank(ready, kind) - left).ready

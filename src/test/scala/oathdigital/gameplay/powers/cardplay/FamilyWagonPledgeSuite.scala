@@ -27,10 +27,11 @@ class FamilyWagonPledgeSuite extends munit.FunSuite:
 
   /** The actor with Pledge to Discord and `advisers`, about to Search
     * Family Wagon off the deck. */
-  private def pledgedWith(advisers: DenizenId*): ReadyGame =
+  private def pledgedWith(advisers: DenizenId*)(
+      using munit.Location): ReadyGame =
     advisers.foldLeft(Table.from(SearchFixture.staged(
       Vector(wagon) ++ fillers, supply = 5)).adviser(actor, pledge))(
-      (table, card) => table.adviser(actor, card)).unchecked
+      (table, card) => table.adviser(actor, card)).ready
 
   private def playedFaceup(ready: ReadyGame): OathTransition =
     SearchFixture.play(ready, Vector.empty, wagon, PlayedAs.Faceup)
@@ -46,7 +47,7 @@ class FamilyWagonPledgeSuite extends munit.FunSuite:
   test("the Order adviser goes at once; the Nomads are sorted, and those " +
       "buried before Pledge return their favor to the Discord bank"):
     val ready = Table.from(pledgedWith(elders, rainBoots, wrestlers))
-      .tokens(elders, favor = 1).unchecked
+      .tokens(elders, favor = 1).ready
     val played = playedFaceup(ready)
     assertEquals(PhasePowerHarness.offered(played, actor), Some(Vector(
       "denizen" -> elders.value, "denizen" -> rainBoots.value)))

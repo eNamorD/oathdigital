@@ -79,7 +79,7 @@ class SpiritSnareSuite extends munit.FunSuite:
 
   test("it is unusable without a faceup secret"):
     val broke = Table.from(staged(Suit.Order -> 3)).secrets(actor, 0, 1)
-      .unchecked
+      .ready
     assert(!usableNow(broke).exists(_.power.id == SpiritSnare.id))
     assertEquals(use(broke, SpiritSnare, source).left.toOption,
       Some(OathViolation.InsufficientSecrets(1, 0)))

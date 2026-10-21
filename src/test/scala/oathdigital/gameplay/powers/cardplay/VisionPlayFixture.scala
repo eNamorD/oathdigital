@@ -33,9 +33,10 @@ object VisionPlayFixture:
     * a facedown adviser, parked on its placement. `ready` must be in the Act
     * phase.
     */
-  def fromAdvisers(ready: ReadyGame, vision: VisionId): OathTransition =
+  def fromAdvisers(ready: ReadyGame, vision: VisionId)(
+      using munit.Location): OathTransition =
     val holding = Table.from(ready).adviser(actor, vision, facedown = true)
-      .unchecked
+      .ready
     orFail(FacedownAdviserPlay.parkedOnPlacement(SearchFixture.rules,
       Ready(holding), actor, vision))
 

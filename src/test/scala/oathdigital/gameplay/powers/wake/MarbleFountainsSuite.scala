@@ -48,7 +48,7 @@ class MarbleFountainsSuite extends munit.FunSuite:
     assert(first.game.current.turn.usedPowers.contains(used))
     // It was Wake's only option, so Wake ended with it: put the turn back in
     // Wake, its uses kept, to try again.
-    val again = Table.from(first).backInPhase(Phase.Wake).unchecked
+    val again = Table.from(first).backInPhase(Phase.Wake).ready
     assertEquals(use(again).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
 

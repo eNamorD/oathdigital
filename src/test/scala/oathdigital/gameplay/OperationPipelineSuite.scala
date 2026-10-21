@@ -14,7 +14,7 @@ class OperationPipelineSuite extends munit.FunSuite:
   test("staged partial gain feeds a later required spend"):
     val operations = Vector[CoreOperation](
       GainSupply(playerId, 3), SpendSupply(playerId, 7))
-    val oneBelow = Table.from(ready).supply(playerId, 6).unchecked
+    val oneBelow = Table.from(ready).supply(playerId, 6).ready
     val run = accepted(OperationPipeline.run(oneBelow, operations,
       OperationPolicy.Permissive, Vector.empty)(Right(_)))
     assertEquals(run.executed,
@@ -22,7 +22,7 @@ class OperationPipelineSuite extends munit.FunSuite:
     assertEquals(run.state.game.current.players.head.board.supply.supply, 0)
 
   test("optional short spend records actual count with default requiredness"):
-    val one = Table.from(ready).supply(playerId, 1).unchecked
+    val one = Table.from(ready).supply(playerId, 1).ready
     val run = accepted(OperationPipeline.run(one,
       Vector(SpendSupply(playerId, 3, required = false)),
       OperationPolicy.Permissive, Vector.empty)(Right(_)))
@@ -30,7 +30,7 @@ class OperationPipelineSuite extends munit.FunSuite:
     assertEquals(run.state.game.current.players.head.board.supply.supply, 0)
 
   test("all-skipped nonempty batch succeeds but empty input rejects"):
-    val empty = Table.from(ready).bankFavor(Suit.Order, 0).unchecked
+    val empty = Table.from(ready).bankFavor(Suit.Order, 0).ready
     val run = accepted(OperationPipeline.run(empty,
       Vector(Gain.Favor(playerId, Suit.Order, 2)),
       OperationPolicy.Permissive, Vector.empty)(Right(_)))

@@ -27,9 +27,9 @@ class WildCrySuite extends munit.FunSuite:
 
   /** Wild Cry at p1's site, Ancient City, the deck topped by `kept` and two
     * fillers, with 5 Supply. */
-  private def withCry(kept: DenizenId): ReadyGame =
+  private def withCry(kept: DenizenId)(using munit.Location): ReadyGame =
     Table.from(SearchFixture.staged(Vector(kept) ++ others, supply = 5))
-      .denizen(wildCry, at = home).unchecked
+      .denizen(wildCry, at = home).ready
 
   // 5 Supply less the world Search's 2.
   private val supplyAfterCost = 3
@@ -75,7 +75,7 @@ class WildCrySuite extends munit.FunSuite:
     val drawingHearth = SearchFixture.staged(
       Vector(hearth, beastCard, others(1)), supply = 5)
     val hearthFirst = Table.from(drawingHearth).denizen(wildCry, at = home)
-      .unchecked
+      .ready
     val other = SearchFixture.after(
       play(hearthFirst, modifiers, hearth, PlayedAs.AtSite))
     assertEquals(Look(other).supply(actor), supplyAfterCost)
@@ -113,7 +113,7 @@ class WildCrySuite extends munit.FunSuite:
     // a replacement.
     val holding = Table.from(withCry(kept))
       .adviser(actor, "Wrestlers", facedown = true)
-      .adviser(actor, extra, facedown = true).adviser(actor, wildCry).unchecked
+      .adviser(actor, extra, facedown = true).adviser(actor, wildCry).ready
     val before = Look(holding).player(actor).advisers.map(_.id).toSet
     assertEquals(before.size, 3)
     val started = accepted(start(holding, modifiers))

@@ -55,7 +55,7 @@ class RuleSourceIndexSuite extends munit.FunSuite:
     val base = board
     val changed = Table.from(base)
       .peoplesFavor(Some(p1), 3, face = PeoplesFavorFace.GrandCouncil)
-      .darkestSecret(Some(p2), 2, face = DarkestSecretFace.Festival).unchecked
+      .darkestSecret(Some(p2), 2, face = DarkestSecretFace.Festival).ready
     val banners = RuleSourceIndex.enumerate(catalog, changed).filter(
       _.source.isInstanceOf[RuleSourceRef.Banner])
     assertEquals(banners.map(_.source.stableKey),

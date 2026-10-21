@@ -116,7 +116,7 @@ object CatalogNames:
   * lost and doubled cards are visible to the index.
   */
 final case class Table private (private val game: ReadyGame,
-    private val joined: Set[CardId]):
+    private val expected: Set[CardId]):
   import Table.*
 
   def turn(player: PlayerId, phase: Phase): Table =
@@ -379,7 +379,7 @@ final case class Table private (private val game: ReadyGame,
   /** The state, after checking that no card is lost or in two places and
     * that no force outnumbers its printed supply. */
   def ready(using munit.Location): ReadyGame =
-    CardIndex.from(game.game, inventory ++ joined).left.foreach { problems =>
+    CardIndex.from(game.game, expected).left.foreach { problems =>
       munit.Assertions.fail("the table's cards are not whole: " +
         problems.map(describe).mkString("; "))
     }
@@ -403,11 +403,10 @@ final case class Table private (private val game: ReadyGame,
 
   def state(using munit.Location): OathState = Ready(ready)
 
-  /** The state with nothing checked, for a fixture helper that wraps a step
-    * inside a state its caller is still assembling by hand (a card taken out
-    * to be put back later, say). A test that builds a table itself reads it
-    * with `ready`. */
-  def unchecked: ReadyGame = game
+  /** The state with nothing checked, for the suite that proves `ready`
+    * refuses a broken table. Every other reader uses `ready`, including a
+    * table continued from a state through [[Table.from]]. */
+  private[testkit] def unchecked: ReadyGame = game
 
   /** A fresh in-memory service whose streams begin at this table, and its
     * repository. `catalog` may be an edited copy of the fixture's with the
@@ -450,7 +449,7 @@ final case class Table private (private val game: ReadyGame,
       case driver => Situation(state, Vector.empty, 0L, driver, Vector.empty)
 
   private def moving(card: CardId): Table =
-    Table(without(game, card), if inventory(card) then joined else joined + card)
+    Table(without(game, card), expected + card)
 
   private def onPlayer(player: PlayerId)(f: PlayerState => PlayerState): Table =
     update(_.updateCurrent(c => c.copy(players = c.players.map(p =>
@@ -486,10 +485,30 @@ object Table:
     CatalogNames.site(homes.getOrElse(player, munit.Assertions.fail(
       s"no player $player at the table")))
 
+  /** Another site the quiet table has in play in `site`'s region. */
+  def otherSiteInRegionOf(site: SiteId)(using munit.Location): SiteId =
+    val map = start.game.game.current.map
+    map.inPlay.find(other => other != site &&
+      map.regionOf(other) == map.regionOf(site)).getOrElse(
+      munit.Assertions.fail("the quiet table has no second site in play in " +
+        s"${site.value}'s region"))
+
+  /** A site the quiet table has in play in another region than `site`'s. */
+  def siteInAnotherRegionThan(site: SiteId)(using munit.Location): SiteId =
+    val map = start.game.game.current.map
+    map.inPlay.find(other => map.regionOf(other) != map.regionOf(site))
+      .getOrElse(munit.Assertions.fail("the quiet table has no site in play " +
+        s"outside ${site.value}'s region"))
+
   /** Steps continued from `ready`, a state a fixture helper already holds.
-    * Such helpers read the result with `unchecked`: cards that joined the
-    * state earlier are not known here, so `ready` could refuse them. */
-  def from(ready: ReadyGame): Table = Table(ready, Set.empty)
+    * The cards `ready` holds are the cards the steps must keep: `ready`
+    * checks the result against them, so a state this table did not assemble
+    * is still checked. A state that already holds a card twice has no
+    * expected set to compare against; `ready` names that duplicate, which
+    * needs none, but once a step removes the card and heals the state it
+    * names nothing else. */
+  def from(ready: ReadyGame): Table =
+    Table(ready, ready.game.cardIndex.toOption.fold(Set.empty)(_.ids))
 
   /** The quiet table (see [[Table]]). */
   lazy val start: Table =
@@ -498,11 +517,8 @@ object Table:
       FirstGameSetupFixture.chronicle, orders).fold(violation =>
         throw AssertionError(s"the fixture's first game does not start: $violation"),
         identity)
-    Table(quiet(fresh), Set.empty)
-
-  /** Every card the fixture's first game deals, wherever it lies. */
-  private lazy val inventory: Set[CardId] =
-    CardIndex.from(start.game.game).toOption.get.ids
+    val quieted = quiet(fresh)
+    Table(quieted, CardIndex.from(quieted.game).toOption.get.ids)
 
   private def orientation(facedown: Boolean): Orientation =
     if facedown then Orientation.FaceDown else Orientation.FaceUp

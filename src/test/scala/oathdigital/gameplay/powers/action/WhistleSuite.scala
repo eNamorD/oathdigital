@@ -18,11 +18,11 @@ class WhistleSuite extends munit.FunSuite:
   /** p1's Act at Ancient City holding Whistle with `secrets` faceup
     * secrets; p2 stands at Broken Peaks and p3 at Buried Giant. `homelands`
     * adds the ruined edifices at Deep Woods and Golden Valley. */
-  private def staged(secrets: Int = 2) =
+  private def staged(secrets: Int = 2)(using munit.Location) =
     Table.from(homelands(quietTable)).turn(actor, Phase.Act)
       .pawn(actor, "Ancient City").pawn(p2, "Broken Peaks")
       .pawn(p3, "Buried Giant").relic(actor, whistle).secrets(actor, secrets)
-      .unchecked
+      .ready
   private val target = DecisionOptionRef.Player(p2)
 
   test("it pulls the chosen pawn to the actor's site and hands over the secret"):
@@ -44,7 +44,7 @@ class WhistleSuite extends munit.FunSuite:
     assertEquals(replayed(start, parked.events ++ done.events), Right(done.state))
 
   test("only players at other sites are offered, even when there is one"):
-    val start = Table.from(staged()).pawn(p3, "Ancient City").unchecked
+    val start = Table.from(staged()).pawn(p3, "Ancient City").ready
     val parked = accepted(use(start, Whistle.id, whistle))
     assert(awaits(parked, Whistle.decisionId))
     assertEquals(choose(parked.state, Whistle.decisionId,
@@ -55,7 +55,7 @@ class WhistleSuite extends munit.FunSuite:
 
   test("with nobody to pull, the cost is paid and the secret stays"):
     val start = Table.from(staged()).pawn(p3, "Ancient City").pawn(p2,
-      "Ancient City").unchecked
+      "Ancient City").ready
     val done = accepted(use(start, Whistle.id, whistle))
     val after = ready(done.state)
     assert(backToActing(done))
@@ -85,7 +85,7 @@ class WhistleSuite extends munit.FunSuite:
 
   test("with nobody to pull it writes that"):
     val start = Table.from(staged()).pawn(p3, "Ancient City").pawn(p2,
-      "Ancient City").unchecked
+      "Ancient City").ready
     val done = accepted(use(start, Whistle.id, whistle))
     assertEquals(NoteText.said(Whistle, done.events), Vector(NoteText.Said(
       "used.none", "No pawn could be pulled.", covers = false)))

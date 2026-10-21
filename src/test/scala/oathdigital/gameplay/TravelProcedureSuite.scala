@@ -77,8 +77,8 @@ class TravelProcedureSuite extends munit.FunSuite:
       map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states)))
 
   /** The pass ruled by the actor, so a cross-region route past it is legal. */
-  private def passRuled(ready: ReadyGame): ReadyGame =
-    Table.from(ready).warbandsAt(pass, actor, 1).unchecked
+  private def passRuled(ready: ReadyGame)(using munit.Location): ReadyGame =
+    Table.from(ready).warbandsAt(pass, actor, 1).ready
 
   /** What a Travel to `destination` would spend, from the same preview the
     * parked decision reads; `None` when the preview refuses it. */

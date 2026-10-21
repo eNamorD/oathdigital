@@ -25,12 +25,12 @@ class CircletOfCommandSuite extends munit.FunSuite:
     * chosen: the transition that parks on the Raid's targets.
     */
   private def raidKind(circletSide: Option[Orientation],
-      attacker: Boolean = false): OathTransition =
+      attacker: Boolean = false)(using munit.Location): OathTransition =
     val b = raidBoard().board
     val holder = if attacker then b.actor else b.rival
     val held = circletSide.fold(b.ready)(side => Table.from(b.ready)
       .relic(holder, circlet, facedown = side == Orientation.FaceDown)
-      .unchecked)
+      .ready)
     val started = accepted(start(held, ActionRef.Campaign, b.actor))
     accepted(
       rules.resolveWalker(started.state, b.actor, CampaignIds.kind, raid))

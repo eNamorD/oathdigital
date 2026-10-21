@@ -84,9 +84,10 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     * warbands. The Cradle discard pile shows Fae Merchant and the Provinces
     * pile Conspiracy; the Hinterland's is empty. No Table step places
     * Imperial warbands, and `ready` refuses them (Imperial has no printed
-    * supply), so they are patched in after `ready`. */
-  private val siteDetails: ReadyGame =
-    val table = Table.start
+    * supply), so they are patched into `siteDetailsBeforeImperial` after it
+    * is read. A table step continues from that one. */
+  private val siteDetailsBeforeImperial: ReadyGame =
+    Table.start
       .warbandsAt(ancientCity, p1, 2)
       .denizen(errandBoy, at = ancientCity).denizen(wrestlers, at = ancientCity)
       .relicAt(siteRelics(0), at = ancientCity)
@@ -97,7 +98,9 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
       .discarded(Region.Cradle, "Fae Merchant")
       .discarded(Region.Provinces, VisionRules.Conspiracy)
       .ready
-    table.updateCurrent(current => current.copy(map = current.map.copy(sites =
+
+  private val siteDetails: ReadyGame = siteDetailsBeforeImperial.updateCurrent(
+    current => current.copy(map = current.map.copy(sites =
       current.map.sites.updated(buriedGiant, current.map.sites(buriedGiant)
         .copy(forces = SiteForces.Occupied(ForceKind.Imperial, 1))))))
 
@@ -171,8 +174,8 @@ class GameApplicationServiceProjectionSuite extends munit.FunSuite:
     assertEquals(ownDetails.worldDeckTopCardKind, deck.headOption.map(_.kind))
     def worldTop(ready: ReadyGame) = projector.project("game-world-top",
       LoadedGame(Ready(ready), 0L), p1).worldDeckTopCardKind
-    assertEquals(worldTop(Table.from(siteDetails)
-      .worldDeckTop(VisionRules.Conspiracy).unchecked), Some("vision"))
+    assertEquals(worldTop(Table.from(siteDetailsBeforeImperial)
+      .worldDeckTop(VisionRules.Conspiracy).ready), Some("vision"))
     // No Table step empties the world deck.
     assertEquals(worldTop(siteDetails.updateCurrent(current => current.copy(
       commonCards = current.commonCards.copy(worldDeck = Vector.empty)))),

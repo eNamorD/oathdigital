@@ -17,12 +17,11 @@ import oathdigital.testkit.Unwrap.accepted
 class SmallFriendsSuite extends munit.FunSuite:
   private val friends = CatalogNames.denizen("Small Friends")
   private val power = SmallFriends.forCatalog(catalog)
-  private val map = Table.start.unchecked.game.current.map
+  private val map = Table.start.ready.game.current.map
   /** p1's pawn site. */
   private val home = CatalogNames.site("Ancient City")
   /** A site in play in another region. */
-  private val away = map.inPlay.find(site =>
-    map.regionOf(site) != map.regionOf(home)).get
+  private val away = Table.siteInAnotherRegionThan(home)
   /** A third site in play. */
   private val third = map.inPlay.find(site =>
     site != home && site != away).get

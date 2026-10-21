@@ -69,7 +69,7 @@ class TruthfulHarpSuite extends munit.FunSuite:
     val top = discordCards.take(8)
     val augury = CatalogNames.denizen("Augury")
     val ready = Table.from(withHarp(top)).denizen(augury, at = "Ancient City")
-      .unchecked
+      .ready
     val started = accepted(start(ready, both))
     assertEquals(hand(started), top.take(6))
     viewers.foreach(viewer =>

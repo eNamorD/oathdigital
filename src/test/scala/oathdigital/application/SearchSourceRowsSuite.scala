@@ -96,7 +96,7 @@ class SearchSourceRowsSuite extends munit.FunSuite:
     // search; one card in the Cradle discard lets the Search start.
     val stocked = Table.start.pawn(p1, "Ancient City")
       .discarded(Region.Cradle, "Wrestlers").supply(p1, 5)
-    val deck = stocked.unchecked.game.current.commonCards.worldDeck
+    val deck = stocked.ready.game.current.commonCards.worldDeck
     val shown = rows(stocked.discarded(Region.Provinces, deck*).ready)
     assertEquals(shown("world").state, "unavailable")
     assertEquals(shown("world").reason, Some("The world deck is empty"))

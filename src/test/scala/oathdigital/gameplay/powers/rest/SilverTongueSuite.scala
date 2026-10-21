@@ -91,7 +91,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val ready = silverTongueRest(Vector("Golem Legions"), Set(Suit.Nomad))
     assertEquals(PhasePowerHarness.menuPowers(catalog, ready, actor,
         PhasePowerCatalog.default(catalog), WalkerPowers.empty), Vector.empty)
-    val act = Table.from(ready).turn(actor, Phase.Act).unchecked
+    val act = Table.from(ready).turn(actor, Phase.Act).ready
     val rested = accepted(
       rules.startWalker(Ready(act), PhaseTransitionRef.BeginRest, actor))
     val restedReady = Outcomes.ready(rested.state)
@@ -106,7 +106,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val played = CatalogNames.denizen("Fae Merchant")
     val ready = Table.from(silverTongueRest(Vector.empty, Set.empty))
       .turn(actor, Phase.Act).adviser(actor, second, facedown = true)
-      .hand(actor, played).unchecked
+      .hand(actor, played).ready
     val faceup = faceupReplacing(placementOptions(ready, played))
     assertEquals(faceup, Vector(Some(tongue), Some(second)))
 
@@ -117,7 +117,7 @@ class SilverTongueSuite extends munit.FunSuite:
     val resting = Table.from(silverTongueRest(Vector.empty, Set.empty))
       .turn(actor, Phase.Act).hand(actor, tongue)
     val ready = others.foldLeft(resting)(_.adviser(actor, _, facedown = true))
-      .unchecked
+      .ready
     val options = placementOptions(ready, tongue)
     assertEquals(faceupReplacing(options), others.map(Some(_)))
     // Facedown it needs no room under its own limit.

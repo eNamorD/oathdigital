@@ -98,7 +98,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     // precondition proves it has something to do here.
     // Ancient City, capacity 3, holds no bandits.
     val ready = Table.from(wake(favor = 1, secrets = 1))
-      .bandits("Ancient City", 0).unchecked
+      .bandits("Ancient City", 0).ready
     assert(StateBasedEvaluation.banditRefill(catalog, Ready(ready))
       .toOption.flatten.nonEmpty,
       "precondition: the boundary would refill bandits in this state")
@@ -116,7 +116,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     val ready = wake(favor = 2, secrets = 1)
     // The take ends Wake; put the turn back in Wake to try the site again.
     val tookOnce = after(took(ready))
-    val once = Table.from(tookOnce).backInPhase(Phase.Wake).unchecked
+    val once = Table.from(tookOnce).backInPhase(Phase.Wake).ready
     assertEquals(take(once).left.toOption,
       Some(PowerAlreadyUsed(TakeWealthLimit.useRef(home))))
 
@@ -159,7 +159,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
   test("what the Wake menu offers is what the command accepts"):
     // A site already taken from this turn, back in Wake to try it again.
     val taken = Table.from(after(took(wake(favor = 2, secrets = 1))))
-      .backInPhase(Phase.Wake).unchecked
+      .backInPhase(Phase.Wake).ready
     oneBoardPerTakeGate(taken).foreach { ready =>
       val offered = MenuPlay.options(Table.from(ready).phaseMenuParked.state,
         catalog, powers, PhasePowers.empty)

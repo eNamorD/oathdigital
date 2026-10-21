@@ -44,8 +44,8 @@ class TakeWealthPowerSuite extends munit.FunSuite:
   /** The turn advance, as `Rest` performs it: a whole new `TurnState`, which
     * is why `usedPowers` is turn-scoped without anything clearing it.
     */
-  private def advanceTurn(state: ReadyGame): ReadyGame =
-    Table.from(state).turn(actor, Phase.Wake).unchecked
+  private def advanceTurn(state: ReadyGame)(using munit.Location): ReadyGame =
+    Table.from(state).turn(actor, Phase.Wake).ready
 
   /** Task 7's root shape: the take, under the Wake take-wealth window. */
   private def takeNode(from: SiteId): Sequence =

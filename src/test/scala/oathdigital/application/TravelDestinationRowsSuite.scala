@@ -36,8 +36,8 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     present(rows(ready, modifiers).get(site.value), site.value)
 
   /** The pass ruled by the actor, so no route here is blocked by it. */
-  private def open(supply: Int): ReadyGame =
-    Table.from(board(supply = supply)).warbandsAt(pass, actor, 1).unchecked
+  private def open(supply: Int)(using munit.Location): ReadyGame =
+    Table.from(board(supply = supply)).warbandsAt(pass, actor, 1).ready
 
   test("a destination is badged with the Supply its Travel spends"):
     // From the Cradle's plains: the coast shares the Cradle (1 Supply), Dunes
@@ -52,14 +52,14 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     val ready = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
       .favor(actor, 1).warbandsAt(provincePlains, Table.p2, 1)
-      .warbandsAt(coast, Table.p2, 1).unchecked
+      .warbandsAt(coast, Table.p2, 1).ready
     assertEquals(row(ready, coast).badge, Some("1 Supply · 1 [favor]"))
 
   test("a toll its ruler waived reads both ways on"):
     val tolled = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
       .favor(actor, 1).warbandsAt(provincePlains, Table.p2, 1)
-      .warbandsAt(coast, Table.p2, 1).unchecked
+      .warbandsAt(coast, Table.p2, 1).ready
     val granted = tolled.copy(consent = ConsentState().granting(Vector(
       ConsentKey(TollRoads.id, actor, TollRoads.decisionId,
         TollRoads.free(coast))), ConsentTurn.of(tolled)))
@@ -69,7 +69,7 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
   test("a selected modifier that makes the Travel free reads 0 Supply, and " +
       "its own card payment is not in the badge"):
     val ready = Table.from(open(supply = 7))
-      .adviser(actor, CatalogNames.denizen("Tents")).favor(actor, 1).unchecked
+      .adviser(actor, CatalogNames.denizen("Tents")).favor(actor, 1).ready
     assertEquals(row(ready, coast, Vector(Tents.id)).badge, Some("0 Supply"))
 
   test("a destination the actor cannot afford says how much it needs"):
@@ -82,7 +82,7 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
       "bandits"):
     val ready = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
-      .favor(actor, 0).bandits(provincePlains, 1).bandits(coast, 1).unchecked
+      .favor(actor, 0).bandits(provincePlains, 1).bandits(coast, 1).ready
     val shown = row(ready, coast)
     assertEquals(shown.state, "unavailable")
     assertEquals(shown.reason, Some("Needs 1 favor; you have 0"))
@@ -91,7 +91,7 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
     val ready = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
       .favor(actor, 0).warbandsAt(provincePlains, Table.p2, 1)
-      .warbandsAt(coast, Table.p2, 1).unchecked
+      .warbandsAt(coast, Table.p2, 1).ready
     val shown = row(ready, coast)
     assertEquals(shown.state, "available")
     assertEquals(shown.badge, Some("1 Supply"))
@@ -99,9 +99,9 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
   test("Way Station's site offers the favor beside the Supply"):
     val ready = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Way Station"), at = coast)
-      .warbandsAt(coast, Table.p2, 1).favor(actor, 1).unchecked
+      .warbandsAt(coast, Table.p2, 1).favor(actor, 1).ready
     assertEquals(row(ready, coast).badge, Some("1 Supply or 1 [favor]"))
-    val broke = Table.from(ready).supply(actor, 0).unchecked
+    val broke = Table.from(ready).supply(actor, 0).ready
     assertEquals(row(broke, coast).badge, Some("1 [favor]"))
 
   test("a destination Narrow Pass blocks says so on hover and logs nothing"):
@@ -123,17 +123,18 @@ class TravelDestinationRowsSuite extends munit.FunSuite:
   test("Way Station's ruler travels there for 0 Supply"):
     val ready = Table.from(open(supply = 7))
       .denizen(CatalogNames.denizen("Way Station"), at = coast)
-      .warbandsAt(coast, actor, 1).unchecked
+      .warbandsAt(coast, actor, 1).ready
     assertEquals(row(ready, coast).badge, Some("0 Supply"))
 
   /** Way Station and Toll Roads both rule by p2: the coast costs 1 Supply and
     * a 1 favor toll, and Way Station's favor answer would owe a second. */
-  private def tolledWayStation(favor: Int, supply: Int): ReadyGame =
+  private def tolledWayStation(favor: Int, supply: Int)(
+      using munit.Location): ReadyGame =
     Table.from(open(supply = supply))
       .denizen(CatalogNames.denizen("Way Station"), at = coast)
       .denizen(CatalogNames.denizen("Toll Roads"), at = provincePlains)
       .warbandsAt(coast, Table.p2, 1).warbandsAt(provincePlains, Table.p2, 1)
-      .favor(actor, favor).unchecked
+      .favor(actor, favor).ready
 
   test("a toll leaves Way Station's favor answer unaffordable on one favor"):
     assertEquals(row(tolledWayStation(favor = 1, supply = 7), coast).badge,

@@ -25,10 +25,10 @@ class BookBindersSuite extends munit.FunSuite:
     */
   private def arranged(banks: Map[Suit, Int], owner: PlayerId = holder,
       orientation: Orientation = Orientation.FaceUp,
-      vision: VisionId = VisionRules.Faith): ReadyGame =
+      vision: VisionId = VisionRules.Faith)(using munit.Location): ReadyGame =
     Table.from(SearchFixture.staged(Vector(vision), supply = 5))
       .adviser(owner, binders, facedown = orientation == Orientation.FaceDown)
-      .banksHoldingOnly(banks.toSeq*).unchecked
+      .banksHoldingOnly(banks.toSeq*).ready
 
   /** Book Binders' holder answers its bank question with `suit`. */
   private def holderChooses(placed: OathTransition, decisionId: String,
@@ -47,12 +47,13 @@ class BookBindersSuite extends munit.FunSuite:
     * holding a relic at the actor's site, the way `ConspiracyWhenPlayedSuite`
     * arranges one.
     */
-  private def withConspiracyTarget(banks: Map[Suit, Int]): ReadyGame =
+  private def withConspiracyTarget(banks: Map[Suit, Int])(
+      using munit.Location): ReadyGame =
     Table.from(
       SearchFixture.staged(Vector(VisionRules.Conspiracy), supply = 5))
       .adviser(holder, binders).pawn(holder, "Ancient City")
       .relic(holder, targetRelic, facedown = true)
-      .banksHoldingOnly(banks.toSeq*).unchecked
+      .banksHoldingOnly(banks.toSeq*).ready
 
   private val power = BookBinders.forCatalog(catalog)
 

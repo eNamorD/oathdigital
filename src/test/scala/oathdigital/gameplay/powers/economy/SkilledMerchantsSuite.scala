@@ -11,15 +11,12 @@ import oathdigital.testkit.Unwrap.accepted
 class SkilledMerchantsSuite extends munit.FunSuite:
   private val merchants = CatalogNames.denizen("Skilled Merchants")
   private val library = CatalogNames.denizen("Map Library")
-  private val map = Table.start.unchecked.game.current.map
   /** p1's pawn site. */
   private val home = CatalogNames.site("Ancient City")
   /** Another site in play in the pawn's region. */
-  private val near = map.inPlay.find(site => site != home &&
-    map.regionOf(site) == map.regionOf(home)).get
+  private val near = Table.otherSiteInRegionOf(home)
   /** A site in play in another region. */
-  private val away = map.inPlay.find(site =>
-    map.regionOf(site) != map.regionOf(home)).get
+  private val away = Table.siteInAnotherRegionThan(home)
   /** A plain Arcane denizen. */
   private val alchemist = CatalogNames.denizen("Alchemist")
   /** A plain Order denizen. */

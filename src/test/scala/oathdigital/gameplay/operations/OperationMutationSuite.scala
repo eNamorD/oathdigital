@@ -10,7 +10,7 @@ class OperationMutationSuite extends munit.FunSuite:
   /** TestGameFixtures' red with 1 faceup and 1 facedown secret. No Table step
     * empties the banks, so they are set empty here. */
   private val ready = Table.from(ReadyGames.of(game))
-    .secrets(playerId, faceUp = 1, faceDown = 1).unchecked
+    .secrets(playerId, faceUp = 1, faceDown = 1).ready
     .copy(banks = MaterialBankState(Map.empty, Map.empty))
 
   test("secret planning resolves one aggregate solution independent of order"):

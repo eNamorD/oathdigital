@@ -71,7 +71,7 @@ class AugurySuite extends munit.FunSuite:
     val region = Region.Cradle // Ancient City's region
     val pile = discordCards.take(5)
     val ready = Table.from(withAugury(Vector.empty)).discarded(region, pile*)
-      .unchecked
+      .ready
     val started = accepted(SearchPlay.searched(rules, OathState.Ready(ready),
       actor, SearchSource.RegionalDiscard(region), modifiers))
     // The pile is drawn from its end, and Augury takes a fourth card.

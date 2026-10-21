@@ -39,8 +39,8 @@ class HungerSuite extends munit.FunSuite:
 
   /** p3's Rain Boots with 1 favor and 2 secrets on it. Set on the
     * parked state, since the actor's Rest returns every card's tokens. */
-  private def stocked(ready: ReadyGame): ReadyGame =
-    Table.from(ready).tokens("Rain Boots", favor = 1, secrets = 2).unchecked
+  private def stocked(ready: ReadyGame)(using munit.Location): ReadyGame =
+    Table.from(ready).tokens("Rain Boots", favor = 1, secrets = 2).ready
 
   private def rested(ready: ReadyGame) = accepted(
     rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest, actor))

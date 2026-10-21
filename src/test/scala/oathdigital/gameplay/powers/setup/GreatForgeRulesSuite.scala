@@ -29,9 +29,9 @@ class GreatForgeRulesSuite extends munit.FunSuite:
 
   // The Setup walk is the subject (the edifice's effect runs when the walk
   // reaches it), so these tests start from the fresh Setup, not a Table.
-  private def stagedAt(side: EdificeSide): ReadyGame =
+  private def stagedAt(side: EdificeSide)(using munit.Location): ReadyGame =
     Table.from(FirstGameSetupFixture.freshReady)
-      .edifice(edifice, side, at = site).unchecked
+      .edifice(edifice, side, at = site).ready
 
   private def finish(ready: ReadyGame): ReadyGame =
     val tree = accepted(SetupProcedure.build(catalog, ready,
@@ -77,7 +77,7 @@ class GreatForgeRulesSuite extends munit.FunSuite:
 
   test("Great Forge with an empty relic deck writes nothing"):
     val staged = Table.from(stagedAt(EdificeSide.Intact)).relicDeckEmptied
-      .unchecked
+      .ready
     assertEquals(NoteText.said(great.id, great.noteKeys, events(staged)),
       Vector.empty)
 

@@ -72,8 +72,9 @@ object TravelFixture:
   /** `ready` continued by Table steps, read without the card check: the board
     * replaces the whole map, so the cards it lays out are not the ones the
     * check expects the first game to have dealt. */
-  def on(ready: ReadyGame)(steps: Table => Table): ReadyGame =
-    steps(Table.from(ready)).unchecked
+  def on(ready: ReadyGame)(steps: Table => Table)(
+      using munit.Location): ReadyGame =
+    steps(Table.from(ready)).ready
 
   def powers(modifiers: Vector[PowerId]): WalkerPowers =
     WalkerPowers.selected(WalkerPowerCatalog.default(catalog), modifiers)

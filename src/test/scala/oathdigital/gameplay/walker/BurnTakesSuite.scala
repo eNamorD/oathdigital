@@ -79,7 +79,7 @@ class BurnTakesSuite extends munit.FunSuite:
 
   test("a burn of the taker's own board leaves it there, and a player's " +
       "own burn goes to the bank"):
-    val keep = Table.from(start).favor(p1, 2).unchecked
+    val keep = Table.from(start).favor(p1, 2).ready
     val (kept, keptEvents) = walked(BuildOps((_, _) => Right(
       Vector[CoreOperation](Burn.favor(2,
         PositionedLocation(Location.PlayArea(p1)), Some(p2))))), keep)

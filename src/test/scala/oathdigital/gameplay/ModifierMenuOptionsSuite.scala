@@ -38,10 +38,11 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
   import oathdigital.gameplay.powers.PowerFixture.actor
 
   /** The actor at the Cradle's plains with no Supply, holding `favor`. */
-  private def broke(favor: Int, tents: Boolean): ReadyGame =
+  private def broke(favor: Int, tents: Boolean)(
+      using munit.Location): ReadyGame =
     val table = Table.from(board(supply = 0)).favor(actor, favor)
     (if tents then table.adviser(actor, CatalogNames.denizen("Tents"))
-      else table).unchecked
+      else table).ready
 
   test("Travel is available at 0 Supply when Tents would make it free; the " +
       "start asks for the modifier, and picking it reaches the destination"):

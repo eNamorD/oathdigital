@@ -38,7 +38,8 @@ class HornedMaskSuite extends munit.FunSuite:
   private def staged = Table.start.turn(actor, Phase.Wake)
     .pawn(actor, home).relic(actor, mask).ready
   /** `staged`, with Wayside Inn at the actor's site. */
-  private def innAtHome = Table.from(staged).denizen(inn, at = home).unchecked
+  private def innAtHome(using munit.Location) =
+      Table.from(staged).denizen(inn, at = home).ready
   private def denizensHere(ready: ReadyGame): Vector[DenizenId] =
     ready.game.current.map.sites(home).denizens.collect {
       case d: DenizenState => d.id }
@@ -50,12 +51,12 @@ class HornedMaskSuite extends munit.FunSuite:
   private def takeInn(t: OathTransition) =
     accepted(answer(t, actor, HornedMask.denizenDecisionId, choose(inn)))
   /** The actor holds exactly `cards`, faceup, beside Wayside Inn. */
-  private def holding(cards: DenizenId*) =
-    cards.foldLeft(Table.from(innAtHome))(_.adviser(actor, _)).unchecked
+  private def holding(cards: DenizenId*)(using munit.Location) =
+    cards.foldLeft(Table.from(innAtHome))(_.adviser(actor, _)).ready
 
   test("it offers the denizens at the site and never the edifice"):
     val ready = Table.from(innAtHome).denizen(elders, at = home)
-      .edifice("Marble Fountains", EdificeSide.Intact, at = home).unchecked
+      .edifice("Marble Fountains", EdificeSide.Intact, at = home).ready
     val t = accepted(use(ready, power, source))
     assert(awaits(t, HornedMask.denizenDecisionId),
       parked.parkedDecision(t.state).toString)
@@ -77,14 +78,14 @@ class HornedMaskSuite extends munit.FunSuite:
     // It was Wake's only option, so Wake ended with it: put the turn back in
     // Wake, its uses kept, to try again.
     parked.assertResumed(done.state, Phase.Act, actor)
-    val again = Table.from(after(done)).backInPhase(Phase.Wake).unchecked
+    val again = Table.from(after(done)).backInPhase(Phase.Wake).ready
     assertEquals(use(again, power, source).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(used)))
     assertEquals(replayed(ready, t.events ++ done.events), Right(done.state))
 
   test("resources on the taken card return by the standard returns"):
     val ready = Table.from(innAtHome).tokens(inn, favor = 2, secrets = 1)
-      .unchecked
+      .ready
     val suit = catalog.suitOf(inn).get
     val t = accepted(use(ready, power, source))
     val done = takeInn(t)
@@ -128,7 +129,7 @@ class HornedMaskSuite extends munit.FunSuite:
 
   test("a facedown locked adviser can be offered for discard"):
     val ready = Table.from(holding(elders, fresh)).adviser(actor, locked.head,
-      facedown = true).unchecked
+      facedown = true).ready
     val t = accepted(use(ready, power, source))
     val asked = takeInn(t)
     assertEquals(offered(asked, actor).map(_.toSet), Some(Set(
@@ -160,7 +161,7 @@ class HornedMaskSuite extends munit.FunSuite:
 
   test("a facedown Silver Tongue does not lower the limit"):
     val ready = Table.from(innAtHome).adviser(actor, tongue, facedown = true)
-      .adviser(actor, elders).unchecked
+      .adviser(actor, elders).ready
     val t = accepted(use(ready, power, source))
     val done = takeInn(t)
     parked.assertNotParked(done.state)

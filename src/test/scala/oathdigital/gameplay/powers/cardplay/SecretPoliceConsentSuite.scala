@@ -31,9 +31,9 @@ class SecretPoliceConsentSuite extends munit.FunSuite:
   /** A Search that will draw `vision`, with p1 at Ancient City beside the
     * Police; p2 rules Ancient City unless `arrange` says otherwise. */
   private def board(arrange: Table => Table = _.warbandsAt(home, other, 2),
-      vision: VisionId = faith): ReadyGame =
+      vision: VisionId = faith)(using munit.Location): ReadyGame =
     arrange(Table.from(SearchFixture.staged(Vector(vision), supply = 5))
-      .pawn(actor, home).denizen(police, at = home)).unchecked
+      .pawn(actor, home).denizen(police, at = home)).ready
 
   /** `ready` remembering `answer` for the faceup Faith, this turn. */
   private def remembering(ready: ReadyGame, answer: ConsentAnswer)

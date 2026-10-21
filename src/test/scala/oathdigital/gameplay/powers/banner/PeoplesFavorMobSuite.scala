@@ -38,7 +38,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     */
   private def searchAtAncientCityHolding(siteCards: Vector[DenizenId],
     favor: ReadyGame => ReadyGame = (r => Table.from(r)
-        .peoplesFavor(Some(actor), 1).unchecked)): ReadyGame =
+        .peoplesFavor(Some(actor), 1).ready)): ReadyGame =
     favor(
       siteCards.foldLeft(SearchFixture.staged(drawn, supply = 5))(atActorsSite))
 
@@ -69,7 +69,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
           .getOrElse(fail("no People's Favor source"))
     assertEquals(favor(quietTable).powerIds, Vector(PeoplesFavorMob.id))
     assertEquals(favor(Table.from(quietTable).peoplesFavor(Some(actor), 1,
-      PeoplesFavorFace.GrandCouncil).unchecked)
+      PeoplesFavorFace.GrandCouncil).ready)
       .handlerIds, Vector("banner.peoples-favor.grand-council"))
 
   test("its holder is offered each site card as Replace beside the empty " +
@@ -95,7 +95,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "next region's pile, its favor to the bank, its secret to the holder"):
     val kept = homesteaders
     val ready = Table.from(searchAtAncientCityHolding(Vector(kept)))
-      .tokens(kept, favor = 1, secrets = 1).unchecked
+      .tokens(kept, favor = 1, secrets = 1).ready
     val asked = toPlacement(ready)
     val done = accepted(placeReplacing(asked, played, PlayedAs.AtSite, kept))
     val end = SearchFixture.after(done)
@@ -129,12 +129,12 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
       "face, not the other banner, not an unheld banner"):
     val kept = homesteaders
     val unheld: Vector[(String, ReadyGame => ReadyGame)] = Vector(
-      "held by p3" -> (r => Table.from(r).peoplesFavor(Some(p3), 1).unchecked),
+      "held by p3" -> (r => Table.from(r).peoplesFavor(Some(p3), 1).ready),
       "Grand Council face" -> (r => Table.from(r)
-      .peoplesFavor(Some(actor), 1, PeoplesFavorFace.GrandCouncil).unchecked),
-      "unheld" -> (r => Table.from(r).peoplesFavor(None, 1).unchecked),
+      .peoplesFavor(Some(actor), 1, PeoplesFavorFace.GrandCouncil).ready),
+      "unheld" -> (r => Table.from(r).peoplesFavor(None, 1).ready),
       "Wandering Flame" -> (r => Table.from(r).darkestSecret(Some(actor), 1)
-      .unchecked))
+      .ready))
     unheld.foreach { case (label, favor) =>
       val asked = toPlacement(searchAtAncientCityHolding(Vector(kept), favor))
       assertEquals(siteSlots(asked), Vector(None), label)

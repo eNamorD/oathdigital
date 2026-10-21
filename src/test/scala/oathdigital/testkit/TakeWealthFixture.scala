@@ -25,7 +25,7 @@ object TakeWealthFixture:
       secrets = secrets)
     val others = from.game.current.players.map(_.player).filterNot(_ == actor)
     (if sharedEnemy then others.foldLeft(stocked)(_.pawn(_, site))
-     else stocked).unchecked
+     else stocked).ready
 
   /** The active player takes `args` from their pawn site. */
   def take(rules: OathRules, ready: ReadyGame,

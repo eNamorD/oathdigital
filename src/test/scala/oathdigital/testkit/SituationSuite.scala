@@ -25,8 +25,8 @@ class SituationSuite extends munit.FunSuite:
     (Situation.journaled(service, catalog, repository, gameId), repository)
 
   /** `ready` once its Wake has ended, at the Act menu. */
-  private def inAct(ready: ReadyGame): ReadyGame =
-    Table.from(ready).backInPhase(Phase.Act).phaseMenuParked.unchecked
+  private def inAct(ready: ReadyGame)(using munit.Location): ReadyGame =
+    Table.from(ready).backInPhase(Phase.Act).phaseMenuParked.ready
 
   private def recordCount(repository: InMemoryEventStreamRepository,
       gameId: String): Int =

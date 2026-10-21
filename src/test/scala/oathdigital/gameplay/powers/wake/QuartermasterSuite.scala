@@ -50,7 +50,7 @@ class QuartermasterSuite extends munit.FunSuite:
     assert(first.game.current.turn.usedPowers.contains(ref))
     // The use may end Wake when it was Wake's only option: put the turn back
     // in Wake, its uses kept, to try again.
-    val again = Table.from(first).backInPhase(Phase.Wake).unchecked
+    val again = Table.from(first).backInPhase(Phase.Wake).ready
     assertEquals(use(again).left.toOption,
       Some(OathViolation.PowerAlreadyUsed(ref)))
 

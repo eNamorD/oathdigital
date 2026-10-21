@@ -21,9 +21,10 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
 
   // The Setup walk is the subject (the edifice's effect runs when the walk
   // reaches it), so these tests start from the fresh Setup, not a Table.
-  private def stagedAt(side: EdificeSide, at: SiteId = site): ReadyGame =
+  private def stagedAt(side: EdificeSide, at: SiteId = site)(
+      using munit.Location): ReadyGame =
     Table.from(FirstGameSetupFixture.freshReady).edifice(edifice, side, at = at)
-      .unchecked
+      .ready
 
   private def finish(ready: ReadyGame): ReadyGame =
     val tree = accepted(SetupProcedure.build(catalog, ready,
@@ -33,9 +34,9 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
 
   /** Empty Grounds' site with two denizens beside it. The fixture's region
     * holds no other card, so without them there is nothing to discard. */
-  private def withOtherDenizens: ReadyGame =
+  private def withOtherDenizens(using munit.Location): ReadyGame =
     otherDenizens.foldLeft(Table.from(stagedAt(EdificeSide.Ruined)))(
-      _.denizen(_, at = site)).unchecked
+      _.denizen(_, at = site)).ready
 
   private def events(ready: ReadyGame): Vector[OathEvent] =
     val tree = accepted(SetupProcedure.build(catalog, ready,
@@ -78,14 +79,14 @@ class ProvingGroundsRulesSuite extends munit.FunSuite:
     // p1, not the first player, rules Ancient City and holds Bloodline.
     val staged = Table.from(withOtherDenizens).warbandsAt(site, Table.p1, 1)
       .adviser(Table.p1, CatalogNames.denizen("Ancient Bloodline"))
-      .unchecked
+      .ready
     assertEquals(cradleCards(finish(staged)), Vector[CardId](edifice))
 
   test("Empty Grounds discards denizens at a site the Hall of Ministers' " +
       "ruler rules, since nobody discards them"):
     val hall = CatalogNames.edifice("Hall of Ministers")
     val staged = Table.from(withOtherDenizens).warbandsAt(site, Table.p1, 1)
-      .edifice(hall, EdificeSide.Intact, at = site).unchecked
+      .edifice(hall, EdificeSide.Intact, at = site).ready
     assertEquals(cradleCards(finish(staged)), Vector[CardId](edifice, hall))
 
   // ---- Lines ----

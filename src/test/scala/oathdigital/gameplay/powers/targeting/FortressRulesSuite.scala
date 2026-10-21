@@ -43,13 +43,13 @@ class FortressRulesSuite extends munit.FunSuite:
   // ---- Oaken Fortress ----
 
   private def challengeBanners(side: EdificeSide, ruled: Boolean)
-      : Vector[DecisionOptionRef] =
+      (using munit.Location): Vector[DecisionOptionRef] =
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
     val site = CatalogNames.site("Ancient City")
     val held = challengeTable.ready
     val staged = Table.from(held).edifice(fortress, side, at = site)
     val ready = (if ruled then staged.warbandsAt(site, p2, 2) else staged)
-      .unchecked
+      .ready
     optionsAt(accepted(start(ready, ActionRef.Challenge, p1)),
       ActionRef.Challenge)
 
@@ -208,7 +208,7 @@ class FortressRulesSuite extends munit.FunSuite:
     // p1 challenges at Ancient City, where p2 stands holding People's Favor.
     val held = challengeTable.ready
     val staged = Table.from(held).edifice(fortress, EdificeSide.Ruined,
-      at = "Ancient City").unchecked
+      at = "Ancient City").ready
     assertEquals(
       hidden(rotting, accepted(start(staged, ActionRef.Challenge, p1))),
       Vector.empty)
