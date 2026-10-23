@@ -166,7 +166,7 @@ class VisionPlaySuite extends munit.FunSuite:
   test("playing a Vision over a revealed one asks nothing more"):
     val state = visionInTemporaryHand(revealed = Some(existingVision))
     val after = answerPlacement(state, DecisionOptionRef.RevealedVision(actor))
-    assertEquals(walkerIsFinished(after), true)
+    assert(walkerIsFinished(after))
     assertEquals(revealedVisionOf(after).map(_.id), Some(newVision))
     assert(provincesDiscard(after).contains(existingVision))
 

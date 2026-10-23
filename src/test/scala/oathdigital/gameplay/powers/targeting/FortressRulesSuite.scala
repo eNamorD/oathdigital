@@ -99,9 +99,8 @@ class FortressRulesSuite extends munit.FunSuite:
 
   test("a Raid whose only defenders stand at a Rotting Fortress cannot start"):
     val b = fortified(EdificeSide.Ruined, ruled = false)
-    assertEquals(StartPreview.opens(catalog, b.ready, b.actor,
-        ActionRef.Campaign, powers),
-      false)
+    assert(!StartPreview.opens(catalog, b.ready, b.actor,
+      ActionRef.Campaign, powers))
     assertEquals(startOf(b).left.toOption, Some(protectedRaid))
 
   test("a faceup beast adviser lifts the Rotting Fortress's protection; a " +

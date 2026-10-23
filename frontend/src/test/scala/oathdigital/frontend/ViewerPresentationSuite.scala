@@ -16,7 +16,7 @@ class ViewerPresentationSuite extends FunSuite:
     )
     val presentation = ServerUiSupport.viewerPresentation(value, "blue-exile")
 
-    assertEquals(presentation.showGameplayControls, false)
+    assert(!presentation.showGameplayControls)
     assertEquals(presentation.waitingForPlayerId, Some("red-exile"))
     assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
 

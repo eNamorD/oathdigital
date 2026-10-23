@@ -116,7 +116,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite:
     turnOrder.foreach(finishTurn)
     val roundFour = Outcomes.ready(state)
     assertEquals(roundFour.game.current.tracks.round, 4)
-    assertEquals(roundFour.game.current.tracks.usurperLimited, false)
+    assert(!roundFour.game.current.tracks.usurperLimited)
     assertEquals(roundFour.game.current.title,
       OathkeeperState(Some(holder), TitleSide.Usurper))
     assert(events.contains(UsurperFlipped(holder)))

@@ -409,7 +409,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val start = committed(game, b, 2)
     val done = resolved(game, start, CampaignIds.sacrifice,
       ChooseAmountAnswer(0))
-    assertEquals(result(done.state).attackerWins, false)
+    assert(!result(done.state).attackerWins)
     assertEquals(Look(done.state).boardWarbands(b.actor), 4)
     assertEquals(Look(done.state).forces(b.origin),
       SiteForces.Occupied(ForceKind.Bandit, 2))
@@ -423,7 +423,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val won = resolved(game, start, CampaignIds.sacrifice,
       ChooseAmountAnswer(1))
     assertEquals(result(won.state).sacrificed, 1)
-    assertEquals(result(won.state).attackerWins, true)
+    assert(result(won.state).attackerWins)
     parked.assertParked(won.state, ActionRef.Campaign, CampaignIds.placement,
       b.actor)
 
@@ -469,7 +469,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(Look(start.state).boardWarbands(b.actor), 4)
     val done = resolved(game, start, CampaignIds.sacrifice,
       ChooseAmountAnswer(0))
-    assertEquals(result(done.state).attackerWins, false)
+    assert(!result(done.state).attackerWins)
     // Three survive the skull; half of them, rounded down, die.
     assertEquals(boardKills(done.events, b.actor), Vector(1))
     assertEquals(Look(done.state).boardWarbands(b.actor), 3)
@@ -482,7 +482,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val start = committed(game, b, 3)
     val won = resolved(game, start, CampaignIds.sacrifice,
       ChooseAmountAnswer(1))
-    assertEquals(result(won.state).attackerWins, true)
+    assert(result(won.state).attackerWins)
     parked.assertParked(won.state, ActionRef.Campaign, CampaignIds.placement,
       b.actor)
     assertEquals(boardKills(start.events, b.actor), Vector(1))
@@ -496,7 +496,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val done = committed(game, b, 0)
     parked.assertResumed(done.state, Phase.Act, b.actor)
     assertEquals(result(done.state).force, 0)
-    assertEquals(result(done.state).attackerWins, false)
+    assert(!result(done.state).attackerWins)
     assertEquals(Look(done.state).boardWarbands(b.actor), 0)
 
   test("a player defender keeps half the killed force, returned to its board"):

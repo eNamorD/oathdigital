@@ -72,7 +72,7 @@ class CampaignRaidSuite extends munit.FunSuite:
       CampaignRaidTarget.Banner(b.rival, Banner.PeoplesFavor)))
     // The rival's 3 board warbands; the blank dice score nothing.
     assertEquals(result.defenseScore, 3)
-    assertEquals(result.attackerWins, true)
+    assert(result.attackerWins)
 
   test("a Raid victory transfers in the printed order and then asks where " +
       "the pawn goes"):
@@ -137,7 +137,7 @@ class CampaignRaidSuite extends munit.FunSuite:
     parked.assertResumed(done.state, Phase.Act, b.actor)
     val actor = Look(done.state).player(b.actor)
     val rival = Look(done.state).player(b.rival)
-    assertEquals(actor.relics.exists(_.id == relic), false)
+    assert(!actor.relics.exists(_.id == relic))
     assertEquals(rival.pawnSite, Some(b.origin))
     assertEquals(rival.board.warbands, 9)
     // p1 commits 4 warbands; half of the 4 survivors die.

@@ -52,7 +52,7 @@ class OathDriverSuite extends munit.FunSuite:
     assertEquals(traveled.events.lift(completed + 1),
       Some(ActionBoundaryRan: OathEvent))
     assertEquals(boundaries(traveled.events), 1)
-    assertEquals(current(traveled.state).boundaryDue, false)
+    assert(!current(traveled.state).boundaryDue)
     assertEquals(replayed(start, traveled.events), traveled.state)
 
   test("Begin Rest, Finish Rest and End Wake run no boundary"):

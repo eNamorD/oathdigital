@@ -170,7 +170,7 @@ class BoardSelectionDraftSuite extends munit.FunSuite:
       Some(draft(placement)))
     assertEquals(closed.get("adviser-slot:red:2").map(_.state),
       Some(OptionState.Available))
-    assertEquals(closed.contains("adviser-play:red:2:faceup"), false)
+    assert(!closed.contains("adviser-play:red:2:faceup"))
     val open = BoardOptionViews.of(decision(placement), placement,
       Some(draft(placement).click(faceup)))
     assertEquals(open.get("adviser-slot:red:2").map(_.state),

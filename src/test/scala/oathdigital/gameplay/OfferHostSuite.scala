@@ -56,7 +56,7 @@ class OfferHostSuite extends munit.FunSuite:
     accepted(outcome)
     assertEquals(host.folds.toVector.map(_.offers.map(_.power.value)), Vector(
       Vector("test.a", "test.b")))
-    assertEquals(host.folds.head.resuming, false)
+    assert(!host.folds.head.resuming)
     assertEquals(host.folds.head.answered, Vector.empty[Answered])
 
   test("a host with nothing offered expands to nothing, and a power's other " +

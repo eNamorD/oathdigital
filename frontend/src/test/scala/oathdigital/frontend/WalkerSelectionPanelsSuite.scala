@@ -213,7 +213,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
       Option(child.getAttribute("class")).getOrElse(""))
     assertEquals(order.take(3),
       Vector("walker-roll-faces", "walker-roll-totals", ""))
-    assertEquals(panel.textContent.contains("two swords and a skull"), false)
+    assert(!panel.textContent.contains("two swords and a skull"))
 
   test("a choose-many beside a roll draws dice, then totals, then the " +
       "heading"):

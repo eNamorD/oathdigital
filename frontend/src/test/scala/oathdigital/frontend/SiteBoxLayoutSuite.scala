@@ -44,7 +44,7 @@ class SiteBoxLayoutSuite extends munit.FunSuite:
     val node = world(projection(), recording(badged).options)
     val badges = Dom.all(node, ".target-detail-badge")
     assertEquals(badges.size, 1)
-    assertEquals(badges.head.parentNode.asInstanceOf[dom.Element]
-      .getAttribute("class").contains("site"), true)
+    assert(badges.head.parentNode.asInstanceOf[dom.Element]
+      .getAttribute("class").contains("site"))
     assertEquals(Dom.all(node, ".site-details .target-detail-badge"),
       Vector.empty)

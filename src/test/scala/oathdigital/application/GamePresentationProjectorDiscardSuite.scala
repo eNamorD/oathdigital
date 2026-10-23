@@ -31,6 +31,6 @@ class GamePresentationProjectorDiscardSuite extends munit.FunSuite:
       advisers = ready.knowledge.advisers.updated(p1, Vector(scryer))))).ready
     assertEquals(cradle(peeked, p1).discardCards.take(2).map(_.name),
       Vector("Scryer", "Facedown denizen"))
-    assertEquals(cradle(peeked, p1).discardCards.head.hidden, false)
+    assert(!cradle(peeked, p1).discardCards.head.hidden)
     assertEquals(cradle(peeked, p2).discardCards.take(2).map(_.cardId),
       Vector("hidden", "hidden"))

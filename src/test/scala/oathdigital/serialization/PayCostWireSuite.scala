@@ -21,7 +21,7 @@ class PayCostWireSuite extends munit.FunSuite:
   test("intoOccupied and matchingBank round-trip"):
     val op = roundTrip(PayCost(player, Location.OnCard(DenizenId("a")),
       Cost(favor = 1), intoOccupied = true, matchingBank = Some(Suit.Order)))
-    assertEquals(op("intoOccupied").bool, true)
+    assert(op("intoOccupied").bool)
     assertEquals(op("matchingBank").str, Suit.Order.key)
 
   test("a banner power use round-trips"):

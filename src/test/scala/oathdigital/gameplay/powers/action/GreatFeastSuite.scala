@@ -90,7 +90,7 @@ class GreatFeastSuite extends munit.FunSuite:
     val asked = accepted(use(ready, power, source))
     assert(awaits(asked, GreatFeast.decisionId))
     val t = accepted(continuedPast(asked, GreatFeast.decisionId))
-    assertEquals(Look(after(t)).cardsAt(home).contains(errandBoy), true)
+    assert(Look(after(t)).cardsAt(home).contains(errandBoy))
     assertEquals(NoteText.said(power, t.events), Vector(NoteText.Said(
       "used.kept", s"No Beast card at ${home.value} could be discarded.",
       covers = true)))

@@ -161,9 +161,9 @@ class PowerResolverSuite extends munit.FunSuite:
     val selected = PowerHandlers.selected(RecoverModifierSelection,
       implemented = false)(inspector)
     assertEquals(automatic.resolution, Automatic)
-    assertEquals(automatic.implemented, true)
+    assert(automatic.implemented)
     assertEquals(selected.resolution, PlayerSelected)
-    assertEquals(selected.implemented, false)
+    assert(!selected.implemented)
     assertEquals(automatic.inspect(PowerContext(RecoverEligibility, sourceA,
       NoFacts)), PowerInspection(applicable = false))
     assert(automatic.inspect(PowerContext(RecoverEligibility, sourceA,

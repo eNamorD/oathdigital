@@ -181,9 +181,9 @@ class PlayerBoardSuite extends munit.FunSuite:
     assertEquals(all(slots, ".player-title").size, 1)
     assertEquals(firstMatch(slots, ".player-slot-vision")
       .map(_.textContent), Some("Vision of Faith"))
-    assertEquals(all(node, ".board-cards .card-face")
+    assert(!all(node, ".board-cards .card-face")
       .map(_.getAttribute("data-card-id"))
-      .contains("vision:vision-of-faith"), false)
+      .contains("vision:vision-of-faith"))
 
   test("a player with neither a title nor a Vision has no slots row"):
     assertEquals(all(render(board, supplyMaximum = 7), ".player-slots"),
