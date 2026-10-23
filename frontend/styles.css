@@ -211,7 +211,6 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 }
 
 .world { margin-top: 18px; }
-.round-tracker { margin-top: 10px; }
 .round-tracker svg { display: block; width: min(100%, 150px); height: auto; margin: 0 auto; }
 .round-segment { fill: var(--site); stroke: var(--line-mid); stroke-width: 2; }
 .round-current { fill: var(--brass); stroke: var(--cream-bright); stroke-width: 3; }
@@ -727,15 +726,58 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
   line-height: 1; vertical-align: middle; }
 .pile-display > .pile-back { background-color: #493751; color: #fff; }
 .pile-display > .pile-empty { background-color: var(--base); color: transparent; }
-/* The pile and the Supply figure as controls: the same row, on the same
-   fill, with the title pill's hover. A button resets the text it inherits,
-   so the colour and font are given back. */
-.pile-open, .supply-open { border: 0; padding: 0; background: none;
-  color: inherit; font: inherit; cursor: pointer; }
+/* The pile and the Supply figure as controls, with the title pill's hover.
+   A button resets the text it inherits, so the colour and font are given
+   back. The pile keeps the deck body's frame (below). */
+.pile-open, .supply-open { color: inherit; font: inherit; cursor: pointer; }
+.supply-open { border: 0; padding: 0; background: none; }
 /* The figure keeps its place in the row; the hover fill takes the pill's
    shape around it. */
 .supply-open { margin: 0 -0.35em; padding: 0 0.35em; border-radius: 999px; }
 .pile-open:disabled { cursor: default; }
+/* A deck drawn as a card (the world deck, a region's discard): the top
+   card's letter and the count on its face, a decision's cost badge under
+   it, and the caption under that, outside the ring the decision draws. The
+   body's padding is taken back by its margin, so the card, not the ring,
+   is flush with the figure's top and sides. */
+.deck-figure { display: flex; flex: 0 0 auto; flex-direction: column;
+  align-items: center; gap: 3px; }
+.deck-body { display: flex; flex-direction: column; align-items: center;
+  gap: 4px; margin: -5px -5px 0; padding: 4px; border-radius: 8px; }
+/* Paint without weight, so a board option's border, ring and fill win. */
+:where(.deck-body) { border: 1px solid transparent; background: none; }
+.deck-body > .target-detail-badge { margin: 0; }
+/* The card's own edge is a quiet Line-mid: brass is the option ring's. */
+.deck-card { box-sizing: border-box; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 0.15em;
+  width: 66px; height: 92px; border: 2px solid var(--line-mid);
+  border-radius: 7px; font-size: 1.9rem; line-height: 1; }
+.deck-card.pile-back { background: #493751; color: #fff; }
+.deck-card.pile-empty { background: var(--base); }
+.deck-letter { font-weight: 700; }
+.deck-card > .pile-count { color: #e8d9bb; font-size: 0.5em; font-weight: 700; }
+.deck-caption { color: var(--parchment-dim); font-size: 0.78rem; }
+/* The inspect button takes the card's upper right, which draws nothing;
+   the badge holds the bottom. */
+.deck-figure .board-option-inspect { top: 3px; right: 3px; bottom: auto; }
+/* A region's header: the name, and the discard in the upper right with the
+   card's top level with the name's. It is as tall as a discard carrying a
+   cost badge, so a badge coming and going never moves the sites. */
+.region-header { display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 12px; min-height: 140px;
+  margin: 0 0 6px; }
+.region .region-header > .region-label { min-width: 0; margin: 0; }
+/* The Cradle's foot: the round tracker and the world deck, spaced evenly
+   across it and centred in the height the Cradle's two sites leave beside
+   its neighbours' three, the deck as tall as the tracker's wheel. The
+   tracker is as wide as its wheel, so the lines under it wrap there and
+   the spacing is measured between the wheel and the deck. */
+.region:has(> .deck-row) { display: flex; flex-direction: column; }
+.deck-row { display: flex; flex: 1 0 auto; align-items: center;
+  justify-content: space-evenly; margin-top: 10px; }
+.deck-row > .round-tracker { flex: 0 1 150px; min-width: 0; }
+.deck-row .deck-card { width: 107px; height: 150px; font-size: 3rem; }
+.deck-row .deck-card > .pile-count { font-size: 0.42em; }
 .player-boards { margin-top: 18px; }
 .shared-bank { margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
 .oathkeeper-status { margin: 0 0 6px; color: var(--brass-bright); font-weight: 700; }

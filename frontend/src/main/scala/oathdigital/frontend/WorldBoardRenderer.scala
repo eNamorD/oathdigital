@@ -167,11 +167,9 @@ private[frontend] object WorldBoardRenderer:
    panel.appendChild(text("h2", "", "The World"))
    // The world deck is a Search's source and Clay Rattle's pile.
    val deckKeys = Vector(BoardOptionViews.key("deck", "world"))
-   val deck = pileDisplay("World deck", value.worldDeckCount,
-     value.worldDeckTopCardKind)
+   val deck = deckBody(value.worldDeckCount, value.worldDeckTopCardKind)
    options.decorate(deck, deckKeys)
    badged(deck, deckKeys, options)
-   panel.appendChild(deck)
    val regions = element("div", "regions")
    value.world.foreach { region =>
      val section = element("section", "region")
@@ -181,17 +179,22 @@ private[frontend] object WorldBoardRenderer:
        case "hinterland" => "Hinterland"
        case other => other
      section.setAttribute("aria-label", name)
-     section.appendChild(text("h3", "region-label", name))
+     // The discard stands in the header's upper right, its top level with
+     // the region's name.
+     val header = element("div", "region-header")
+     header.appendChild(text("h3", "region-label", name))
      val discardTitle = s"$name discard pile"
      val discardKeys = Vector(BoardOptionViews.key("discard-pile",
        region.regionId))
-     val discard = openablePile("Discard", region.discardCount,
+     val discard = openableDeck(region.discardCount,
        region.discardTopCardKind, discardTitle, region.discardCards)
      badged(discard, discardKeys, options)
-     section.appendChild(options.control(discard, discardKeys,
-       Option.when(region.discardCount > 0)(discardTitle -> (anchor =>
-         CardInspection.openCards(s"$discardTitle (${region.discardCount})",
-           region.discardCards, anchor)))))
+     header.appendChild(deckFigure("Discard", options.control(discard,
+       discardKeys, Option.when(region.discardCount > 0)(discardTitle ->
+         (anchor => CardInspection.openCards(
+           s"$discardTitle (${region.discardCount})", region.discardCards,
+           anchor))))))
+     section.appendChild(header)
      val sites = element("div", "sites")
      region.sites.foreach { site =>
        val control = element("article", "site site-readonly")
@@ -220,8 +223,13 @@ private[frontend] object WorldBoardRenderer:
        sites.appendChild(control)
      }
      section.appendChild(sites)
+     // The world deck shares the Cradle's foot with the round tracker, the
+     // deck as tall as the tracker's wheel.
      if region.regionId == "cradle" then
-       value.tracks.foreach(track => section.appendChild(roundTracker(value, track)))
+       val row = element("div", "deck-row")
+       value.tracks.foreach(track => row.appendChild(roundTracker(value, track)))
+       row.appendChild(deckFigure("World deck", deck))
+       section.appendChild(row)
      regions.appendChild(section)
    }
    panel.appendChild(regions)
