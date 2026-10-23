@@ -380,7 +380,8 @@ private[frontend] object WalkerPanelSupport:
         .foreach { draft =>
       val zones = element("div", "decision-zones partition-zones")
       query.sections.foreach(section =>
-        zones.appendChild(partitionZone(section, query, draft, controls)))
+        zones.appendChild(partitionZone(section, query, draft)))
+      PartitionDrag.attach(zones, draft, controls)
       panel.appendChild(zones)
       val confirm = button(partitionConfirmLabel(query, draft),
         "partition-confirm")
@@ -396,8 +397,8 @@ private[frontend] object WalkerPanelSupport:
     }
 
   private def partitionZone(section: DecisionSectionState,
-      query: DecisionQueryState.Partition, draft: WalkerPartitionDraft,
-      controls: TableControls): dom.Element =
+      query: DecisionQueryState.Partition, draft: WalkerPartitionDraft)
+      : dom.Element =
     val zone = element("section", "decision-zone partition-zone")
     zone.setAttribute("data-section-key", section.key)
     zone.appendChild(text("h3", "", section.label))
@@ -422,19 +423,11 @@ private[frontend] object WalkerPanelSupport:
     // wide as all of them laid end to end, whatever it can wrap to.
     val options = element("div", "partition-options")
     draft.optionsIn(section.key).foreach(option =>
-      options.appendChild(partitionOption(option, draft, controls)))
+      options.appendChild(partitionOption(option)))
     zone.appendChild(options)
-    zone.addEventListener("dragover",
-      (event: dom.Event) => event.preventDefault())
-    zone.addEventListener("drop", (event: dom.Event) => {
-      event.preventDefault()
-      moveOption(draft, event.asInstanceOf[dom.DragEvent].dataTransfer
-        .getData("text/plain"), section.key, controls)
-    })
     zone
 
-  private def partitionOption(option: DecisionOptionState,
-      draft: WalkerPartitionDraft, controls: TableControls): dom.Element =
+  private def partitionOption(option: DecisionOptionState): dom.Element =
     val item = WalkerPartitionDraft.itemId(option)
     val node = element("article", "decision-option")
     node.setAttribute("draggable", "true")
@@ -444,31 +437,9 @@ private[frontend] object WalkerPanelSupport:
     // stop: in front of a modal trigger it would be a dead stop the user has
     // to pass through to reach the card.
     DragClickGuard.attach(node.asInstanceOf[dom.html.Element])
-    node.addEventListener("dragstart", (event: dom.Event) =>
-      event.asInstanceOf[dom.DragEvent].dataTransfer
-        .setData("text/plain", item))
-    // A drop on an option places the dragged one in front of it, which is
-    // how order is set by pointer; the zone's own handler would append, so
-    // this one stops before reaching it.
-    node.addEventListener("dragover",
-      (event: dom.Event) => event.preventDefault())
-    node.addEventListener("drop", (event: dom.Event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      update(draft.moveBefore(event.asInstanceOf[dom.DragEvent].dataTransfer
-        .getData("text/plain"), item), draft, controls)
-    })
-    // Drag is the only way to move an option, as the instruction line says:
-    // a drop on a zone moves it there, and a drop on an option sets its
-    // place in the order. The option holds nothing but its card.
+    // Drag is the only way to move an option, as the instruction line says,
+    // and `PartitionDrag` handles it for every zone at once. The option
+    // holds nothing but its card.
     node.appendChild(option.card.fold[dom.Element](
       text("span", "option-summary", option.label))(CardFace.render))
     node
-
-  private def moveOption(draft: WalkerPartitionDraft, item: String,
-      sectionKey: String, controls: TableControls): Unit =
-    update(draft.move(item, sectionKey), draft, controls)
-
-  private def update(moved: WalkerPartitionDraft, draft: WalkerPartitionDraft,
-      controls: TableControls): Unit =
-    if moved != draft then controls.stage(Draft.Partition(moved))
