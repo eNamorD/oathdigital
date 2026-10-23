@@ -160,7 +160,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite:
     assertEquals(Outcomes.ready(accepted(resumed).state).game.current
       .walkerPending.map(_.answered.map(_.by)), Some(Vector(p1)))
 
-  test("a non-active player's RollWalker is rejected before the tree is " +
+  test("a non-active player's roll is rejected before the tree is " +
       "rebuilt, so a restriction cannot mask the wrong player"):
     val ready = Table.start.ready
     val intruder = p2
