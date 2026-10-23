@@ -21,13 +21,13 @@ object FirstGameBootstrapCodec:
     case root: ujson.Obj =>
       for
         _ <- exact(root, Set("expectedNextSequence", "participants", "firstPlayer"), "$")
-        sequenceRaw <- field(root, "expectedNextSequence", "$")
+        sequenceRaw <- CommandJsonSupport.field(root, "expectedNextSequence", "$")
         sequence <- sequenceRaw match
           case ujson.Num(number) if number.isWhole && number >= 0 &&
               number <= MaxSafeInteger => Right(number.toLong)
           case _ => Left(InvalidValue("$.expectedNextSequence",
             "expected a non-negative safe integer"))
-        participantsRaw <- field(root, "participants", "$")
+        participantsRaw <- CommandJsonSupport.field(root, "participants", "$")
         participantValues <- participantsRaw match
           case array: ujson.Arr => Right(array.value.toVector)
           case _ => Left(InvalidValue("$.participants", "expected array"))
@@ -38,24 +38,17 @@ object FirstGameBootstrapCodec:
             val path = s"$$.participants[$index]"
             (for
               _ <- exact(value, Set("playerId", "color"), path)
-              player <- text(value, "playerId", path)
-              color <- text(value, "color", path).flatMap(key =>
+              player <- CommandJsonSupport.string(value, "playerId", path)
+              color <- CommandJsonSupport.string(value, "color", path).flatMap(key =>
                 oathdigital.model.PlayerColor.fromKey(key).toRight(
                   InvalidValue(s"$path.color", s"unknown player color '$key'")))
             yield done :+ BootstrapParticipantRequest(player, color))
           case (Right(_), (_, index)) => Left(ExpectedObject(s"$$.participants[$index]"))
           case (failure @ Left(_), _) => failure
-        first <- text(root, "firstPlayer", "$")
+        first <- CommandJsonSupport.string(root, "firstPlayer", "$")
       yield FirstGameBootstrapRequest(sequence, participants, first)
     case _ => Left(ExpectedObject("$"))
 
   private def exact(value: ujson.Obj, fields: Set[String], path: String) =
     value.value.keys.find(!fields.contains(_))
       .map(key => Left(UnexpectedField(s"$path.$key"))).getOrElse(Right(()))
-  private def field(value: ujson.Obj, name: String, path: String) =
-    value.value.get(name).toRight(MissingField(s"$path.$name"))
-  private def text(value: ujson.Obj, name: String, path: String) =
-    field(value, name, path).flatMap:
-      case ujson.Str(text) if text.trim.nonEmpty => Right(text)
-      case ujson.Str(_) => Left(InvalidValue(s"$path.$name", "must not be blank"))
-      case _ => Left(InvalidValue(s"$path.$name", "expected string"))
