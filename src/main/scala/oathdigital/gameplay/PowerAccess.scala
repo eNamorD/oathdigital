@@ -13,9 +13,6 @@ import oathdigital.model._
   * count. Faceup advisers and relics only, unless the caller opts in to
   * facedown advisers (battle plans).
   *
-  * The pre-walker resolver (`RuleSourceAccess`, used by `ReviewedPowerInspector`)
-  * is a separate, older rule and is deliberately not changed here.
-  *
   * A modifier may make its user act as if their pawn stood at another site
   * for the rest of the action ([[asIfDecision]]). `ActAsIf` records the
   * answer as walker scratch (`CurrentGameState.walkerAsIfSite`), and the

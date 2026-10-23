@@ -8,10 +8,7 @@ import oathdigital.model.{DenizenId, EdificeId, PowerId, RelicId, Suit}
  * Which catalog cards have every printed power implemented (2026-09-21
  * Chronicle design, "Randomness"). `implemented` is the per-power answer;
  * production passes `PowerImplementationStatus.implemented(catalog)`, the
- * same source the UI's unimplemented-card marker reads. Being present in
- * `ReviewedPowerCatalog`'s registry is not enough: that registry also holds
- * stubs declared unimplemented, and it has no entry for a power that only
- * the walker or phase catalogs implement.
+ * same source the UI's unimplemented-card marker reads.
  */
 object ImplementedCardCatalog:
   def denizens(catalog: ExecutableCatalog,

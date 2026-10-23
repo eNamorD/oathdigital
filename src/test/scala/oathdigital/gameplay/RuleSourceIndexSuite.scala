@@ -46,7 +46,6 @@ class RuleSourceIndexSuite extends munit.FunSuite:
       "Sticky Fire in the catalog")
     assertEquals(indexed.source.stableKey,
       s"site-relic:${siteId.value}:${relic.value}")
-    assertEquals(indexed.handlerIds, printedRelic.powers.map(_.id.value))
     assertEquals(indexed.powerIds, printedRelic.powers.map(power => power.id))
     // The board lays Sticky Fire facedown.
     assertEquals(indexed.face, RuleSourceFace.FaceDown)
@@ -65,9 +64,9 @@ class RuleSourceIndexSuite extends munit.FunSuite:
     assertEquals(banners.map(_.state), Vector(
       RuleSourceState.Banner(Some(p1), 3),
       RuleSourceState.Banner(Some(p2), 2)))
-    assertEquals(banners.map(_.handlerIds), Vector(
-      Vector("banner.peoples-favor.grand-council"),
-      Vector("banner.darkest-secret.festival")))
+    assertEquals(banners.map(_.powerIds), Vector(
+      Vector(PowerId("banner.peoples-favor.grand-council")),
+      Vector(PowerId("banner.darkest-secret.festival"))))
 
   test("all six Foundations expose ordered identities, faces, and state"):
     val base = board
@@ -84,12 +83,12 @@ class RuleSourceIndexSuite extends munit.FunSuite:
     assertEquals(foundations.map(_.face), Vector(
       RuleSourceFace.Normal, RuleSourceFace.Normal, RuleSourceFace.Altered,
       RuleSourceFace.Normal, RuleSourceFace.Normal, RuleSourceFace.Normal))
-    assertEquals(foundations(2).handlerIds, Vector("foundation.altered"))
+    assertEquals(foundations(2).powerIds, Vector(PowerId("foundation.altered")))
     // Sorted by id: Iron Hand is L01, Arbiter L23.
     assertEquals(foundations(2).state, RuleSourceState.Foundation(
       Vector(ironHand, arbiter)))
     assert(foundations.zipWithIndex.filterNot(_._2 == 2).forall {
-      case (source, _) => source.handlerIds.isEmpty &&
+      case (source, _) => source.powerIds.isEmpty &&
         source.state == RuleSourceState.Foundation(Vector.empty)
     })
 
@@ -106,5 +105,5 @@ class RuleSourceIndexSuite extends munit.FunSuite:
       _.source == RuleSourceRef.Legacy(lineageId, legacy.id)), "the legacy")
     assertEquals(indexed.source.stableKey,
       s"legacy:${lineageId.value}:${legacy.id.value}")
-    assertEquals(indexed.handlerIds, legacyDefinition.powers.map(_.id.value))
+    assertEquals(indexed.powerIds, legacyDefinition.powers.map(_.id))
     assertEquals(indexed.face, RuleSourceFace.Inactive)

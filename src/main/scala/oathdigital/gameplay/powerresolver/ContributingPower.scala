@@ -173,8 +173,7 @@ trait RerollHost extends Operation:
 /** One object per power (spec decision 8). No engine code lives in a power --
   * only the windows it hooks and the contributions it offers there.
   *
-  * `resolution` (Task 4) reuses the `PowerResolution` vocabulary the legacy
-  * `PowerHandler` already carries: `Automatic` powers are offered to every
+  * `resolution`: `Automatic` powers are offered to every
   * walker command regardless of what the player chose; `PlayerSelected`
   * powers are offered only when their `id` appears in the command's
   * `modifiers` (see `OathRules.walkerPowers`). Defaults to `Automatic` so a

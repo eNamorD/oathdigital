@@ -9,33 +9,6 @@ enum RuleSourceFace:
   case FaceUp, FaceDown, Intact, Ruined, Printed, Active, Inactive, Mob,
     GrandCouncil, WanderingFlame, Festival, Normal, Altered
 
-/** Which rule sources a player can use: a site, site card or site relic at
-  * their pawn site, an intact edifice there, their own faceup advisers and
-  * relics, banners, Foundations and their lineage's active legacies.
-  */
-private[gameplay] object RuleSourceAccess:
-  def accessible(ref: RuleSourceRef, face: RuleSourceFace, ready: ReadyGame,
-      actor: PlayerId, facedownAdviser: Boolean): Boolean =
-    val player = ready.game.current.players.find(_.player == actor)
-    val pawn = player.flatMap(_.pawnSite)
-    ref match
-      case RuleSourceRef.Site(id) => pawn.contains(id)
-      case RuleSourceRef.SiteCard(id, _) =>
-        pawn.contains(id) && face == RuleSourceFace.FaceUp
-      case RuleSourceRef.SiteRelic(id, _) =>
-        pawn.contains(id) && face == RuleSourceFace.FaceUp
-      case RuleSourceRef.Edifice(id, _) =>
-        pawn.contains(id) && face == RuleSourceFace.Intact
-      case RuleSourceRef.Adviser(owner, _) => owner == actor &&
-        (face == RuleSourceFace.FaceUp ||
-          (facedownAdviser && face == RuleSourceFace.FaceDown))
-      case RuleSourceRef.Relic(owner, _) =>
-        owner == actor && face == RuleSourceFace.FaceUp
-      case RuleSourceRef.Banner(_) | RuleSourceRef.Foundation(_) => true
-      case RuleSourceRef.Legacy(lineage, _) =>
-        player.exists(_.lineage == lineage) && face == RuleSourceFace.Active
-      case _ => false
-
 /** Mutable facts carried by sources that are not catalog cards. */
 sealed trait RuleSourceState extends Product with Serializable
 object RuleSourceState:
@@ -50,11 +23,7 @@ final case class IndexedRuleSource(
     powerIds: Vector[PowerId],
     face: RuleSourceFace,
     state: RuleSourceState = RuleSourceState.Stateless
-):
-  /** Temporary compatibility projection for callers not yet migrated to the
-    * window resolver. Factual source identity is typed at this boundary.
-    */
-  def handlerIds: Vector[String] = powerIds.map(_.value)
+)
 
 /** Redaction-neutral inventory of runtime sources and their declared handlers.
   * This index deliberately makes no accessibility, relevance, or activation

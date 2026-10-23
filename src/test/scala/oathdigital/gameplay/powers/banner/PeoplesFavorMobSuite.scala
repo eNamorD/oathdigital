@@ -70,7 +70,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite:
     assertEquals(favor(quietTable).powerIds, Vector(PeoplesFavorMob.id))
     assertEquals(favor(Table.from(quietTable).peoplesFavor(Some(actor), 1,
       PeoplesFavorFace.GrandCouncil).ready)
-      .handlerIds, Vector("banner.peoples-favor.grand-council"))
+      .powerIds, Vector(PowerId("banner.peoples-favor.grand-council")))
 
   test("its holder is offered each site card as Replace beside the empty " +
       "slot, and the empty slot discards nothing"):

@@ -14,6 +14,9 @@ class OpaqueIdSuite extends munit.FunSuite:
     assertEquals(PowerId.fromValue("Not-A-Power"), None)
     intercept[IllegalArgumentException](PowerId("Site.coast"))
     assertEquals(PowerId.fromValue("Site.coast"), None)
+    Vector("", "catacombs", " denizen.catacombs", "denizen.catacombs ",
+      "denizen.catacombs_clause", "denizen..catacombs")
+      .foreach(value => intercept[IllegalArgumentException](PowerId(value)))
     assertEquals(PowerId.fromValue("site.coast").map(_.value), Some("site.coast"))
 
   test("an id prints as its raw string"):

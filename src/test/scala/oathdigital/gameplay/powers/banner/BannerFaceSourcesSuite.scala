@@ -24,4 +24,4 @@ class BannerFaceSourcesSuite extends munit.FunSuite:
     val onFestival = Table.start.darkestSecret(Some(p1), 1,
       DarkestSecretFace.Festival).ready
     val festival = darkest(onFestival).head
-    assertEquals(festival.handlerIds, Vector("banner.darkest-secret.festival"))
+    assertEquals(festival.powerIds, Vector(PowerId("banner.darkest-secret.festival")))

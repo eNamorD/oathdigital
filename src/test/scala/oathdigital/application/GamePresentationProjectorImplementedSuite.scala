@@ -1,21 +1,16 @@
 package oathdigital.application
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, ReviewedPowerCatalog,
-  WalkerPowerCatalog}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.testkit.TestCards
 
 /** `implemented` on a projected [[oathdigital.protocol.projection.CardDetailsProjection]]
-  * must agree across the game's three separate power catalogs: a
-  * `ReviewedPowerCatalog` handler carries the flag explicitly, while a
-  * `WalkerPowerCatalog`/`PhasePowerCatalog` power carries no flag at all --
-  * for those, being wired in for this catalog at all is what implemented
-  * means. Each case below picks a real production card by what those
-  * catalogs say of its powers, so the suite stays honest to the production
-  * catalog and moves on its own as powers ship: a case no card fits any
-  * more is skipped, not failed. (No denizen is built by a reviewed handler
-  * alone any more, so that path has no card-level case.)
+  * reads the walker and phase catalogs: a power carries no flag, being wired
+  * in for this catalog is what implemented means. Each case below picks a
+  * real production card by what those catalogs say of its powers, so the
+  * suite stays honest to the production catalog and moves on its own as
+  * powers ship: a case no card fits any more is skipped, not failed.
   */
 class GamePresentationProjectorImplementedSuite extends munit.FunSuite:
   private val projector = new GamePresentationProjector(catalog)
@@ -23,17 +18,12 @@ class GamePresentationProjectorImplementedSuite extends munit.FunSuite:
   private val walkerOrPhase: Set[PowerId] =
     WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet ++
       PhasePowerCatalog.default(catalog).powers.map(_.id).toSet
-  private val reviewed = ReviewedPowerCatalog.powers.map(power =>
-    power.id -> power.handlers).toMap
 
-  /** Only the walker or phase catalog runs the power. */
-  private def builtInWalkerOrPhase(id: PowerId): Boolean =
-    walkerOrPhase(id) && !reviewed.contains(id)
+  /** The walker or phase catalog runs the power. */
+  private def builtInWalkerOrPhase(id: PowerId): Boolean = walkerOrPhase(id)
 
-  /** No catalog runs the power: it is unreviewed, or reviewed with a handler
-    * not built, and neither walker nor phase catalog covers it. */
-  private def unbuilt(id: PowerId): Boolean =
-    !walkerOrPhase(id) && !reviewed.get(id).exists(_.forall(_.implemented))
+  /** Neither the walker nor the phase catalog covers the power. */
+  private def unbuilt(id: PowerId): Boolean = !walkerOrPhase(id)
 
   /** A denizen whose printed powers all satisfy `built`. */
   private def denizenWhosePowers(built: PowerId => Boolean): DenizenId =

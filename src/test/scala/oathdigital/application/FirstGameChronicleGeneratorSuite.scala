@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.gameplay.operations.TheGrandScepterCard
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.powers.{PowerImplementationStatus, ReviewedPowerCatalog}
+import oathdigital.gameplay.powers.PowerImplementationStatus
 import oathdigital.model.{CardId, Chronicle, DenizenId, EdificeId, Suit}
 import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.{accepted, present}
@@ -73,23 +73,22 @@ class FirstGameChronicleGeneratorSuite extends munit.FunSuite:
     val (_, rest) = chronicle.relicDeck.span(implemented)
     assert(rest.forall(id => !implemented(id)))
 
-  test("implemented means what the UI marker reads, not presence in the " +
-      "reviewed registry: a walker-only power counts, a declared stub does not"):
-    val registry = accepted(ReviewedPowerCatalog.registry(catalog))
+  test("implemented means what the UI marker reads: a walker-only power " +
+      "counts, and a denizen with an unimplemented power is left out"):
     // The Broken Forge, the Great Forge's ruined face, has a walker-only power.
     val brokenForge = CatalogNames.edifice("Broken Forge")
     val greatForge = present(catalog.edifices.find(
       _.id.value == brokenForge.value), "the Broken Forge")
     val walkerOnly =
       present(greatForge.ruined.powers.headOption, "its ruined power").id
-    assert(registry.lookup(walkerOnly).isEmpty && status(walkerOnly))
-    val stub = ReviewedPowerCatalog.powers.find(_.handlers.exists(!_.implemented))
-      .map(_.id).filterNot(status)
-    assert(stub.nonEmpty, "fixture expects at least one declared-unimplemented stub")
-    assert(registry.lookup(stub.get).isDefined)
+    assert(status(walkerOnly))
+    val unimplemented = catalog.denizens.flatMap(_.powers.map(_.id))
+      .find(id => !status(id))
+    assert(unimplemented.nonEmpty, "fixture expects an unimplemented denizen power")
     val denizens = ImplementedCardCatalog.denizens(catalog, status)
-    catalog.denizens.filter(_.powers.exists(_.id == stub.get)).foreach { d =>
-      assert(!denizens(DenizenId(d.id.value)), s"${d.id.value} carries stub ${stub.get}")
+    catalog.denizens.filter(_.powers.exists(_.id == unimplemented.get)).foreach { d =>
+      assert(!denizens(DenizenId(d.id.value)),
+        s"${d.id.value} carries ${unimplemented.get}")
     }
 
   test("every Homeland carries an implemented edifice when its suit has one"):

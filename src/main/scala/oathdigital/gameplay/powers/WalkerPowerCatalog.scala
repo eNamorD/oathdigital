@@ -23,8 +23,7 @@ import oathdigital.gameplay.powers.whenplayed._
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
-  * seam. Catalog-parameterized like
-  * `ReviewedPowerCatalog.resolver`/`registry`: a contribution that carries a
+  * seam. Catalog-parameterized: a contribution that carries a
   * catalog-specific card id must be resolved against the same catalog the
   * caller is running. A site power whose site is absent from `catalog`
   * (e.g. a synthetic test catalog) is simply omitted, not a construction
