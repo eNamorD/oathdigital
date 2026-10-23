@@ -12,7 +12,7 @@ import oathdigital.testkit.{MenuPlay, Outcomes, PowerStubs, Table, WalkerStubs}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.accepted
 
-/** Task 3 wiring at the aggregate boundary: `OathRules` gathers restrictions
+/** Wiring at the aggregate boundary: `OathRules` gathers restrictions
   * once per command, at command entry, and rejects the whole command before
   * any node runs.
   *
@@ -22,12 +22,11 @@ import oathdigital.testkit.Unwrap.accepted
   * `OathRules.checkRestrictions` from either call site and a `Left` here
   * becomes a walk, failing the test.
   *
-  * No action declares a `window` yet (Task 4 wires Recover's), so the tree a
-  * command walks is supplied through `OathRules`' `walkerTree` seam -- the
-  * same injectable-default shape `warExhaustionRandomPort` already
-  * uses, and the production default is what
-  * every other walker suite exercises. The wiring under test is generic; the
-  * tree only has to carry a hookable node.
+  * The tree a command walks is supplied through `OathRules`' `walkerTree`
+  * seam rather than read from a real action -- the same injectable-default
+  * shape `warExhaustionRandomPort` already uses, and the production default
+  * is what every other walker suite exercises. The wiring under test is
+  * generic; the tree only has to carry a hookable node.
   */
 class OathRulesWalkerPowerSuite extends munit.FunSuite:
   private val window: PowerWindow = PowerWindow.RecoverModifierSelection

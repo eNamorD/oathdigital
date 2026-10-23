@@ -11,7 +11,7 @@ import oathdigital.testkit.ProcedureWalkerFixture._
   * counts from state and walks on.
   */
 class ProcedureWalkerRollSuite extends munit.FunSuite:
-  test("a Roll leaf parks too (faces ride a later command; Task 4 wires them)"):
+  test("a Roll leaf parks too (faces ride a later command)"):
     val roll = Roll(PoolKey("recover"), DiceSpec(DiceKind.Defense))
     val tree: Operation = Sequence(roll, spendOneSupply)
 

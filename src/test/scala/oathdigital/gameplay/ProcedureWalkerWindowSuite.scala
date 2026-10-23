@@ -19,12 +19,11 @@ import oathdigital.testkit.ProcedureWalkerFixture._
   */
 class ProcedureWalkerWindowSuite extends munit.FunSuite:
   // -------------------------------------------------------------------------
-  // Task 3: power contributions -- gather/fold at a windowed node, inherited
+  // Power contributions -- gather/fold at a windowed node, inherited
   // attribution, restriction rejection at command entry, and the
-  // replay-never-consults-contributions guarantee. Recover's own tree carries
-  // no window yet (Task 4), so these trees are built ad hoc with
-  // `WalkerStubs.WindowedNode` (composites) and a `Decide` carrying a
-  // `window` (the one leaf kind that can declare one today).
+  // replay-never-consults-contributions guarantee. These trees are built ad
+  // hoc with `WalkerStubs.WindowedNode` (composites) and a `Decide` carrying
+  // a `window`, so the wiring is proved apart from any real action's tree.
   // -------------------------------------------------------------------------
 
   private val testWindow: PowerWindow = PowerWindow.RecoverModifierSelection
@@ -274,7 +273,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
   // composite's own declared `children`. `OathRulesWalker.checkAnswerable`
   // is the only caller;
   // these tests drive `parkedRoll`/`parkedDecide` directly, synthetically,
-  // exactly like Task 3's own `WindowedNode`/`TransformStub` doubles --
+  // exactly like the `WindowedNode`/`TransformStub` doubles above --
   // no dependency on Recover or the catalog.
   // -------------------------------------------------------------------------
 
@@ -291,8 +290,7 @@ class ProcedureWalkerWindowSuite extends munit.FunSuite:
 
     // The live walk folds `spendOneSupply` in FIRST, so the real park is at
     // folded index 1 ("0.1"), one deeper than the declared "0.0" -- the exact
-    // shape Task 5's first inserting power (Catacombs, at the root window)
-    // produces.
+    // shape Catacombs, inserting at the root window, produces.
     val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
         powers) match
       case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
