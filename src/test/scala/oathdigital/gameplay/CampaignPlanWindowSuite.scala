@@ -14,9 +14,8 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, Outcomes,
-  PhasePowerHarness}
-import oathdigital.testkit.Outcomes.assertWireRoundTrips
+import oathdigital.testkit.{ActPowerHarness, CatalogNames, Look, RecordedOps}
+import oathdigital.testkit.Outcomes.{assertWireRoundTrips, ready}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** The plan window itself, with plans of the suite's own: what a plan may cost,
@@ -49,11 +48,6 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
 
   private val attacker = Set[CampaignPlanSide](CampaignPlanSide.Attacker)
   private val defender = Set[CampaignPlanSide](CampaignPlanSide.Defender)
-
-  private def ready(state: OathState): ReadyGame = Outcomes.ready(state)
-
-  private def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
-    PhasePowerHarness.ops(events)
 
   /** The Campaign the actor started, and the transition that committed its
     * force. */
@@ -139,8 +133,8 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     assertEquals(Look(picked.state).tokensOn(outriders), Tokens(2, 0))
     assertEquals(Look(picked.state).player(b.actor).board.favor, 1)
     assert(
-      ops(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
-    assert(ops(picked.events).contains(PayCost(b.actor,
+      RecordedOps.all(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 3)))
+    assert(RecordedOps.all(picked.events).contains(PayCost(b.actor,
       Location.OnCard(outriders), Cost(favor = 1), intoOccupied = true,
       matchingBank = catalog.suitOf(outriders))))
 
@@ -176,7 +170,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val after = Look(picked.state).player(b.actor)
     assertEquals((after.board.favor, after.board.faceUpSecrets), (0, 0))
     assertEquals(Look(picked.state).tokensOn(outriders), Tokens.empty)
-    assert(ops(picked.events).contains(PayCost(b.actor,
+    assert(RecordedOps.all(picked.events).contains(PayCost(b.actor,
       Location.OnCard(outriders), Cost(favorBurnt = 1, secretBurnt = 1),
       intoOccupied = true, matchingBank = catalog.suitOf(outriders))))
 
@@ -243,7 +237,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     assertEquals((after.favor, after.faceUpSecrets, after.faceDownSecrets),
       (1, 0, 1))
     assert(
-      ops(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+      RecordedOps.all(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
     // The recorded payment is the requested one, and replay settles it again.
     assertEquals(ActPowerHarness.replayed(g, b.ready,
       committed.started.events ++ forced.events ++ picked.events),
@@ -285,7 +279,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val picked = pick(g, forced, b.rival, CampaignIds.defenderPlan,
       denizen(outriders))
     assertEquals(Look(picked.state).player(b.rival).board.warbands, 2)
-    assertEquals(ops(picked.events).collect { case sacrifice: Sacrifice =>
+    assertEquals(RecordedOps.all(picked.events).collect { case sacrifice: Sacrifice =>
       sacrifice }, Vector(Sacrifice(b.rival,
         Piece.Warbands(ForceKind.Exile(b.player(b.rival).lineage), 1),
         PositionedLocation(Location.PlayArea(b.rival)))))
@@ -345,7 +339,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     assertEquals(ready(paid.state).game.current.map.sites(staged.origin).forces,
       SiteForces.Occupied(ForceKind.Exile(lineage), 2))
     assert(
-      ops(paid.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+      RecordedOps.all(paid.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
     // Nothing else is offered, so the window ends and the attacker sacrifices.
     assert(awaits(paid.state, Vector(sacrificing), staged.actor,
       CampaignIds.sacrifice))
@@ -364,11 +358,11 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val picked = pick(g, forced, b.rival, CampaignIds.defenderPlan,
       denizen(outriders))
     assert(
-      ops(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, -2)))
+      RecordedOps.all(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, -2)))
     val none = startedAndCommitted(g, b, force = 0).forced
     val nothing = pick(g, none, b.rival, CampaignIds.defenderPlan,
       denizen(outriders))
-    assertEquals(ops(nothing.events).collect { case pool: ModifyDicePool => pool },
+    assertEquals(RecordedOps.all(nothing.events).collect { case pool: ModifyDicePool => pool },
       Vector.empty)
 
   test("a plan's own operations run after its payment"):
@@ -486,11 +480,11 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       CampaignIds.targets, ChooseManyAnswer(Vector.empty)))
     val forced = accepted(g.resolveWalker(targeted.state, funded.actor,
       CampaignIds.force, ChooseAmountAnswer(2)))
-    val pools = ops(forced.events).collect {
+    val pools = RecordedOps.all(forced.events).collect {
       case pool @ ModifyDicePool(CampaignIds.defensePool, _, _) => pool }
     assertEquals(pools.filter(_.delta == 1).size, 1)
     assertEquals(pools.filter(_.delta == 5), Vector.empty)
-    assertEquals(ops(forced.events).collect { case pay: PayCost => pay },
+    assertEquals(RecordedOps.all(forced.events).collect { case pay: PayCost => pay },
       Vector.empty)
     assert(awaits(forced.state, Vector(free, costly), staged.actor,
       CampaignIds.sacrifice))
@@ -505,7 +499,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
     val finished = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       CampaignIds.finish)
     assert(awaits(finished.state, Vector(plan), b.actor, CampaignIds.sacrifice))
-    assertEquals(ops(finished.events).collect { case pool: ModifyDicePool => pool },
+    assertEquals(RecordedOps.all(finished.events).collect { case pool: ModifyDicePool => pool },
       Vector.empty)
     // With a second plan left the window stays open, and the source already
     // chosen is no longer offered.

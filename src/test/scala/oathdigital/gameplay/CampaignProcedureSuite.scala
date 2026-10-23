@@ -17,7 +17,8 @@ import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{ActPowerHarness, CatalogNames, EmptyWindowModifier,
-  Look, Outcomes, PhasePowerHarness, Table}
+  Look, RecordedOps, Table}
+import oathdigital.testkit.Outcomes.ready
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 import oathdigital.testkit.StartPreview
 
@@ -37,13 +38,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
   private def answer(state: OathState, actor: PlayerId, id: String,
       answer: DecisionAnswer) = r.resolveWalker(state, actor, id, answer)
 
-  private def ready(state: OathState): ReadyGame = Outcomes.ready(state)
-
   private def button(key: String) =
     ChooseOneAnswer(DecisionOptionRef.Button(key))
-
-  private def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
-    PhasePowerHarness.ops(events)
 
   /** The attacker's `answer` to `id`, resolved by `game` from `from`; fails
     * with the violation. The attacker is every board's actor, p1. */
@@ -156,7 +152,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val done = accepted(answer(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(3)))
     val printed = catalog.sites.find(_.id == b.origin).get.defense
-    val gathered = ops(done.events).collect {
+    val gathered = RecordedOps.all(done.events).collect {
       case pool: ModifyDicePool => pool }
     val defense = Option.when(printed > 0)(
       ModifyDicePool(CampaignIds.defensePool, printed))
@@ -178,7 +174,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
         suggested = Some(0)))
     val done = accepted(answer(started.state, b.actor, CampaignIds.force,
       ChooseAmountAnswer(0)))
-    assert(!ops(done.events).exists {
+    assert(!RecordedOps.all(done.events).exists {
       case ModifyDicePool(pool, _, _) => pool == CampaignIds.attackPool
       case _ => false
     })
@@ -236,8 +232,8 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val picked = accepted(answer(plans.state, b.actor, CampaignIds.attackerPlan,
       planPick(DecisionOptionRef.Relic(brass))))
     assert(
-      ops(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
-    assert(ops(picked.events).contains(PayCost(b.actor,
+      RecordedOps.all(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
+    assert(RecordedOps.all(picked.events).contains(PayCost(b.actor,
       Location.OnCard(brass), Cost(secret = 1), intoOccupied = true)))
     // Nothing else can be chosen, so the window finishes by itself and the
     // walk goes on to the sacrifice.
@@ -263,7 +259,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       Some("Choose a battle plan, or finish")))
     val done = accepted(
       answer(first.state, b.actor, CampaignIds.attackerPlan, finish))
-    assertEquals(ops(done.events).collect { case pool: ModifyDicePool => pool }
+    assertEquals(RecordedOps.all(done.events).collect { case pool: ModifyDicePool => pool }
       .filter(_.pool == CampaignIds.attackPool), Vector.empty)
 
   test("a plan already chosen is rejected when chosen again"):
@@ -282,7 +278,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       Orientation.FaceDown)
     val done = accepted(answer(atPlans(b).state, b.actor,
       CampaignIds.attackerPlan, planPick(DecisionOptionRef.Denizen(outriders))))
-    assert(ops(done.events).contains(Move(Piece.Card(outriders),
+    assert(RecordedOps.all(done.events).contains(Move(Piece.Card(outriders),
       PositionedLocation(Location.PlayArea(b.actor)),
       PositionedLocation(Location.PlayArea(b.actor)),
       resultingOrientation = Some(Orientation.FaceUp))))
@@ -305,7 +301,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val picked = accepted(answer(plans.state, b.rival, CampaignIds.defenderPlan,
       planPick(DecisionOptionRef.Button("title"))))
     assert(
-      ops(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+      RecordedOps.all(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
 
   test("a bandit defender applies its cost-free plans by itself"):
     val watchdog = CatalogNames.denizen("Watchdog")
@@ -316,7 +312,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
     val b = withSiteCard(base, base.origin, watchdog)
     val done = atPlans(b)
     assert(
-      ops(done.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+      RecordedOps.all(done.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
     parked.assertParked(done.state, ActionRef.Campaign, CampaignIds.sacrifice,
       b.actor)
 
@@ -336,7 +332,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
 
   /** The size of each kill of `player`'s board warbands in `events`. */
   private def boardKills(events: Vector[OathEvent], player: PlayerId)
-      : Vector[Int] = ops(events).collect {
+      : Vector[Int] = RecordedOps.all(events).collect {
     case Kill(Piece.Warbands(_, count),
         PositionedLocation(Location.PlayArea(`player`), _, _)) => count
   }
@@ -562,7 +558,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       CampaignIds.attackerPlan, b.actor)
     val done = accepted(answer(plans.state, b.actor, CampaignIds.attackerPlan,
       planPick(DecisionOptionRef.Denizen(outriders))))
-    assertEquals(ops(done.events).collect { case reveal: Reveal => reveal },
+    assertEquals(RecordedOps.all(done.events).collect { case reveal: Reveal => reveal },
       Vector.empty)
     // The same card at the origin, which the bandits rule, is not the
     // attacker's.

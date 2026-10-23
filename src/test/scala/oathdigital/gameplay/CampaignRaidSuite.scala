@@ -13,7 +13,8 @@ import oathdigital.gameplay.walker.{ParkedDecisionAssertions,
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
 import oathdigital.model.OathState.Ready
-import oathdigital.testkit.{ActPowerHarness, Look, Outcomes}
+import oathdigital.testkit.{ActPowerHarness, Look}
+import oathdigital.testkit.Outcomes.ready
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 class CampaignRaidSuite extends munit.FunSuite:
@@ -21,7 +22,6 @@ class CampaignRaidSuite extends munit.FunSuite:
   private val parked = new ParkedDecisionAssertions(catalog,
     WalkerPowerCatalog.default(catalog))
 
-  private def ready(state: OathState): ReadyGame = Outcomes.ready(state)
   private def favorInBanks(state: OathState): Int =
     ready(state).banks.favor.values.sum
   private val raid = ChooseOneAnswer(DecisionOptionRef.Button("raid"))
