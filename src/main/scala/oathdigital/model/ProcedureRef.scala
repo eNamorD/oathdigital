@@ -3,11 +3,10 @@ package oathdigital.model
 /** Stable persisted identity of a procedure whose tree is rebuilt on each
   * walker command. The operation tree itself remains command-local.
   *
-  * Three families share this one hierarchy because Scala 2.13 has no union
-  * types: `key` is unique across all of them, so a bare key resolves to at
-  * most one member, and `family` is what the wire and the journal carry
-  * alongside it so a decoder can reject a reference read back under the
-  * wrong family (Task 4).
+  * Three families share this one hierarchy: `key` is unique across all of
+  * them, so a bare key resolves to at most one member, and `family` is what
+  * the wire and the journal carry alongside it so a decoder can reject a
+  * reference read back under the wrong family.
   */
 sealed trait ProcedureRef extends Product with Serializable:
   def key: String
@@ -21,7 +20,7 @@ sealed trait StartableRef extends ProcedureRef
 
 /** What a player spends as their action, in any phase. The action boundary
   * runs after one of these completes, whatever phase it ran in -- see
-  * `OathRulesWalker.runsActionBoundary`.
+  * `OathDriver`.
   */
 sealed trait ActionRef extends StartableRef { final def family = "action" }
 

@@ -22,7 +22,7 @@ object ProvingGroundsCard extends Edifice(EdificeId("E22"), Suit.Hearth):
     val powers: Vector[PrintedPower] = Vector(power)
 
 /** E22, both faces (2026-09-21 Chronicle design, "Setup powers"). See
-  * `GreatMarketRules` for the `WhenExplored`/window-sharing rationale.
+  * `MarketRule` for the `WhenExplored`/window-sharing rationale.
   */
 final case class ProvingGrounds private (catalog: ExecutableCatalog)
     extends ContributingPower:

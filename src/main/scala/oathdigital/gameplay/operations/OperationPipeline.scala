@@ -43,7 +43,7 @@ object OperationRun:
   *
   * Whole-batch rejection must stay staged: an operation later in a batch can
   * be satisfiable only after earlier operations ran (for example a Campaign
-  * losing-force `ReturnToBoard` that moves warbands out of a bank which
+  * losing-force return that moves warbands out of a bank which
   * in-batch `Kill`s replenish). Validating every operation against the initial
   * state would reject those trajectory batches the retired executor accepted,
   * so the authoritative rejection is the staged per-operation resolution —

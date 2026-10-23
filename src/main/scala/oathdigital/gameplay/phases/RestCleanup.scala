@@ -58,9 +58,9 @@ object RestCleanupPlan:
 /** The Rest cleanup's operations: favor on every card in play to its
   * suit bank (`EffectiveSuit`: a Pledge to Discord holder's advisers return
   * to Discord), secrets on cards to the resting player, and the
-  * resting player's facedown secrets flipped faceup -- the operations legacy
-  * `Rest.applyCompletion` ran. Finish Rest runs them at the Rest favor
-  * window; A Round of Ale runs them in an action, outside that window.
+  * resting player's facedown secrets flipped faceup. Finish Rest runs them
+  * at the Rest favor window; A Round of Ale runs them in an action, outside
+  * that window.
   */
 object RestCleanup:
   def operations(catalog: ExecutableCatalog, ready: ReadyGame,

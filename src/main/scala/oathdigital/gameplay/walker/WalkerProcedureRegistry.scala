@@ -330,7 +330,7 @@ object WalkerProcedureRegistry:
       * has one. What follows from it being a phase transition rather than
       * an action is decided where the difference is visible: the action
       * boundary runs only after a completed `ActionRef`, whatever phase it
-      * ran in (`OathRulesWalker.runsActionBoundary`, Task 8) -- End Wake is
+      * ran in (`OathDriver`) -- End Wake is
       * a `PhaseTransitionRef`, so it never runs one.
       *
       * `fallbackKind` is `ActionKind.Wake`, which is the kind the

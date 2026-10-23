@@ -4,7 +4,7 @@ import org.scalajs.dom
 
 /** Renders catalog `rulesText` markup instead of printing it.
   *
-  * `CatalogModel.rulesText` joins a card's powers with a blank line before the
+  * `PrintsPowers.rulesText` joins a card's powers with a blank line before the
   * projection is built, so splitting on that boundary is what recovers the
   * per-power blocks. Six cards in the catalog have more than one power.
   */

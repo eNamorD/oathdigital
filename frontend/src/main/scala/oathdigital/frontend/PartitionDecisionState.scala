@@ -18,19 +18,12 @@ private[frontend] final case class PartitionSection(key: String, label: String,
 
 /** The two-zone move/drag interaction, with no idea what it is partitioning.
   *
-  * Extracted from `CardDecisionState`'s Keep/Discard zones so a parked
-  * walker partition decision can borrow the same interaction rather than
-  * grow a second one. Both callers adapt into it and neither is visible
-  * from here: an item is an opaque id, a section is whatever its caller
-  * declared, and confirmation is `every item placed exactly once` plus
-  * `every declared minimum met`. That predicate is the whole point --
-  * a client computes it from what it was offered, never from local
-  * knowledge of an action's cost.
-  *
-  * The direction of reuse is one-way. `CardDecisionState` keeps its
-  * two-stage `Arrange`/`Resolve` flow, its labels and its discard ordering
-  * on top of this; this learns no Search or setup concept in return, and a
-  * walker query never depends on the card-decision pipeline.
+  * The parked walker partition decision (`WalkerPanelSupport`) adapts into
+  * it, and nothing of that caller is visible from here: an item is an
+  * opaque id, a section is whatever its caller declared, and confirmation
+  * is `every item placed exactly once` plus `every declared minimum met`.
+  * That predicate is the whole point -- a client computes it from what it
+  * was offered, never from local knowledge of an action's cost.
   */
 private[frontend] final case class PartitionDecisionState(
     sections: Vector[PartitionSection],

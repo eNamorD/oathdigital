@@ -21,7 +21,7 @@ object GreatForgeCard extends Edifice(EdificeId("E06"), Suit.Nomad):
     val powers: Vector[PrintedPower] = Vector(power)
 
 /** E06, both faces (2026-09-21 Chronicle design, "Setup powers"). See
-  * `GreatMarketRules` for the `WhenExplored`/window-sharing rationale.
+  * `MarketRule` for the `WhenExplored`/window-sharing rationale.
   */
 sealed abstract class ForgeRule extends ContributingPower:
   def catalog: ExecutableCatalog

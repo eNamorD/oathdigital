@@ -4,9 +4,8 @@ import scala.util.control.NonFatal
 import oathdigital.model._
 import oathdigital.serialization.WireError.InvalidValue
 
-/** Journal wire form of negotiation terms, shared by the walker's answer
-  * codec and (until it is deleted) the legacy Negotiation event codec, so the
-  * two spell terms identically.
+/** Journal wire form of negotiation terms, the one spelling the walker's
+  * answer codec writes and reads.
   */
 private[serialization] object NegotiationTermsCodec:
   def encode(terms: NegotiationTerms): ujson.Value = ujson.Obj(

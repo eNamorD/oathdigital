@@ -454,8 +454,7 @@ private[gameplay] trait OathRulesWalker:
       case (failure @ Left(_), _) => failure
 
   /** A park a client cannot answer is refused at command time, before the
-    * `WalkerParked` fact is appended -- the rejection `parkedContinue` ran
-    * on its way to building a continuation nobody read.
+    * `WalkerParked` fact is appended.
     *
     * A Roll park carries no `Decide` and therefore no decision id of its own,
     * so the procedure must declare one; `WalkerDecisionProjector` reads the
