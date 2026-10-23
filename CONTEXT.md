@@ -54,8 +54,8 @@ _Avoid_: query type, decision type, panel type
 **Surface**:
 Where and how a viewer sees a parked decision: as a panel in the action pane,
 or as clickable options (sites, cards, adviser slots) on the world board. A
-viewer sees at most one surface for the parked decision, plus a waiting notice
-when the decision awaits someone else.
+viewer sees at most one surface for the parked decision. When the decision
+awaits someone else, the status line names that player and the question.
 _Avoid_: panel (a surface is one of the two kinds of panel), view, renderer
 
 **Subject card**:

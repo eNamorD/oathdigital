@@ -8,6 +8,11 @@ private[frontend] object ActionDecisionRenderer:
      case Some(playerId) =>
        node.appendChild(dom.document.createTextNode("Waiting for "))
        node.appendChild(playerReference(value, playerId))
+       // The question a parked decision asks rides on the same line, so the
+       // pane names the player waited on once.
+       value.walkerWaiting.filter(_.playerId == playerId).flatMap(_.heading)
+         .foreach(heading =>
+           node.appendChild(dom.document.createTextNode(s": $heading")))
      case None if value.walkerDecision.nonEmpty =>
        // A parked walker Decide belonging to this viewer projects
        // waitingForPlayerId = None (see the ServerUiSupport.viewerPresentation
