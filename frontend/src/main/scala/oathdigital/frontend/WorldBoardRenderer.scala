@@ -52,6 +52,8 @@ private[frontend] object WorldBoardRenderer:
        Vector(BoardOptionViews.key("player", player.playerId)))
      identity.appendChild(name)
      identity.appendChild(text("span", "player-role", player.role))
+     if value.tracks.exists(_.firstPlayerId == player.playerId) then
+       identity.appendChild(text("span", "player-first-badge", "First Player"))
      section.appendChild(identity)
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
      val resources = element("span", "resources")
@@ -253,8 +255,9 @@ private[frontend] object WorldBoardRenderer:
  private def roundTracker(value: GameProjection,
      track: oathdigital.protocol.projection.GameTracksProjection): dom.Element =
    val section = element("section", "round-tracker")
+   val first = playerReference(value, track.firstPlayerId)
    section.setAttribute("aria-label", s"Round ${track.round} of 8; " +
-     s"Visions Drawn ${track.visionsDrawn}; first player ${track.firstPlayerId}")
+     s"Visions Drawn ${track.visionsDrawn}; first player ${first.textContent}")
    val svg = dom.document.createElementNS("http://www.w3.org/2000/svg", "svg")
      .asInstanceOf[dom.svg.SVG]
    svg.setAttribute("viewBox", "0 0 200 200")
@@ -282,8 +285,10 @@ private[frontend] object WorldBoardRenderer:
      svg.appendChild(group)
    }
    section.appendChild(svg)
-   section.appendChild(text("p", "track-summary",
-     s"Visions Drawn ${track.visionsDrawn} · First player ${track.firstPlayerId}"))
+   val summary = text("p", "track-summary",
+     s"Visions Drawn ${track.visionsDrawn} · First player ")
+   summary.appendChild(first)
+   section.appendChild(summary)
    // Beside the marker the tracker already draws on that round, rather than
    // in the action panel, which is about this turn rather than the game.
    if track.usurperLimited then

@@ -42,6 +42,36 @@ class PlayerBoardSuite extends munit.FunSuite:
     assertEquals(all(identity, ".resources").size, 1)
     assertEquals(all(node, ".player-location"), Vector.empty)
 
+  /** Red and blue at the table, with the tracks naming `first` (if any) as
+    * the first player, as the players pane renders it for red.
+    */
+  private def renderWithFirstPlayer(first: Option[String]): dom.Element =
+    val blueChancellor = GamePlayer("blue", "Blue", "Chancellor", PlayerColor.Blue)
+    WorldBoardRenderer.playerBoards(
+      TestProjections.actingProjection(players = Vector(redExile, blueChancellor))
+        .copy(tracks = first.map(id =>
+          oathdigital.protocol.projection.GameTracksProjection(round = 1,
+            visionsDrawn = 0, usurperLimited = false, limiterRound = 0,
+            firstPlayerId = id))),
+      "red")
+
+  test("the first player's role is followed by a First Player badge"):
+    val node = renderWithFirstPlayer(Some("blue"))
+    def identityOf(id: String) = firstMatch(node,
+      s""".player-board[data-player-id="$id"] .player-identity""")
+      .getOrElse(fail(s"no identity for $id"))
+    val blue = identityOf("blue")
+    assertEquals(all(blue, ".player-first-badge").map(_.textContent),
+      Vector("First Player"))
+    assertEquals(firstMatch(blue, ".player-role")
+      .map(_.nextElementSibling.getAttribute("class")),
+      Some("player-first-badge"))
+    assertEquals(all(identityOf("red"), ".player-first-badge"), Vector.empty)
+
+  test("without tracks no board carries the First Player badge"):
+    assertEquals(all(renderWithFirstPlayer(None), ".player-first-badge"),
+      Vector.empty)
+
   /** The track has a ceiling, so Supply reads against it: "7/7" says the
     * Act cannot buy any more of it, where "7" alone says nothing.
     */
