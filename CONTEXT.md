@@ -46,9 +46,9 @@ _Avoid_: action list, phase controls, wake actions
 The kind of answer a parked decision asks for: choose one, choose many, choose
 an amount, partition, distribute, negotiate, or inspect. An inspect shows
 cards in order and takes one answer, Done: it asks for acknowledgement, not a
-choice. A parked decision has exactly one form, or none when it asks nothing (a
-roll). The form determines what else the question carries: its options, its
-sections, its slots, its cards, its bounds and the name of its confirm control.
+choice. A parked decision has exactly one form. The form determines what else
+the question carries: its options, its sections, its slots, its cards, its
+bounds and the name of its confirm control.
 _Avoid_: query type, decision type, panel type
 
 **Surface**:
