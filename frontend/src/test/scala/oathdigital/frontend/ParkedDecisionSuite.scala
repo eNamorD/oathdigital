@@ -42,9 +42,9 @@ class ParkedDecisionSuite extends munit.FunSuite:
     Some("Split"), heading)
   private val distribute = DecisionQueryState.Distribute(
     Vector(DecisionSlotState(option, 0, 2, None)), 0, 2, "Place", heading)
-  private def parked(action: String, id: String, query: DecisionQueryState,
-      kind: String = "decide"): WalkerDecisionState =
-    WalkerDecisionState(action, id, kind, query = Some(query))
+  private def parked(action: String, id: String, query: DecisionQueryState)
+      : WalkerDecisionState =
+    WalkerDecisionState(action, id, query = Some(query))
 
   private val editing = NegotiationEditingState(5, Vector.empty, Vector.empty,
     Vector.empty, canAccept = true)
@@ -95,7 +95,7 @@ class ParkedDecisionSuite extends munit.FunSuite:
     // A decide park whose query was suppressed: no answer could be built.
     Vector(ParkedDecision.recoverChoiceDecisionId,
       ParkedDecision.recoverRelicDecisionId).foreach(id =>
-      assertEquals(routeOf(WalkerDecisionState("recover", id, "decide"))
+      assertEquals(routeOf(WalkerDecisionState("recover", id))
         .surface, None, s"$id must route nowhere without a query"))
     // A Recover choose-one at a decision id its panel does not know is
     // not handed to the generic panel either.
@@ -103,12 +103,8 @@ class ParkedDecisionSuite extends munit.FunSuite:
       None)
 
   test("a decide park whose query was suppressed routes to no surface"):
-    assertEquals(routeOf(WalkerDecisionState("forge", "forge-9", "decide"))
+    assertEquals(routeOf(WalkerDecisionState("forge", "forge-9"))
       .surface, None)
-
-  test("a choose-one that is not a decide park routes to no surface"):
-    assertEquals(routeOf(parked("muster", "muster.source", one,
-      kind = "roll")).surface, None)
 
   test("a board-presented decision with an option on the table routes to " +
       "the board"):
@@ -144,8 +140,6 @@ class ParkedDecisionSuite extends munit.FunSuite:
       observer).surface, None)
     assertEquals(routeOf(parked("muster", "muster.source", partition),
       observer).surface, None)
-    assertEquals(routeOf(WalkerDecisionState("recover", "walker.recover.roll",
-      "roll", pool = Some("recover")), observer).surface, None)
     assertEquals(routeOf(negotiation, observer).surface,
       Some(Surface.Negotiate(deal, None)))
 

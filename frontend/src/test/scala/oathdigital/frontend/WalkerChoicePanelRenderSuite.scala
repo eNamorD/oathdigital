@@ -17,7 +17,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
   private val pub = DecisionOptionState("denizen", "d2", "Rowdy Pub")
   private val query = DecisionQueryState.ChooseOne(Vector(oak, pub),
     heading = Some("Choose a card to Muster from"))
-  private val parked = WalkerDecisionState("muster", "muster.source", "decide",
+  private val parked = WalkerDecisionState("muster", "muster.source",
     query = Some(query))
 
   /** The table the panel reads player names off; nothing here names one. */
@@ -50,7 +50,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val used = power.copy(state = "unavailable",
       reason = Some("Already used this turn"))
     def titles(option: DecisionOptionState) =
-      all(draw(WalkerDecisionState("rest-menu", "phase.menu", "decide",
+      all(draw(WalkerDecisionState("rest-menu", "phase.menu",
         query = Some(DecisionQueryState.ChooseOne(Vector(option))))),
         ".walker-choice").map(_.getAttribute("data-tip"))
     assertEquals(titles(power), Vector("**REST:** Gain [secret]."))
@@ -72,7 +72,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val query = DecisionQueryState.ChooseOne(Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query)))
+      query = Some(query)))
     assertEquals(all(panel, ".card-choice > .card-face").size, 1)
     assertEquals(all(panel, ".walker-choice .card-face").size, 0)
     assertEquals(all(panel, ".plan-side-both").map(_.textContent),
@@ -89,7 +89,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val query = DecisionQueryState.ChooseOne(Vector(offer),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query), answeredOptions = Vector(played)))
+      query = Some(query), answeredOptions = Vector(played)))
     assertEquals(all(panel, ".plans-played li").map(_.textContent),
       Vector("Sticky Fire"))
     val plansPlayed = Dom.one(panel, ".plans-played")
@@ -107,7 +107,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val option = DecisionOptionState("denizen", "d1", "Old Oak", Some(card))
     val query = DecisionQueryState.ChooseOne(Vector(option),
       heading = Some("Choose a card to Muster from"))
-    val panel = draw(WalkerDecisionState("muster", "muster.source", "decide",
+    val panel = draw(WalkerDecisionState("muster", "muster.source",
       query = Some(query)))
     assertEquals(all(panel, ".walker-choice").map(_.textContent), Vector("Old Oak"))
     assertEquals(all(panel, ".card-face").size, 0)
@@ -120,7 +120,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val query = DecisionQueryState.ChooseOne(Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query)))
+      query = Some(query)))
     assertEquals(all(panel, ".card-choice > .card-face").size, 1)
     assertEquals(all(panel, "span.option-badge.plan-side-attack").map(_.textContent),
       Vector("Attack Plan"))
@@ -137,7 +137,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
       heading = Some("Choose a battle plan, or finish"))
     val ui = new RecordingControls()
     val panel = draw(WalkerDecisionState("campaign", "campaign.attacker-plan",
-      "decide", query = Some(query)), ui)
+      query = Some(query)), ui)
     var inspected = Vector.empty[CardInspection.Request]
     CardInspection.onOpen(request => inspected :+= request)
     try as[dom.html.Button](all(panel, ".card-face").head).click()
@@ -153,7 +153,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val query = DecisionQueryState.ChooseOne(Vector(plan),
       heading = Some("Choose a battle plan, or finish"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.defender-plan",
-      "decide", query = Some(query)))
+      query = Some(query)))
     assertEquals(all(panel, ".walker-choice").map(_.getAttribute("aria-label")),
       Vector("Title plan, Defense Plan"))
     assertEquals(all(panel, ".card-choice").size, 0)
@@ -165,7 +165,7 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     val query = DecisionQueryState.ChooseOne(Vector(site),
       heading = Some("Move the defending warbands"))
     val panel = draw(WalkerDecisionState("campaign", "campaign.relocation",
-      "decide", query = Some(query), rollOutcome = Some(outcome)))
+      query = Some(query), rollOutcome = Some(outcome)))
     assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
       Vector("Defense 1"))
     assertEquals(all(panel, ".walker-roll-faces").map(_.getAttribute("role")),

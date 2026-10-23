@@ -19,7 +19,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     heading = Some("Place more than 2 favor"))
   private def decision(id: String, query: DecisionQueryState,
       rollOutcome: Option[WalkerRollOutcomeState] = None): WalkerDecisionState =
-    WalkerDecisionState("challenge", id, "decide", query = Some(query),
+    WalkerDecisionState("challenge", id, query = Some(query),
       rollOutcome = rollOutcome)
 
   private def opened(id: String, query: DecisionQueryState)

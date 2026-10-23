@@ -14,7 +14,7 @@ class WalkerSelectionDraftSuite extends munit.FunSuite:
     heading = Some("Place more than 2 favor"))
   private val context = BoardSelectionContext("game", "red", 9)
   private def parked(id: String, query: DecisionQueryState) =
-    Some(WalkerDecisionState("challenge", id, "decide", query = Some(query)))
+    Some(WalkerDecisionState("challenge", id, query = Some(query)))
 
   /** The choose-many draft that opens for the parked decision `id`; fails
     * with what opened instead when that is not one.

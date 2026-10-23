@@ -4,7 +4,7 @@ import org.scalajs.dom
 
 /** The route from a parked decision to the one surface a viewer sees it on.
   *
-  * A `WalkerDecisionState` arrives as an action, a kind, a decision id and a
+  * A `WalkerDecisionState` arrives as an action, a decision id and a
   * typed query: the query's own case IS its form. Which panel or board
   * control answers it used to be decided inside each panel, six times over,
   * each re-reading the projection and re-testing the form. This object reads
@@ -21,9 +21,8 @@ import org.scalajs.dom
 private[frontend] object ParkedDecision:
   import ServerUiSupport.{ViewerPresentation, text}
 
-  /** The decision ids the route recognises by name. `kind` alone cannot
-    * tell Recover's two decide parks apart (both are `"decide"`); only the
-    * id does. The two Recover ids mirror `RecoverProcedure.choiceDecisionId`
+  /** The decision ids the route recognises by name. Only the id tells
+    * Recover's two parks apart. The two Recover ids mirror `RecoverProcedure.choiceDecisionId`
     * and `.relicDecisionId`, as plain strings: those objects live in the JVM-only application sources
     * the frontend cannot depend on, and a `decisionId` already rides the
     * wire as an uninterpreted string on every walker command (see
@@ -169,12 +168,11 @@ private[frontend] object ParkedDecision:
   private def recoverStep(decision: WalkerDecisionState)
       : Option[RecoverStep] =
     if decision.action != "recover" then None
-    else decision.kind match
-      case "decide" if decision.decisionId == recoverChoiceDecisionId =>
-        chooseOneQuery(decision).map(RecoverStep.Choice.apply)
-      case "decide" if decision.decisionId == recoverRelicDecisionId =>
-        chooseOneQuery(decision).map(RecoverStep.Relic.apply)
-      case _ => None
+    else if decision.decisionId == recoverChoiceDecisionId then
+      chooseOneQuery(decision).map(RecoverStep.Choice.apply)
+    else if decision.decisionId == recoverRelicDecisionId then
+      chooseOneQuery(decision).map(RecoverStep.Relic.apply)
+    else None
 
   /** A Recover park only Recover's panel may answer: every one but its
     * modifier decision, which the board draws as any action's is. */
@@ -192,13 +190,12 @@ private[frontend] object ParkedDecision:
     query match
       // A phase menu: one grouped panel for Wake, Act and Rest.
       case one: DecisionQueryState.ChooseOne
-          if decision.decisionId == MenuPanel.decisionId &&
-            decision.kind == "decide" =>
+          if decision.decisionId == MenuPanel.decisionId =>
         Some(Surface.Menu(decision, one))
       // On the table: the decision says it is answered there, and the table
       // draws at least one of its options.
-      case one: DecisionQueryState.ChooseOne if decision.kind == "decide" &&
-          !recoverPanelOnly(decision) && onTable(decision, one.options, value) =>
+      case one: DecisionQueryState.ChooseOne if !recoverPanelOnly(decision) &&
+          onTable(decision, one.options, value) =>
         Some(Surface.BoardDecision(decision, one))
       case many: DecisionQueryState.ChooseMany
           if onTable(decision, many.options, value) =>
@@ -206,8 +203,7 @@ private[frontend] object ParkedDecision:
       // A Recover choose-one at a decision id Recover's panel does not
       // know is not handed to the generic panel either: there is no
       // answer this client could safely build for it.
-      case _: DecisionQueryState.ChooseOne
-          if recoverPanelOnly(decision) || decision.kind != "decide" =>
+      case _: DecisionQueryState.ChooseOne if recoverPanelOnly(decision) =>
         None
       case one: DecisionQueryState.ChooseOne =>
         Some(Surface.ChooseOne(decision, one))

@@ -60,7 +60,7 @@ class WalkerDecisionDraftSuite extends FunSuite:
     // A choose-one park, and a park whose query was suppressed because an
     // option could not be presented: neither is an answerable partition.
     assertEquals(WalkerPartitionDraft.reconcile(None, context, Some(
-      WalkerDecisionState("recover", "recover.choice", "decide",
+      WalkerDecisionState("recover", "recover.choice",
         query = Some(DecisionQueryState.ChooseOne(Vector(
           DecisionOptionState("button", "stop", "Stop"))))))), None)
     assertEquals(WalkerPartitionDraft.reconcile(None, context,
@@ -72,7 +72,7 @@ class WalkerDecisionDraftSuite extends FunSuite:
       DecisionOptionState("player", "yellow", "yellow")),
       heading = Some("Choose the Oathkeeper"))
     val decision = WalkerDecisionState("oathkeeper", "oathkeeper.recipient",
-      "decide", query = Some(query))
+      query = Some(query))
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(decision,
       query.options(1)),
       oathdigital.protocol.GameIntent.ResolveWalker("oathkeeper.recipient",

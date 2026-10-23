@@ -151,35 +151,28 @@ private[application] final class WalkerDecisionProjector(
       ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,
       awaited: PlayerId, viewer: Option[PlayerId], previewed: Boolean = true)
       : Option[WalkerDecisionProjection] =
-    ProcedureWalker.parkedRoll(ready, tree, pending, powers) match
-      // R18: a procedure whose entry declares no roll decision id has no
-      // answer to "which id is this Roll park", so the accessor's typed
-      // rejection is carried through as "there is nothing to project" --
-      // never as a projection naming a sentinel the client would then
-      // send back as a `ResolveWalker` decision id.
-      case Some((pool, count)) =>
-        WalkerProcedureRegistry.rollDecisionId(procedure).toOption.map(
-          rollId => WalkerDecisionProjection(procedure.key, rollId, "roll",
-            pool = Some(pool.value), count = Some(count),
-            rollOutcome = rollOutcome(procedure, ready, awaited, rollId)))
-      // Task 4: no `decisionId` comparison and no candidate discovery.
-      // Whatever the parked `Decide` declares -- after every power
-      // transform, since `parkedDecide` resolves the node through the same
-      // fold the walk applied -- is described verbatim. A procedure that
-      // changes what it offers changes this projection in the same edit,
-      // and an engine that grew a per-procedure branch here would be
-      // exactly the drift this replaced.
-      //
-      // `flatMap`, not `map`: an unpresentable option omits the whole
-      // projection (see [[queryProjection]]).
-      case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
+    // Task 4: no `decisionId` comparison and no candidate discovery.
+    // Whatever the parked `Decide` declares -- after every power
+    // transform, since `parkedDecide` resolves the node through the same
+    // fold the walk applied -- is described verbatim. A procedure that
+    // changes what it offers changes this projection in the same edit,
+    // and an engine that grew a per-procedure branch here would be
+    // exactly the drift this replaced.
+    //
+    // A park on a `Roll` resolves to no `Decide` and projects nothing:
+    // every production roll is automatic, and no command answers a parked
+    // one (parked-roll retirement decision, 2026-10-23).
+    //
+    // `flatMap`, not `map`: an unpresentable option omits the whole
+    // projection (see [[queryProjection]]).
+    ProcedureWalker.parkedDecide(ready, tree, pending, powers)
         .flatMap { decide =>
           val (query, details) =
             if previewed then playable(procedure, ready, tree, pending, powers,
               decide)
             else (decide.query, Map.empty[DecisionOptionRef, Vector[String]])
           queryProjection(ready, viewer, query, details).map(projected =>
-            WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
+            WalkerDecisionProjection(procedure.key, decide.decisionId,
               query = Some(headed(ready, viewer, decide.decisionId, projected)),
               rollOutcome = rollOutcome(procedure, ready, awaited,
                 decide.decisionId),
@@ -703,15 +696,9 @@ private[application] object WalkerDecisionProjector:
     * and injectable for the same reason that one is.
     *
     * [[declaredTree]] is the production value and every production caller
-    * takes it by default. A suite substitutes it to reach a branch no
-    * production tree can: R18's `rollDecisionId` rejection in `parked`
-    * runs only on a `Roll` park, and the only registered action declaring
-    * no roll decision id (Forge) also declares a tree with no `Roll` node.
-    *
-    * Note what this seam deliberately does NOT reach. Only the tree comes
-    * from here; `parked` still reads the roll decision id from
-    * `WalkerProcedureRegistry`'s production entries, so substituting a tree
-    * cannot also substitute the answer under test.
+    * takes it by default. A suite substitutes it to reach a park no
+    * production tree can produce: a `Roll` park, or a `Decide` naming a
+    * card that is nowhere in authoritative state.
     */
   type TreeSource =
     (ExecutableCatalog, ProcedureRef, ReadyGame, PlayerId,

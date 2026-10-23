@@ -66,14 +66,12 @@ object RecoverProcedure:
   val choiceDecisionId: String = "recover.choice"
   val relicDecisionId: String = "recover.relic"
 
-  /** Synthetic decision id surfaced when the walker parks on a Roll node
-    * itself (a `Roll` leaf carries no `decisionId` of its own — that concept
-    * only exists on `Decide` nodes). Client-facing identity for "answer this
-    * with `RollWalker`, not `ResolveWalker`".
-    *
-    * Recover's own roll is automatic and never parks, so this names a roll
-    * a power folded into the tree. It stays declared because the client has
-    * no other way to answer one.
+  /** Synthetic decision id of a park on a Roll node itself (a `Roll` leaf
+    * carries no `decisionId` of its own -- that concept only exists on
+    * `Decide` nodes). Recover's own roll is automatic and never parks, and
+    * no command answers a parked roll since the parked-roll retirement
+    * (2026-10-23); the id stays declared so `rollFeedback` and the engine's
+    * answerability check keep one name for the roll.
     */
   val rollDecisionId: String = "walker.recover.roll"
 

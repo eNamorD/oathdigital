@@ -16,7 +16,7 @@ private[frontend] object ForgeFixture:
 
   /** The parked walker decision whose question is `query`. */
   val parked: WalkerDecisionState = WalkerDecisionState("forge", "forge-9",
-    "decide", query = Some(query))
+    query = Some(query))
 
   /** The position red answers it at: game "game", sequence 9. */
   val context: BoardSelectionContext = BoardSelectionContext("game", "red", 9)

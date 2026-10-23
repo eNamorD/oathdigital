@@ -24,7 +24,7 @@ class BoardSelectionDraftSuite extends munit.FunSuite:
   private val one = DecisionQueryState.ChooseOne(
     Vector(site("a"), site("b"), wolves), Some("Where?"))
   private def decision(query: DecisionQueryState) =
-    WalkerDecisionState("campaign", "campaign.targets", "decide",
+    WalkerDecisionState("campaign", "campaign.targets",
       query = Some(query), presentation = "board")
   private def draft(query: DecisionQueryState, keys: String*) =
     BoardSelectionDraft(context, "campaign.targets", query, keys.toVector)

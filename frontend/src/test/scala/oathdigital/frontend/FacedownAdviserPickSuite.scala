@@ -22,7 +22,7 @@ class FacedownAdviserPickSuite extends munit.FunSuite:
   /** The pick as the server parks it, over `cards`. */
   private def pick(cards: CardDetails*) = WalkerDecisionState(
     "play-facedown-adviser", BoardSelectionDraft.facedownAdviserDecisionId,
-    "decide", query = Some(DecisionQueryState.ChooseOne(
+    query = Some(DecisionQueryState.ChooseOne(
       cards.toVector.map(option), Some("Choose a facedown adviser to play"))),
     presentation = "board")
 

@@ -53,7 +53,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     // pieces of panel copy. Every other form has its own round trip below,
     // because every other form is now its own type.
     walkerDecision = Some(WalkerDecisionProjection("forge", "forge.assignment",
-      "decide", query = Some(DecisionQueryProjection.Partition(
+      query = Some(DecisionQueryProjection.Partition(
         Vector(DecisionSectionProjection("pay-favor", "Pay Favor", 1),
           DecisionSectionProjection("pay-secret", "Pay Secret", 1)),
         Vector(DecisionOptionProjection("denizen", "known", "Known",
@@ -104,7 +104,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   test("an askable option's consent ask and a site power's id round-trip"):
     assertRoundTrips(projection.copy(
       walkerDecision = Some(WalkerDecisionProjection("travel",
-        "travel.destination", "decide", query = Some(
+        "travel.destination", query = Some(
           DecisionQueryProjection.ChooseOne(Vector(DecisionOptionProjection(
             "site", "site:dunes", "Dunes", state = "askable",
             reason = Some("Narrow Pass: needs consent"),
@@ -118,7 +118,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
   test("a bury option's mark round-trips"):
     assertRoundTrips(projection.copy(
       walkerDecision = Some(WalkerDecisionProjection("search",
-        "cardplay.place.denizen.1", "decide", query = Some(
+        "cardplay.place.denizen.1", query = Some(
           DecisionQueryProjection.ChooseOne(Vector(DecisionOptionProjection(
             "site-slot", "site:a:0", "Bury Known at Site A",
             replaces = Some(known), buries = true))))))))
@@ -187,17 +187,6 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       projection.walkerDecision.map(_.copy(query = Some(bare))))
     assertRoundTrips(without)
 
-  /** A parked roll is the one decision shape that carries a pool and a
-    * count instead of a query, so those two fields have no other coverage.
-    */
-  test("a parked roll round-trips its pool and its count"):
-    val rolling = projection.copy(walkerDecision = Some(
-      WalkerDecisionProjection("recover", "walker.recover.roll", "roll",
-        pool = Some("recover"), count = Some(2),
-        rollOutcome = Some(WalkerRollOutcomeProjection("recover",
-          Vector.empty, 0, Some(3))))))
-    assertRoundTrips(rolling)
-
   /** Task 8: the answers already recorded at a repeated decision, described
     * as options -- the plan window's own "what has already been applied"
     * strip. `ActionProjectionCodec` is `private[projection]`, so this reaches
@@ -209,7 +198,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       "Sticky Fire", badge = Some("Attack Plan"))
     val repeated = projection.copy(walkerDecision = Some(
       WalkerDecisionProjection("campaign", "campaign.attacker-plan",
-        "decide", answeredOptions = Vector(played))))
+        answeredOptions = Vector(played))))
     assertRoundTrips(repeated)
 
   test("a choose-one option round-trips its details and defaults them to none"):
@@ -458,7 +447,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       "Discard to the Cradle discard")
     assertRoundTrips(projection.copy(walkerDecision = Some(
       WalkerDecisionProjection("search", "cardplay.place.denizen.known",
-        "decide", query = Some(DecisionQueryProjection.ChooseOne(
+        query = Some(DecisionQueryProjection.ChooseOne(
           Vector(replacing, pile)))))))
 
   test("a board's adviser limit round-trips"):
@@ -472,7 +461,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
     val written = projection.copy(
       playerBoards = projection.playerBoards.map(_.copy(adviserLimit = 2)),
       walkerDecision = Some(WalkerDecisionProjection("search",
-        "cardplay.place.denizen.known", "decide", query = Some(
+        "cardplay.place.denizen.known", query = Some(
           DecisionQueryProjection.ChooseOne(Vector(replacing))))))
     def strip(value: ujson.Value, key: String): Unit = value match
       case obj: ujson.Obj =>
@@ -487,7 +476,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       written.copy(
         playerBoards = projection.playerBoards.map(_.copy(adviserLimit = 3)),
         walkerDecision = Some(WalkerDecisionProjection("search",
-          "cardplay.place.denizen.known", "decide", query = Some(
+          "cardplay.place.denizen.known", query = Some(
             DecisionQueryProjection.ChooseOne(Vector(
               replacing.copy(replaces = None)))))))))
 
@@ -497,7 +486,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       group = Some("major"))
     def parked(option: DecisionOptionProjection) = projection.copy(
       walkerDecision = Some(WalkerDecisionProjection("act-menu",
-        "phase.menu", "decide", query = Some(
+        "phase.menu", query = Some(
           DecisionQueryProjection.ChooseOne(Vector(option))))))
     val written = parked(major)
     assertRoundTrips(written)
@@ -518,7 +507,7 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       "Adviser slot 3, faceup", variant = Some("Faceup"))
     def parked(option: DecisionOptionProjection) = projection.copy(
       walkerDecision = Some(WalkerDecisionProjection("search",
-        "cardplay.place.denizen.known", "decide", query = Some(
+        "cardplay.place.denizen.known", query = Some(
           DecisionQueryProjection.ChooseOne(Vector(option))))))
     val written = parked(faceup)
     assertRoundTrips(written)

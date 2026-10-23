@@ -33,7 +33,7 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     Some("Also target these sites"), tallies = Vector(force),
     summary = Some(DecisionSummaryState("Target", "site", "sites")))
   private val decision = WalkerDecisionState("campaign", "campaign.targets",
-    "decide", presentation = "board")
+    presentation = "board")
 
   /** The panel of `parked` asking `query`; the query is the one the panel
     * reads, so `parked` carries none of its own.
@@ -191,7 +191,7 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
   private val placement = DecisionQueryState.ChooseOne(
     Vector(adviserPlayAtRedSlot3("faceup"), adviserPlayAtRedSlot3("facedown")), Some("Play Wayward Spirit"))
   private val placing = WalkerDecisionState("search",
-    "cardplay.place.denizen.spirit", "decide", presentation = "board")
+    "cardplay.place.denizen.spirit", presentation = "board")
   private def open(query: DecisionQueryState.ChooseOne, keys: String*) =
     Some(BoardSelectionDraft(context, "cardplay.place.denizen.spirit", query,
       keys.toVector, Some("adviser-slot:red:2")))

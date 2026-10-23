@@ -109,7 +109,6 @@ class GameServerGatewaySubmitBeginSuite extends munit.FunSuite:
     val decision = present(projection.walkerDecision, "p2's Setup decision")
     assertEquals(decision.action, "setup")
     assertEquals(decision.decisionId, SetupProcedure.pawnDecisionId(p2))
-    assertEquals(decision.kind, "decide")
     val siteOptions = decision.query match
       case Some(one: DecisionQueryProjection.ChooseOne) => one.options
       case other => fail(s"expected a choose-one, got $other")

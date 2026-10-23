@@ -33,7 +33,7 @@ class MenuPanelSuite extends munit.FunSuite:
       heading = Some("Act: take an action, use a power or rest"))
     val panel = dom.document.createElement("div")
     MenuPanel.render(Surface.Menu(WalkerDecisionState("act-menu",
-      "phase.menu", "decide", query = Some(query)), query),
+      "phase.menu", query = Some(query)), query),
       canControl = true, panel, ui)
     panel
 

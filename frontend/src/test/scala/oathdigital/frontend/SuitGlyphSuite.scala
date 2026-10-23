@@ -27,7 +27,7 @@ class SuitGlyphSuite extends munit.FunSuite:
       Vector(DecisionOptionState("favor-bank", "hearth", "Hearth")),
       Some("Gain 3 favor from one bank"))
     val parked = WalkerDecisionState("use-power", "gambling-hall.bank",
-      "decide", query = Some(query))
+      query = Some(query))
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
       ParkedDecision.Surface.ChooseOne(parked, query),
@@ -46,7 +46,7 @@ class SuitGlyphSuite extends munit.FunSuite:
       Some("Firebrand: add 1 favor to the People's Favor from a bank, or " +
         "burn 1 from it"))
     val parked = WalkerDecisionState("use-power", "power.firebrand.choice",
-      "decide", query = Some(query))
+      query = Some(query))
     val panel = dom.document.createElement("div")
     WalkerPanelSupport.renderChooseOnePanel(
       ParkedDecision.Surface.ChooseOne(parked, query),
@@ -64,7 +64,7 @@ class SuitGlyphSuite extends munit.FunSuite:
       minOptions = 2, maxOptions = 2,
       heading = Some("Salad Days: choose banks to gain 1 favor from each"))
     val parked = WalkerDecisionState("use-power", "cardplay.salad-days.banks",
-      "decide", query = Some(query))
+      query = Some(query))
     val draft = WalkerSelectionDraft.reconcile(None,
       BoardSelectionContext("game", "red", 9), Some(parked))
     val panel = dom.document.createElement("div")

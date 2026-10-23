@@ -34,7 +34,7 @@ class RecoverPanelSuite extends munit.FunSuite:
   private def choice(rollOutcome: Option[WalkerRollOutcomeState] = None)
       : Surface.Recover =
     Surface.Recover(WalkerDecisionState("recover",
-      ParkedDecision.recoverChoiceDecisionId, "decide",
+      ParkedDecision.recoverChoiceDecisionId,
       query = Some(choiceQuery), rollOutcome = rollOutcome),
       RecoverStep.Choice(choiceQuery))
 

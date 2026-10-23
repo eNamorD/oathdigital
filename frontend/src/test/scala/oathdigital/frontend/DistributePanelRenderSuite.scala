@@ -18,7 +18,7 @@ class DistributePanelRenderSuite extends munit.FunSuite:
     minTotal = 2, maxTotal = 2, confirmLabel = "Move favor",
     heading = Some("League Treaty"))
   private val parked = WalkerDecisionState("begin-rest",
-    "rest.league-treaty.distribution", "decide", query = Some(query))
+    "rest.league-treaty.distribution", query = Some(query))
 
   private def opened(): Option[WalkerDistributeDraft] =
     WalkerDistributeDraft.reconcile(None,

@@ -22,7 +22,7 @@ class CardChoicePanelSuite extends munit.FunSuite:
     heading = Some("Take a relic"))
 
   private val relicPark: Surface.Recover = Surface.Recover(WalkerDecisionState("recover",
-    ParkedDecision.recoverRelicDecisionId, "decide",
+    ParkedDecision.recoverRelicDecisionId,
     query = Some(relicQuery)), RecoverStep.Relic(relicQuery))
 
   private val table = GameProjection("game", 1L, "act", Some("red"),

@@ -3,7 +3,6 @@ package oathdigital.application
 import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
@@ -18,26 +17,12 @@ import oathdigital.protocol.projection.{CountedConfirmProjection,
   WalkerDecisionProjection, WalkerWaitingProjection}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
-/** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
-  *
-  * `WalkerProcedureRegistry.rollDecisionId` is a typed `Left` for an action
-  * whose entry declares none (Forge), and `WalkerProcedureRegistrySuite` pins
-  * that value. This suite proves the OTHER half -- that
-  * [[WalkerDecisionProjector]] honours the rejection rather than projecting
-  * a decision the client would then send back as a `ResolveWalker` id.
-  * Without a test here, replacing the accessor with a sentinel string, or
-  * recovering from the `Left` with a `getOrElse`, would leave every existing
-  * suite green.
-  *
-  * Reaching that branch needs a `Roll` park under an action declaring no
-  * roll decision id, and no production tree can produce one: Forge is the
-  * only such action and its tree has no `Roll` node at all. So the tree --
-  * and ONLY the tree -- is substituted, through
+/** A park on a `Roll` node projects nothing: every production roll is
+  * automatic and no command answers a parked one (parked-roll retirement
+  * decision, 2026-10-23). No production tree can park on a roll, so the
+  * tree -- and ONLY the tree -- is substituted, through
   * `WalkerDecisionProjector.TreeSource`, the projection-side twin of the
-  * `walkerTree` seam `OathRulesWalkerPowerSuite` already uses for the same
-  * reason. The roll decision id under test is still read from the
-  * PRODUCTION registry entries, so the substitution cannot also supply the
-  * answer.
+  * `walkerTree` seam `OathRulesWalkerPowerSuite` uses for the same reason.
   */
 class WalkerDecisionProjectorSuite extends munit.FunSuite:
   /** A one-node tree that parks on a `Roll` at path `Vector("0")`. */
@@ -90,21 +75,12 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     new GamePresentationProjector(catalog), WalkerPowers.empty,
     (_, _, _, _, _) => Right(rollTree))
 
-  test("a Roll park under an action declaring no roll decision id projects " +
-      "nothing, rather than a projection naming a sentinel"):
-    // Control: the same tree, the same park, the same projector -- under
-    // Recover, whose entry DOES declare a roll decision id.
-    val recoverContext = parked(ActionRef.Recover)
-    val projected = projector.project(recoverContext).getOrElse(
-      fail("Recover's Roll park must project a roll decision"))
-    assertEquals(projected.action, ActionRef.Recover.key)
-    assertEquals(projected.decisionId, RecoverProcedure.rollDecisionId)
-    assertEquals(projected.kind, "roll")
-
-    // Forge declares none, so there is nothing to project at all.
-    val forgeContext = parked(ActionRef.Forge)
-    // WalkerProcedureRegistrySuite pins the accessor's typed rejection.
-    assertEquals(projector.project(forgeContext), None)
+  test("a Roll park projects nothing, whether or not the procedure declares " +
+      "a roll decision id"):
+    // Recover's entry declares one, Forge's does not; neither park is a
+    // question a client could answer.
+    assertEquals(projector.project(parked(ActionRef.Recover)), None)
+    assertEquals(projector.project(parked(ActionRef.Forge)), None)
 
   /** The spec's presentation-failure rule (Task 4): an option whose identity
     * cannot be presented suppresses the ENTIRE decision projection rather

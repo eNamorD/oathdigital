@@ -119,13 +119,13 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
 
   private def keepOneDraft(): Option[WalkerPartitionDraft] =
     WalkerPartitionDraft.reconcile(None, ForgeFixture.context,
-      Some(WalkerDecisionState("setup", "setup-1", "decide",
+      Some(WalkerDecisionState("setup", "setup-1",
         query = Some(keepDiscard))))
 
   private def pickPanel(ui: RecordingControls,
       draft: Option[WalkerPartitionDraft]): dom.Element =
     render(ui, draft,
-      decision = WalkerDecisionState("setup", "setup-1", "decide",
+      decision = WalkerDecisionState("setup", "setup-1",
         query = Some(keepDiscard)))
 
   private def pickPanel(draft: Option[WalkerPartitionDraft]): dom.Element =
@@ -157,7 +157,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     DecisionSectionState("discard", "Discard", 0)))
 
   private val keepUpToTwoDecision = WalkerDecisionState("setup", "setup-1",
-    "decide", query = Some(keepUpToTwo))
+    query = Some(keepUpToTwo))
 
   /** The draft opened on `keepUpToTwo`: Denizens 1 and 2 kept. */
   private def keepUpToTwoDraft(): Option[WalkerPartitionDraft] =
@@ -210,7 +210,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     */
   test("a zone holding one option says nothing about order"):
     val twoCards = keepDiscard.copy(options = keepDiscard.options.take(2))
-    val decision = WalkerDecisionState("setup", "setup-1", "decide",
+    val decision = WalkerDecisionState("setup", "setup-1",
       query = Some(twoCards))
     val draft = WalkerPartitionDraft.reconcile(None, ForgeFixture.context,
       Some(decision))

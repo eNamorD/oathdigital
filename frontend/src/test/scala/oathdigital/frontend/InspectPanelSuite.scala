@@ -14,7 +14,7 @@ class InspectPanelSuite extends munit.FunSuite:
   private val query = DecisionQueryState.Inspect(Vector(oak, back), done,
     Some("Scryer: the Cradle discard pile"))
   private val decision = WalkerDecisionState("use-power",
-    "power.scryer.inspect", "decide", query = Some(query))
+    "power.scryer.inspect", query = Some(query))
 
   private def render(canControl: Boolean, ui: RecordingControls): dom.Element =
     val panel = dom.document.createElement("div")

@@ -65,7 +65,7 @@ class ViewerPresentationSuite extends FunSuite:
     val pawnQuery = DecisionQueryState.ChooseOne(Vector(site),
       heading = Some("Choose your starting site"))
     val pawnDecision = WalkerDecisionState("setup", "setup.pawn-placement.blue-exile",
-      "decide", query = Some(pawnQuery))
+      query = Some(pawnQuery))
     val value = twoSeatProjection(
       phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
@@ -81,7 +81,7 @@ class ViewerPresentationSuite extends FunSuite:
     val vote = DecisionOptionState("button", "yes", "Yes")
     val query = DecisionQueryState.ChooseOne(Vector(vote))
     val decision = WalkerDecisionState("setup", "setup.some-decision.blue-exile",
-      "decide", query = Some(query))
+      query = Some(query))
     val value = twoSeatProjection(
       phase = "setup-walker-decision",
       activeParticipantId = "red-exile",
@@ -99,7 +99,7 @@ class ViewerPresentationSuite extends FunSuite:
       heading = Some("Act: take an action, use a power or rest"))
     val value = twoSeatProjection(
       phase = "act-menu-walker-decision").copy(walkerDecision = Some(
-      WalkerDecisionState("act-menu", "phase.menu", "decide",
+      WalkerDecisionState("act-menu", "phase.menu",
         query = Some(query))))
     val status = ActionDecisionRenderer.status(value,
       ServerUiSupport.viewerPresentation(value, "red-exile"))

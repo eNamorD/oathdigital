@@ -217,17 +217,11 @@ final case class CountedConfirmProjection(verb: String, one: String,
   * returns this for the parked actor, so `GameProjection.walkerDecision`
   * is `None` for every other viewer -- not a redacted copy of this type.
   *
-  * `kind` is the client-facing verb, not the tree's structural node type:
-  * `"roll"` means answer with `RollWalker` (no faces ride the command --
-  * `pool`/`count` are informational only), `"decide"` means answer with
-  * `ResolveWalker`. `decisionId` is always the parked node's stable
-  * identity (a synthetic id for a Roll park, since only `Decide` nodes
-  * carry one natively), so the three Recover parks -- roll, the
-  * continue/stop choice, and the relic pick -- are each distinguishable
-  * by `decisionId` alone.
+  * It is answered with `ResolveWalker`. `decisionId` is the parked
+  * `Decide`'s stable identity, so Recover's two parks -- the continue/stop
+  * choice and the relic pick -- are distinguishable by `decisionId` alone.
   *
-  * `query` is populated for a `"decide"` park and empty for a `"roll"`
-  * park: it is the parked `Decide`'s own transformed
+  * `query` is the parked `Decide`'s own transformed
   * [[DecisionQueryProjection]], which is the single source of both what the
   * client may offer and what the engine will accept. It is absent entirely
   * when any declared option's identity cannot be presented -- a
@@ -245,9 +239,6 @@ final case class CountedConfirmProjection(verb: String, one: String,
 final case class WalkerDecisionProjection(
     action: String,
     decisionId: String,
-    kind: String,
-    pool: Option[String] = None,
-    count: Option[Int] = None,
     query: Option[DecisionQueryProjection] = None,
     rollOutcome: Option[WalkerRollOutcomeProjection] = None,
     /** The answers already recorded at THIS decision id, described as options.

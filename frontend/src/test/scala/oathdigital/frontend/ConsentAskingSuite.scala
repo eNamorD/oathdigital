@@ -21,7 +21,7 @@ class ConsentAskingSuite extends munit.FunSuite:
     consent = Some(ask))
   private val query = DecisionQueryState.ChooseOne(Vector(woods))
   private val decision = WalkerDecisionState("travel", "travel.destination",
-    "decide", query = Some(query), presentation = "board")
+    query = Some(query), presentation = "board")
   private val requested = Intent.RequestConsent("travel.destination",
     WalkerStartArgWire("site", "site:deep-woods"))
   private var opened = Vector.empty[CardInspection.Request]
@@ -116,7 +116,7 @@ class ConsentAskingSuite extends munit.FunSuite:
       "Broken Peaks")
     val targets = DecisionQueryState.ChooseMany(Vector(peaks, woods), 0, 2)
     val conquest = WalkerDecisionState("campaign", "campaign.targets",
-      "decide", query = Some(targets), presentation = "board")
+      query = Some(targets), presentation = "board")
     val ui = new RecordingControls()
     var picked = Vector.empty[String]
     val views = BoardOptionViews.of(conquest, targets, None)

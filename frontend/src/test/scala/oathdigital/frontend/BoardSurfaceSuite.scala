@@ -28,7 +28,7 @@ class BoardSurfaceSuite extends munit.FunSuite:
     Vector(woodsOption, cityOption), Some("Choose your starting site"),
     confirmVerb = Some("Start at"))
   private val decision = WalkerDecisionState("setup", "setup.pawn-placement.red",
-    "decide", query = Some(query), presentation = "board")
+    query = Some(query), presentation = "board")
   private val context = BoardSelectionContext("game", "red", 1L)
   private val surface: Surface.BoardDecision =
     Surface.BoardDecision(decision, query)

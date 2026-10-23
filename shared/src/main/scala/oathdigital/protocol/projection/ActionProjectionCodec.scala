@@ -25,26 +25,23 @@ private[projection] object ActionProjectionCodec:
   yield WalkerRollOutcomeProjection(pool, faces, score, target, detail)
 
   def encodeWalkerDecision(value: WalkerDecisionProjection): ujson.Value = ujson.Obj(
-    "action" -> value.action, "decisionId" -> value.decisionId, "kind" -> value.kind,
-    "pool" -> stringOption(value.pool), "count" -> intOption(value.count),
+    "action" -> value.action, "decisionId" -> value.decisionId,
     "query" -> option(value.query)(encodeDecisionQuery),
     "rollOutcome" -> option(value.rollOutcome)(encodeRollOutcome),
     "answeredOptions" -> encoded(value.answeredOptions)(encodeOptionRow),
     "presentation" -> value.presentation)
   def decodeWalkerDecision(raw: ujson.Value, path: String): Result[WalkerDecisionProjection] = for
     value <- obj(raw, path)
-    _ <- exact(value, Set("action", "decisionId", "kind", "pool", "count",
-      "query", "rollOutcome", "answeredOptions", "presentation"), path)
+    _ <- exact(value, Set("action", "decisionId", "query", "rollOutcome",
+      "answeredOptions", "presentation"), path)
     action <- string(value, "action", path); decision <- string(value, "decisionId", path)
-    kind <- string(value, "kind", path); pool <- optionalString(value, "pool", path)
-    count <- optionalInt(value, "count", path)
     query <- optionalAbsent(value, "query", path)(decodeDecisionQuery)
     rollOutcome <- optionalAbsent(value, "rollOutcome", path)(decodeRollOutcome)
     answeredRaws <- array(value, "answeredOptions", path)
     answered <- traverse(answeredRaws, s"$path.answeredOptions")(decodeOptionRow)
     presentation <- default(value, "presentation", path, "panel")(string)
-  yield WalkerDecisionProjection(action, decision, kind, pool, count, query,
-    rollOutcome, answered, presentation)
+  yield WalkerDecisionProjection(action, decision, query, rollOutcome,
+    answered, presentation)
 
   def encodeWalkerWaiting(value: WalkerWaitingProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "heading" -> stringOption(value.heading),

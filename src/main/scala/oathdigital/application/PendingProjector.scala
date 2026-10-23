@@ -31,7 +31,6 @@ private[application] final class PendingProjector(
       // unreachable in practice; it exists only so this stays total.
       context.current.walkerProcedure.fold("walker-waiting") { procedure =>
         walkerDecision match
-          case Some(w) if w.kind == "roll" => s"${procedure.key}-walker-roll"
           case Some(_) => s"${procedure.key}-walker-decision"
           case None => s"${procedure.key}-walker-waiting"
       }

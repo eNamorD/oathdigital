@@ -47,7 +47,7 @@ class ServerModeSessionSuite extends FunSuite:
 
   /** The Act menu as the server parks it, over `options`. */
   private def actMenu(options: DecisionOptionState*): WalkerDecisionState =
-    WalkerDecisionState("act-menu", "phase.menu", "decide", query = Some(
+    WalkerDecisionState("act-menu", "phase.menu", query = Some(
       DecisionQueryState.ChooseOne(options.toVector,
         heading = Some("Act: take an action, use a power or rest"))))
 

@@ -17,7 +17,6 @@ import oathdigital.protocol.projection.{DecisionOptionProjection,
   WalkerRollOutcomeProjection}
 import oathdigital.testkit.{CatalogNames, Dice}
 import oathdigital.testkit.Table.{p1, p2}
-import oathdigital.testkit.PowerStubs
 import oathdigital.testkit.Unwrap.{accepted, present}
 import oathdigital.application.ParkedServiceFixture.loaded
 import oathdigital.testkit.Outcomes
@@ -88,56 +87,6 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     StartedRecover(service, accepted(service.handle(gameId, 0L,
       MenuPlay.starting(p1, ActionRef.Recover))))
 
-  /** A power that folds a parked `Roll` into Recover, after the node that
-    * opens the pool. Recover's own roll is automatic, so this is the only
-    * way a Recover can still park on a roll -- and the projector has to
-    * describe that park for the client that must answer it.
-    */
-  private val parkingRoll = PowerStubs.TransformStub(
-    PowerId("test.parked-roll"), PowerWindow.RecoverBeforeFirstRoll,
-    (_, ops) => ops :+ Roll(RecoverProcedure.recoverPool,
-      DiceSpec(DiceKind.Defense)))
-
-  private val parkingRollPowers = WalkerPowers(Vector(parkingRoll))
-
-  /** p1's Recover on CatacombsGame's relic site, parked on the folded Roll. */
-  private def parkedOnRoll(using munit.Location): ReadyGame =
-    val fixture = CatacombsGame.relicSite()
-    val rules = new OathRules(catalog, walkerPowerCatalog = parkingRollPowers,
-      walkerDice = WalkerDiceFixture.blanks)
-    val started = rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-        p1) match
-      case Right(transition) => transition
-      case other => fail(s"expected the parking start to run, got $other")
-    Outcomes.ready(started.state)
-
-  test("a parked Roll projects an owner-private roll decision"):
-    val ready = parkedOnRoll
-    val projector = new WalkerDecisionProjector(catalog, presentation,
-      parkingRollPowers)
-    // No roll yet: faces/score are empty/zero, but the difficulty is still
-    // shown (I5) -- the player should see the target before rolling.
-    val noRollYet = WalkerRollOutcomeProjection("recover", Vector.empty,
-      0, Some(expectedDifficulty(ready, p1)))
-    assertEquals(projector.project(ScopedProjectionContext(ready, Some(p1))),
-      Some(WalkerDecisionProjection(ActionRef.Recover.key,
-        RecoverProcedure.rollDecisionId, "roll",
-        pool = Some(RecoverProcedure.recoverPool.value), count = Some(2),
-        rollOutcome = Some(noRollYet))))
-    assertEquals(projector.project(ScopedProjectionContext(ready, Some(p2))),
-      None)
-
-  test("a parked Roll names the roll phase"):
-    val ready = parkedOnRoll
-    val projector = new WalkerDecisionProjector(catalog, presentation,
-      parkingRollPowers)
-    val owner = ScopedProjectionContext(ready, Some(p1))
-    val viewer = ScopedProjectionContext(ready, Some(p2))
-    val pendingProjector = new PendingProjector(catalog, presentation,
-      projector)
-    assertEquals(pendingProjector.project(owner).phase, "recover-walker-roll")
-    assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
-
   /** Both dice come up Blank: score 0, still short of the difficulty, so the
     * walk parks on the continue/stop choice. */
   private def recoverFailingItsRoll(gameId: String)(using munit.Location) =
@@ -157,7 +106,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
       recoverFailingItsRoll("walker-projection-choice").started.state)
     assertEquals(walkerDecisions.project(ScopedProjectionContext(ready,
       Some(p1))), Some(WalkerDecisionProjection(ActionRef.Recover.key,
-      RecoverProcedure.choiceDecisionId, "decide", presentation = "board", query = Some(choiceQuery),
+      RecoverProcedure.choiceDecisionId, presentation = "board", query = Some(choiceQuery),
       rollOutcome = Some(failedRollOutcome(ready)))))
     assertEquals(walkerDecisions.project(ScopedProjectionContext(ready,
       Some(p2))), None)
@@ -183,7 +132,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     val projector = new GameProjector(catalog)
     assertEquals(projector.project(gameId, stored, p1).walkerDecision,
       Some(WalkerDecisionProjection(ActionRef.Recover.key,
-        RecoverProcedure.choiceDecisionId, "decide", presentation = "board", query = Some(choiceQuery),
+        RecoverProcedure.choiceDecisionId, presentation = "board", query = Some(choiceQuery),
         rollOutcome = Some(failedRollOutcome(Outcomes.ready(stored.state))))))
     assertEquals(projector.project(gameId, stored, p2).walkerDecision, None)
 
@@ -228,7 +177,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     * park's feedback shows the successful roll that got here. */
   private def expectedRelicDecision(ready: ReadyGame) =
     WalkerDecisionProjection(
-      ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide", presentation = "board",
+      ActionRef.Recover.key, RecoverProcedure.relicDecisionId, presentation = "board",
       query = Some(relicQuery),
       rollOutcome = Some(WalkerRollOutcomeProjection("recover",
         Vector(RolledFace.TwoShields, RolledFace.Doubler), 4,
@@ -328,7 +277,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite:
     val wired = new WalkerDecisionProjector(catalog, presentation,
       WalkerPowerCatalog.default(catalog))
     assertEquals(wired.project(context), Some(WalkerDecisionProjection(
-      ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide", presentation = "board",
+      ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, presentation = "board",
       query = Some(choiceQuery),
       rollOutcome = Some(WalkerRollOutcomeProjection("recover",
         Vector(RolledFace.Blank, RolledFace.Blank), 0,

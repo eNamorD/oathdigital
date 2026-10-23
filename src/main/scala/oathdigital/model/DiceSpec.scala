@@ -12,7 +12,8 @@ final case class DiceSpec(die: DiceKind)
 
 /** How a `Roll` node gets its faces. */
 enum RollMode:
-  /** The walker parks and the faces ride a later `RollWalker` command. */
+  /** The walker parks on the node. No production tree builds one and no
+    * command answers it; the engine's `roll` resume is reached by tests. */
   case Parked
   /** The walker asks its dice source and keeps walking in the same command. */
   case Automatic
