@@ -1,57 +1,45 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.powers.CatalogResolution
+import oathdigital.gameplay.powers.{SelectedModifier, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-/** Pins the catalog flags the first powers batch depends on. A modifier is
-  * catalogued `persistent: false` and a persistent rule `persistent: true`.
-  * When Played, ACTION, WAKE, REST and battle-plan powers are not listed: the
-  * flag does not decide how they activate.
+/** The catalog's `persistent` flag against the resolution every registered
+  * walker power declares. A modifier is catalogued `persistent: false` and
+  * resolves player-selected; a persistent rule is catalogued `persistent:
+  * true` and resolves automatic. Both read from the registered powers
+  * themselves, so a power added to `WalkerPowerCatalog` is checked without
+  * being named here. When Played, ACTION, WAKE, REST and battle-plan powers
+  * declare `Automatic` whatever their flag: the flag does not decide how they
+  * activate, and the named cases below pin the ones that read as exceptions.
   */
 class PowerKindsCatalogSuite extends munit.FunSuite:
-  private val modifiers = Vector("denizen.augury", "relic.truthful-harp",
-    "denizen.tents", "denizen.forest-paths", "relic.cup-of-plenty",
-    "denizen.rowdy-pub", "relic.dragonskin-drum", "denizen.relic-worship",
-    "denizen.knights-errant", "denizen.catacombs", "denizen.wild-cry",
-    "denizen.welcoming-party", "denizen.animal-playmates", "denizen.birdsong",
-    "denizen.royal-stables", "denizen.moving-market",
-    "denizen.news-from-alfar", "denizen.old-fast-steed",
-    "denizen.awaited-return", "denizen.mounted-library", "denizen.defame",
-    "denizen.special-envoy", "denizen.golem-legions",
-    "denizen.map-library", "denizen.skilled-merchants",
-    "denizen.pressgangs", "denizen.old-songs", "denizen.small-friends",
-    "denizen.friendly-familiar", "denizen.secret-signal",
-    "relic.spiteful-mirror")
-  private val persistentRules = Vector("denizen.toll-roads",
-    "denizen.spell-breaker", "denizen.forest-council", "denizen.city-wall",
-    "denizen.giant-python.restriction",
-    "denizen.grasping-vines", "relic.circlet-of-command", "denizen.gossip",
-    "denizen.league-treaty", "denizen.gleaming-armor", "edifice.e28.intact",
-    "edifice.e28.ruined", "denizen.secret-police", "edifice.e08.intact",
-    "denizen.book-binders", "denizen.forgotten-vault", "denizen.sealing-ward",
-    "denizen.herald", "denizen.diplomat", "denizen.curfew",
-    "denizen.forced-labor", "denizen.way-station", "denizen.vow-of-wandering",
-    "denizen.marriage", "relic.lost-tapestry", "denizen.family-wagon",
-    "denizen.marsh-spirit", "denizen.beast-tamer", "denizen.true-names",
-    "denizen.vow-of-wisdom", "denizen.vow-of-union.campaign",
-    "denizen.vow-of-union.restriction", "denizen.vow-of-silence",
-    "denizen.vow-of-division", "relic.brass-army.restriction",
-    "relic.secret-testament", "denizen.pledge-to-discord",
-    "relic.yew-staff")
+  private val registered = WalkerPowerCatalog.default(catalog).powers
 
   private def flag(id: String): Option[Boolean] =
     catalog.printedPower(PowerId(id)).map(_.persistent)
 
-  test("resolution follows the flag"):
-    // A missing id would fall back to PlayerSelected, so every id must be
-    // catalogued for the check below to mean anything.
-    modifiers.foreach(id => assertEquals(flag(id), Some(false), id))
-    persistentRules.foreach(id => assertEquals(flag(id), Some(true), id))
-    modifiers.foreach(id => assertEquals(
-      CatalogResolution.of(catalog, PowerId(id)), PowerResolution.PlayerSelected, id))
-    persistentRules.foreach(id => assertEquals(
-      CatalogResolution.of(catalog, PowerId(id)), PowerResolution.Automatic, id))
+  test("every selected modifier is catalogued as not persistent"):
+    val modifiers = registered.collect { case m: SelectedModifier => m }
+    modifiers.foreach(m => assertEquals(flag(m.id.value), Some(false),
+      m.id.value))
+
+  test("Catacombs is the one player-selected power that is not a " +
+      "SelectedModifier, and is catalogued as not persistent"):
+    // Recover offers it through its own selection window, so it derives its
+    // resolution from the flag without being a `SelectedModifier`.
+    val selected = registered.filter(_.resolution ==
+      PowerResolution.PlayerSelected).filterNot(_.isInstanceOf[SelectedModifier])
+    assertEquals(selected.map(_.id), Vector(CatacombsContribution.id))
+    assertEquals(flag(CatacombsContribution.id.value), Some(false))
+
+  test("every other registered power resolves automatically, so a persistent " +
+      "rule catalogued false would show up here"):
+    val offered = registered.filterNot(_.isInstanceOf[SelectedModifier])
+      .filterNot(_.id == CatacombsContribution.id)
+      .filterNot(_.resolution == PowerResolution.Automatic)
+    assertEquals(offered.map(_.id.value), Vector.empty)
 
   test("Dazzle is a When Played power whatever its flag: it must fire on the " +
       "play, so it does not derive its resolution from the flag"):
