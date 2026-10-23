@@ -48,6 +48,17 @@ Left behind by earlier phases:
   cards up by name through `CatalogNames` (the test readability sweep of
   2026-10-02 moved numeric ids onto it). Sweep them to direct object
   references such as `AlchemistCard`; a standing rule stops new uses.
+- [ ] **Show that the action pane scrolls at 1024×700.** At that size the
+  action pane is about 330px tall, and the Keep and Discard zones of the
+  starting-adviser decision sit wholly below the sticky confirm button with
+  nothing showing they are there. At 1440×900 the layout is fine. The pane
+  proportions are deliberate (DESIGN.md), so the fix is a visible scroll
+  cue or a smaller decision header rather than new proportions. Observed in
+  the browser during the clean-up run of 2026-10-23.
+- [ ] **Split `LogScripts.scala` before it grows.** The log-script support
+  file is at 799 of the 800 lines `BackendArchitectureSuite` allows a test
+  file, so the next script added there fails the build. Split it along the
+  procedures its scripts play.
 
 Left behind by the
 [Travel destination work](superpowers/specs/2026-10-07-travel-destination-walker-design.md):
@@ -301,6 +312,17 @@ one.
   `CoreOperation`. See the wording ledger, "A card play's line now follows
   the lines its own batch caused". Recorded in the procedures journal their
   own notes design of 2026-10-16.
+- [ ] **Check that a split delta's steps bracket their operation.**
+  `DetailLines.deltas` wraps each split part in
+  `OpStep(part, step.before, step.after)`, so every part carries the whole
+  step's before and after states rather than its own. A line that reads
+  visibility from those states may show or hide the wrong thing. Write a test
+  that splits a step with a hidden part before changing anything. Two
+  smaller leftovers sit beside it: `GameLogFormatter.format` re-applies the
+  whole journal once per standing undo marker on every request for every
+  seat, and `formatAppended` takes `stateBefore` and `lastStateAfter`
+  without checking them. Recorded as separate candidates in the
+  [log operation strictness decision](superpowers/specs/2026-10-19-log-operation-strictness-decision.md).
 
 ### Powers-related deferred items
 
@@ -378,6 +400,76 @@ one.
   `SeatMode` enum, the `HttpGameClient` downcast for the raw event history in
   `TableSession`, and duplicate jsdom tests. Recorded in the typed decision
   form and table session designs.
+- [ ] **Gather each restriction window once.**
+  `WalkerPowerGather.attributed` gathers a window inside `windowsIn`, again
+  for `rejected` and again for `emptied`, and `applyWindow` rebuilds its
+  power-id map on every fold although `WalkerPowers` already caches five other
+  derived values as lazy vals. `PhasePowerProcedure.startsFor` keeps a second
+  state-keyed memo in the shape of `SearchMemo`. Gather once per window, make
+  the map a lazy val, and give the two memos one shape. Profile first; the
+  `ActMenuBudget` benchmark is the measure. Recorded as the first follow-up of
+  the [test speed design](superpowers/specs/2026-10-07-test-speed-design.md).
+- [ ] **Settle the engine's parked roll.** The parked-roll command path is
+  gone, but the engine still parks on a `Roll` whose mode is `Parked`, which
+  is the model default. `OathRulesWalker.rollWalkerPrepared` has test callers
+  only, and `checkAnswerable` still accepts a Roll park that nothing projects
+  and no command answers; nothing in production builds one. Either flip the
+  default to `Automatic` and retire the engine half with the nine suites that
+  build a parked roll, or keep it and make `checkAnswerable` refuse the park.
+  See the
+  [parked-roll retirement decision](superpowers/specs/2026-10-23-parked-roll-retirement-decision.md).
+
+### Architecture candidates
+
+Found by the two architecture scans of 2026-10-23, after every candidate of
+the 2026-10-13 review had a record. Each is measured, not designed: take one
+through a design conversation, and re-measure it at the current commit first,
+before treating the numbers below as current.
+
+- [ ] **A walker procedure is its own registry adapter.**
+  `WalkerProcedureRegistry.Entry` has nine columns; of twenty entries one sets
+  `startFacts`, two `optionPricing`, two `rollFeedback`, four
+  `requiresPlayableOption`. Travel's `queuedAnswers` is a hand match outside
+  the table, and `isRegistered` re-enumerates the refs `lookup` enumerates.
+  A procedure object with defaults for the rare members would carry them.
+  Weigh it against the initialisation cycle that made the registry hold
+  function references, which already bit the notes table.
+- [ ] **Narrow `ContributingPower` to capability traits.** The trait has 22
+  members, six of them overridden by one power, and every new engine hook has
+  landed as another defaulted member. Attach the rare ones as traits the way
+  `OfferHost`, `RerollHost` and `SelectedModifier` already work.
+- [ ] **Route Recover through the generic surfaces.** The client still holds
+  three Recover decision ids, a `RecoverStep` enum and `renderRecoverPanel`,
+  whose Choice arm computes whether the player has Supply, a legality fact
+  only gameplay should own. Recover would declare Continue unavailable
+  without Supply, with a hover reason, and word its two buttons. Named open
+  by the 2026-09-24 parked-decision route design.
+- [ ] **Declare a decision's subject card.** `WalkerDecisionProjector`
+  re-spells four `cardplay.*` prefixes that `CardPlayProcedure` keeps private,
+  to recover the subject card that CONTEXT.md defines and no model field
+  carries. The procedure would declare it on the `Decide`.
+- [ ] **Derive the wire codecs.** The shared protocol has 94 DTOs, 86
+  hand-written `exact` key sets, 1,647 codec lines and 1,026 codec-suite
+  lines, and a third of a typical wire commit is codec and codec test. A
+  derived codec must still report a stale client bundle, which strict
+  unknown-field rejection does today. The operation codec co-changed with
+  `CoreOperations` in 13 of 16 commits; count its mechanical arms before
+  deciding it the same way.
+- [ ] **One command vocabulary.** Each command is written in seven files
+  (intent, codec, decoder, mapper, command, authorization builder, service
+  arm); `AuthorizedPlayer.forPlayer` mints a "transport" access context to
+  build commands, and `GameCommand.issuer` answers `None` for commands that
+  carry an actor. A command could be an actor plus a model-typed intent.
+- [ ] **One HTTP gateway.** Three transports write the same load, submit and
+  log over the same service calls; only the trusted-seat one is used in
+  production, and the authenticated stack mounts only in development, with no
+  session issuer. One gateway behind a seam for how the actor is resolved
+  would serve both. The authenticated stack's public-only projection scope is
+  the one behaviour the seat transport lacks. `SearchDrawPort`, a port checked
+  against itself, can fold away with the service arm it guards.
+- [ ] **`ConsentDesk` settles a batch.** Its seven verbs have one caller,
+  which owns their order at nine sites; the last five consent commits all
+  edited the service. The desk could take a batch and return it settled.
 
 ## Later
 
