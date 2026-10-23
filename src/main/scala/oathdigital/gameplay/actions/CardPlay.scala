@@ -28,7 +28,7 @@ object CardPlay:
   /** The region whose discard pile takes a card `player` discards in a play:
     * the one after their pawn's. */
   def discardRegion(ready: ReadyGame, player: PlayerId): Option[Region] =
-    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
+    ready.game.current.pawnSite(player)
       .flatMap(ready.game.current.map.regionOf).map(nextRegion)
 
   /** The operations of playing `card` from `origin` to `placement`, which

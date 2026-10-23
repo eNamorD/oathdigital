@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powerresolver._
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object VowOfObedienceCard extends Denizen(DenizenId("121"), "Vow of Obedience", Suit.Order) with Locked with AdviserOnly:
@@ -59,7 +60,4 @@ case object VowOfObedience extends PhasePower with ContributingPower:
 
   /** Whether `player` holds this card as a faceup adviser. */
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
-    ready.game.current.players.find(_.player == player).exists(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    })
+    PowerAccess.holdsFaceupAdviser(ready, player, cardId)

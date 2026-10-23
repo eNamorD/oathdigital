@@ -113,7 +113,7 @@ object RecoverProcedure:
     * different way and silently disagree with the others.
     */
   def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
-    state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+    state.game.current.pawnSite(actor)
 
   /** The facedown relics at the actor's current site -- exactly the options
     * the relic decision declares, read live off `state.game.current.map.sites`

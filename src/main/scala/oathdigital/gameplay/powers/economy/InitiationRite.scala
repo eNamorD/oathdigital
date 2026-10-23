@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OperationRewrite, PowerCtx, Transform}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object InitiationRiteCard extends Denizen(DenizenId("73"), "Initiation Rite", Suit.Arcane) with Locked with AdviserOnly:
@@ -43,8 +44,4 @@ case object InitiationRite extends ContributingPower:
 
   /** The acting player holds this card as a faceup adviser. */
   override def applicable(ctx: PowerCtx): Boolean =
-    ctx.state.game.current.players.find(_.player == ctx.actor)
-      .exists(_.advisers.exists {
-        case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-        case _ => false
-      })
+    PowerAccess.holdsFaceupAdviser(ctx.state, ctx.actor, cardId)

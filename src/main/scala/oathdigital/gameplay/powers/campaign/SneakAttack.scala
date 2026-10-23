@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
 import oathdigital.gameplay.powers.CatalogResolution
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object SneakAttackCard extends Denizen(DenizenId("98"), "Sneak Attack", Suit.Discord) with AdviserOnly:
@@ -57,10 +58,7 @@ final case class SneakAttack private (catalog: ExecutableCatalog)
   ).getOrElse(Vector.empty))
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, cardId)
 
 object SneakAttack:
   val id: PowerId = SneakAttackCard.power.id

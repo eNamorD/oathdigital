@@ -83,7 +83,7 @@ object ChallengeProcedure:
         val holder = BannerRules.holder(current, banner)
         !holder.contains(actor) &&
           holder.forall(rival => player.pawnSite.nonEmpty && player.pawnSite ==
-            current.players.find(_.player == rival).flatMap(_.pawnSite)) &&
+            current.pawnSite(rival)) &&
           BannerRules.playerResources(player, banner) >
             BannerRules.resources(current, banner)
       }

@@ -50,7 +50,7 @@ private[whenplayed] final class RegionDiscard(catalog: ExecutableCatalog,
 
   private def region(ready: ReadyGame, actor: PlayerId): Option[Region] =
     val current = ready.game.current
-    current.players.find(_.player == actor).flatMap(_.pawnSite)
+    current.pawnSite(actor)
       .flatMap(current.map.regionOf)
 
   /** Every site card in the actor's region, with its site, in map order. */

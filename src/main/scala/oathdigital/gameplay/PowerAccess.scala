@@ -31,7 +31,30 @@ private[gameplay] object PowerAccess:
     case object InPlayArea extends Held
 
   def pawnSite(ready: ReadyGame, actor: PlayerId): Option[SiteId] =
-    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+    ready.game.current.pawnSite(actor)
+
+  /** The player holding `card` faceup among their advisers, if any. */
+  def faceupAdviserHolder(ready: ReadyGame, card: DenizenId): Option[PlayerId] =
+    ready.game.current.players.find(hasFaceupAdviser(_, card)).map(_.player)
+
+  /** Whether `player` holds `card` faceup among their advisers. */
+  def holdsFaceupAdviser(ready: ReadyGame, player: PlayerId, card: DenizenId)
+      : Boolean =
+    ready.game.current.players.find(_.player == player)
+      .exists(hasFaceupAdviser(_, card))
+
+  private def hasFaceupAdviser(player: PlayerState, card: DenizenId): Boolean =
+    player.advisers.exists {
+      case DenizenState(held, Orientation.FaceUp, _) => held == card
+      case _ => false
+    }
+
+  /** The player holding `relic` faceup in their play area, if any. */
+  def faceupRelicHolder(ready: ReadyGame, relic: RelicId): Option[PlayerId] =
+    ready.game.current.players.find(_.relics.exists {
+      case RelicState(`relic`, Orientation.FaceUp, _) => true
+      case _ => false
+    }).map(_.player)
 
   def ruledSites(ready: ReadyGame, actor: PlayerId): Set[SiteId] =
     val current = ready.game.current

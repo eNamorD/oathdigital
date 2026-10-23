@@ -145,11 +145,9 @@ object SetupProcedure:
 
   /** Where `player`'s pawn stands once it has been placed. */
   private def placedPawnNote(player: PlayerId)(states: NoteStates)
-      : Option[LogNote] = pawnSiteOf(states.now, player).map(site =>
+      : Option[LogNote] = states.now.game.current.pawnSite(player).map(site =>
     placedPawn.sourceless(NoteArg.Player(player), NoteArg.Site(site)))
 
-  private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
-    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
 
   /** The adviser the answer kept. `adviserSelection` takes a `PendingTree`
     * and a note has only `states.answered`, so this reads the placements

@@ -221,6 +221,10 @@ final case class CurrentGameState(
     * defender's Second Wind). */
   def walkActor: PlayerId = walkerEntry.fold(turn.activePlayer)(_.actor)
 
+  /** Where `player`'s pawn stands, if they are in the game and on the map. */
+  def pawnSite(player: PlayerId): Option[SiteId] =
+    players.find(_.player == player).flatMap(_.pawnSite)
+
 final case class OathGame(
     campaign: CampaignState,
     current: CurrentGameState

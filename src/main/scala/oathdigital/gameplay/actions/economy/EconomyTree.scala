@@ -64,7 +64,7 @@ private[economy] object EconomyTree:
 
   private def gated(state: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Unit] = for
-    _ <- state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+    _ <- state.game.current.pawnSite(actor)
       .toRight(OathViolation.PawnSiteMissing(actor))
     _ <- siteRulers(state)
   yield ()

@@ -68,7 +68,7 @@ final case class SilverTongue private (catalog: ExecutableCatalog)
     */
   private def stocked(ready: ReadyGame, player: PlayerId): Vector[Suit] =
     val current = ready.game.current
-    val cards = current.players.find(_.player == player).flatMap(_.pawnSite)
+    val cards = current.pawnSite(player)
       .flatMap(current.map.sites.get).toVector.flatMap(_.denizens.collect {
         case DenizenState(card, Orientation.FaceUp, _) => card: CardId
         case EdificeState(card, _, _) => card: CardId

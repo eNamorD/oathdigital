@@ -82,7 +82,7 @@ case object ConspiracyWhenPlayed extends ContributingPower:
   private def legalTargets(ready: ReadyGame, actor: PlayerId)
       : Vector[DecisionOptionRef] =
     val current = ready.game.current
-    val site = current.players.find(_.player == actor).flatMap(_.pawnSite)
+    val site = current.pawnSite(actor)
     current.players.filter(other => other.player != actor &&
       other.pawnSite == site).flatMap { other =>
       other.relics.indices.map(slot =>

@@ -291,8 +291,8 @@ object CampaignNotes:
     result <- resultOf(states)
     defender <- defenderOf(result)
     step <- states.previous
-    to <- pawnOf(step._2, defender)
-    if !pawnOf(step._1, defender).contains(to)
+    to <- step._2.game.current.pawnSite(defender)
+    if !step._1.game.current.pawnSite(defender).contains(to)
   yield sentTo.sourceless(NoteArg.Player(defender), NoteArg.Site(to))
 
   /** Why a Campaign ended before its force was committed. */
@@ -346,8 +346,6 @@ object CampaignNotes:
       state => state.advisers.map(_.id: CardId) ++
         state.relics.map(_.id: CardId))
 
-  private def pawnOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
-    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
 
   private def bannersGained(step: NoteSupport.Step, player: PlayerId)
       : Vector[Banner] = Banner.all.filter(banner =>

@@ -57,7 +57,7 @@ object TravelProcedure:
       actor: PlayerId, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for
     _ <- startArgs(state, actor, args)
-    source <- actorSite(state, actor).toRight(
+    source <- state.game.current.pawnSite(actor).toRight(
       OathViolation.PawnSiteMissing(actor))
   yield tree(catalog, state, actor, source)
 
@@ -74,10 +74,7 @@ object TravelProcedure:
   /** The source site, the one fact a resumed Travel cannot read back. */
   def startFacts(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Vector[DecisionOptionRef] =
-    actorSite(state, actor).map(DecisionOptionRef.Site(_)).toVector
-
-  def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
-    state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+    state.game.current.pawnSite(actor).map(DecisionOptionRef.Site(_)).toVector
 
   /** The destination a power's queued Travel names, while that Travel's
     * walk runs for `actor` (catalog batch 8, slice 15): its first start
@@ -123,7 +120,7 @@ object TravelProcedure:
     * after its modifier decision. The Travel suites preview it. */
   def afterModifiers(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for
-    source <- actorSite(state, actor).toRight(
+    source <- state.game.current.pawnSite(actor).toRight(
       OathViolation.PawnSiteMissing(actor))
   yield journey(catalog, state, actor, source)
 
@@ -192,5 +189,5 @@ object TravelProcedure:
     * recorded pawn move. */
   private def travelledNote(actor: PlayerId, source: SiteId)(
       states: NoteStates): Option[LogNote] =
-    actorSite(states.now, actor).filterNot(_ == source)
+    states.now.game.current.pawnSite(actor).filterNot(_ == source)
       .map(arrived => travelled.sourceless(NoteArg.Site(arrived)))

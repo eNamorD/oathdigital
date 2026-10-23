@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
 import oathdigital.gameplay.powers.CatalogResolution
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object SealingWardCard extends Denizen(DenizenId("72"), "Sealing Ward", Suit.Arcane) with Locked with AdviserOnly:
@@ -68,10 +69,7 @@ final case class SealingWard private (catalog: ExecutableCatalog)
       case CampaignDefender.Bandits => None
 
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
-    ready.game.current.players.find(_.player == player).exists(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    })
+    PowerAccess.holdsFaceupAdviser(ready, player, cardId)
 
 object SealingWard:
   val id: PowerId = SealingWardCard.power.id

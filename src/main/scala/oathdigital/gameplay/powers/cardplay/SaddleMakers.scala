@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
-import oathdigital.gameplay.EffectiveSuit
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
@@ -61,10 +61,7 @@ final case class SaddleMakers private (catalog: ExecutableCatalog)
       case _ => None
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, cardId)
 
 object SaddleMakers:
   val id: PowerId = SaddleMakersCard.power.id

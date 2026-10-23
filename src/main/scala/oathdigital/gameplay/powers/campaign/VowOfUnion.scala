@@ -141,10 +141,7 @@ case object VowOfUnion extends ContributingPower:
 
   /** The player who has Vow of Union faceup, if any. */
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, cardId)
 
   /** The sites `holder` rules in the region they campaign from, in map
     * order. */

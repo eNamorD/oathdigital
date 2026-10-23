@@ -4,6 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.PlayerFacts
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object TyrantCard extends Denizen(DenizenId("111"), "Tyrant", Suit.Order) with Locked with AdviserOnly:
@@ -61,10 +62,7 @@ case object Tyrant extends ContributingPower:
       TravelRoute.pawnMove(ctx.operation).exists(_.player == ctx.actor)
 
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
-    ready.game.current.players.find(_.player == player).exists(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    })
+    PowerAccess.holdsFaceupAdviser(ready, player, cardId)
 
   private def forcesAt(ready: ReadyGame, site: SiteId): SiteForces =
     ready.game.current.map.sites.get(site).map(_.forces)

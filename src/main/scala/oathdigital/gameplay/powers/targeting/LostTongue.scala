@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogResolution, RuledCards}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object LostTongueCard extends Denizen(DenizenId("157"), "Lost Tongue", Suit.Nomad) with AdviserOnly:
@@ -111,10 +112,7 @@ final case class LostTongue private (catalog: ExecutableCatalog)
     * no nomad card. */
   private def protectedHolder(ready: ReadyGame, actor: PlayerId)
       : Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player).filter(owner => owner != actor &&
+    PowerAccess.faceupAdviserHolder(ready, cardId).filter(owner => owner != actor &&
       RuledCards.of(catalog, ready, SiteRuler.Player(actor), Suit.Nomad).isEmpty)
 
 object LostTongue:

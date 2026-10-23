@@ -44,7 +44,7 @@ case object RoyalTax extends WhenPlayedPower:
   private def targets(ready: ReadyGame, actor: PlayerId)
       : Vector[PlayerState] =
     val current = ready.game.current
-    val region = current.players.find(_.player == actor).flatMap(_.pawnSite)
+    val region = current.pawnSite(actor)
       .flatMap(current.map.regionOf)
     val taxed = PowerAccess.ruledSites(ready, actor)
       .filter(site => region.exists(current.map.regionOf(site).contains))

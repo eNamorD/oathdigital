@@ -267,7 +267,7 @@ private[application] final class GamePresentationProjector(
         faceup || viewer.exists(player =>
           ready.knowledge.siteRelics.getOrElse(player, Map.empty)
             .getOrElse(site, Vector.empty).contains(id) ||
-            pawnSiteOf(ready, player).contains(site))
+            ready.game.current.pawnSite(player).contains(site))
       // A temporary hand is the cards a player has drawn and not yet
       // resolved. It is private to them outright -- `PendingProjector`
       // projects a Search hand only to the drawing actor -- and its cards
@@ -309,8 +309,6 @@ private[application] final class GamePresentationProjector(
       edificeLabel(edifice, side)
     case other => cardDetails(other, None, hidden = false).name
 
-  private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
-    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
 
   /** Recorded knowledge for the areas that have any: relics by
     * `heldRelics`, world cards by `advisers`. `Hand` never reaches here --

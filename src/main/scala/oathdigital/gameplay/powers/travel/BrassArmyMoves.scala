@@ -4,6 +4,7 @@ import oathdigital.gameplay.powerresolver.{Contribution, ExecutedBatch,
   ExecutedTrigger}
 import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.gameplay.powers.campaign.BrassArmyCard
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 /** Brass Army (relic R25)'s restriction: "Whenever your pawn moves (travel
@@ -88,10 +89,7 @@ case object BrassArmyMoves extends ExecutedTrigger:
 
   /** The player holding the relic faceup, if any. */
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.relics.exists {
-      case RelicState(`cardId`, Orientation.FaceUp, _) => true
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupRelicHolder(ready, cardId)
 
   private def moved(executed: Vector[CoreOperation], holder: PlayerId)
       : Boolean = executed.exists {

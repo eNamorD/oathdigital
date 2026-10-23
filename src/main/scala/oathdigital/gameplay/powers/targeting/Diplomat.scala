@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.campaign.CampaignSetup
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OptionRestriction, PowerCtx, Restriction}
 import oathdigital.gameplay.powers.{CatalogResolution, RuledCards}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object DiplomatCard extends Denizen(DenizenId("230"), "Diplomat", Suit.Hearth) with AdviserOnly:
@@ -49,10 +50,7 @@ final case class Diplomat private (catalog: ExecutableCatalog)
 
   /** The holder `attacker` may not campaign against, if any. */
   private def protects(ready: ReadyGame, attacker: PlayerId): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player).filter(holder => holder != attacker &&
+    PowerAccess.faceupAdviserHolder(ready, cardId).filter(holder => holder != attacker &&
       RuledCards.of(catalog, ready, SiteRuler.Player(attacker), Suit.Hearth)
         .isEmpty)
 

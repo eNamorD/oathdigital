@@ -4,6 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
 import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object ChaosCultCard extends Denizen(DenizenId("101"), "Chaos Cult", Suit.Discord) with AdviserOnly:
@@ -51,10 +52,7 @@ case object ChaosCult extends ContributingPower:
         Note(id, tookNote(holder)))))))
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, cardId)
 
   private def take(ready: ReadyGame, holder: PlayerId): Vector[CoreOperation] =
     ready.game.current.title.holder.filter(_ != holder)

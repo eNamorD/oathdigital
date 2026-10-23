@@ -48,10 +48,7 @@ final case class VowOfBeastkin private (catalog: ExecutableCatalog)
     holds(ctx.state, ctx.actor)
 
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
-    ready.game.current.players.find(_.player == player).exists(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    })
+    PowerAccess.holdsFaceupAdviser(ready, player, cardId)
 
   /** Refuses a source whose suit matches none of the holder's faceup
     * advisers. */

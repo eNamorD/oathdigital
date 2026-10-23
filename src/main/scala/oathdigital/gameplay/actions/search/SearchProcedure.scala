@@ -154,7 +154,7 @@ object SearchProcedure:
 
   def actorRegion(ready: ReadyGame, actor: PlayerId)
       : Either[OathViolation, Region] =
-    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+    ready.game.current.pawnSite(actor)
       .flatMap(ready.game.current.map.regionOf)
       .toRight(OathViolation.PawnSiteMissing(actor))
 

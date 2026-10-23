@@ -4,6 +4,7 @@ import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx}
 import oathdigital.gameplay.powers.CatalogResolution
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object CircletOfCommandCard extends Relic(RelicId("R15"), "Circlet of Command", value = 12, defense = 0):
@@ -54,10 +55,7 @@ final case class CircletOfCommand private (catalog: ExecutableCatalog)
 
   /** The player holding this Circlet faceup, if any. */
   private def holder(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.relics.exists {
-      case RelicState(`cardId`, Orientation.FaceUp, _) => true
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupRelicHolder(ready, cardId)
 
   /** Whether `ref` names a banner or a relic of the holder that the acting
     * player may not target.

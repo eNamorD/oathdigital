@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OperationRewrite, PowerCtx, Transform}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object VowOfWisdomCard extends Denizen(DenizenId("203"), "Vow of Wisdom",
@@ -44,8 +45,4 @@ case object VowOfWisdom extends ContributingPower:
       }))))
 
   override def applicable(ctx: PowerCtx): Boolean =
-    ctx.state.game.current.players.find(_.player == ctx.actor)
-      .exists(_.advisers.exists {
-        case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-        case _ => false
-      })
+    PowerAccess.holdsFaceupAdviser(ctx.state, ctx.actor, cardId)

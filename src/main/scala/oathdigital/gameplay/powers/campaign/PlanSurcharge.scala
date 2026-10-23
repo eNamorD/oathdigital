@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.campaign.{CampaignPlanApplication,
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.CatalogResolution
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 /** A persistent rule of a faceup adviser that adds a cost to every battle plan
@@ -96,10 +97,7 @@ trait PlanSurcharge extends ContributingPower:
 object PlanSurcharge:
   /** The player who holds `card` faceup among their advisers. */
   def holderOf(ready: ReadyGame, card: DenizenId): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(id, Orientation.FaceUp, _) => id == card
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, card)
 
   /** Whether the plan of `side` in `setup` is the enemy's of `holding`. */
   def enemy(side: CampaignPlanSide, setup: CampaignSetup,

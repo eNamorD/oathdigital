@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.EffectiveSuit
+import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.model._
 
@@ -20,10 +20,7 @@ private[campaign] object EnemyPlans:
 
   private def faceUpHolder(ready: ReadyGame, card: DenizenId)
       : Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(held, Orientation.FaceUp, _) => held == card
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, card)
 
   /** The suit of the plan named by `ref`: its source card's, as the rules
     * see it (`EffectiveSuit`). A relic and the title have none. */

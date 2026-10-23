@@ -4,6 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OperationRewrite, PowerCtx, Transform}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object VowOfWanderingCard extends Denizen(DenizenId("247"), "Vow of Wandering", Suit.Nomad) with Locked with AdviserOnly:
@@ -100,10 +101,7 @@ case object VowOfWandering extends ContributingPower:
     holderOf(ready).contains(player)
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, cardId)
 
   /** The survivors the placement question offers. */
   private def survivors(query: DecisionQuery): Int = query match

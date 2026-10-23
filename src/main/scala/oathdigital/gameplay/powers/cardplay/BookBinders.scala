@@ -4,6 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object BookBindersCard extends Denizen(DenizenId("140"), "Book Binders", Suit.Hearth) with AdviserOnly:
@@ -73,10 +74,7 @@ final case class BookBinders private (catalog: ExecutableCatalog)
     })
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupAdviserHolder(ready, cardId)
 
 object BookBinders:
   val id: PowerId = BookBindersCard.power.id

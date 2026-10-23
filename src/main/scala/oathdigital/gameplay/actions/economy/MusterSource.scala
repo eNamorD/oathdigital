@@ -27,7 +27,7 @@ object MusterSource:
   def atSite(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Vector[DecisionOption] =
     for
-      siteId <- pawnSite(state, actor).toVector
+      siteId <- state.game.current.pawnSite(actor).toVector
       site <- state.game.current.map.sites.get(siteId).toVector
       card <- site.denizens
       if catalog.suitOf(card.id).nonEmpty
@@ -61,7 +61,7 @@ object MusterSource:
       : Either[OathViolation, MusterSource] = for
     id <- cardIdOf(ref).toRight(OathViolation.InvalidEventOrder(
       s"${ref.kind}/${ref.wireId} is not a card a Muster or Trade can draw on"))
-    siteId <- pawnSite(state, actor).toRight(OathViolation.PawnSiteMissing(actor))
+    siteId <- state.game.current.pawnSite(actor).toRight(OathViolation.PawnSiteMissing(actor))
     found <- locate(state, actor, id)
       .toRight(OathViolation.EconomyCardUnavailable(siteId, id))
     suit <- EffectiveSuit.traded(catalog, state, answered, ref).toRight(
@@ -112,5 +112,3 @@ object MusterSource:
     case DecisionOptionRef.Edifice(id) => Some(id)
     case _ => None
 
-  private def pawnSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
-    state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)

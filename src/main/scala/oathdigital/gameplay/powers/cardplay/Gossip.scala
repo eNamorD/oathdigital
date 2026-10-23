@@ -4,6 +4,7 @@ import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object GossipCard extends Denizen(DenizenId("99"), "Gossip", Suit.Discord) with AdviserOnly:
@@ -46,11 +47,8 @@ final case class Gossip private (catalog: ExecutableCatalog)
 
   /** The holder, when the hooked play is another player's facedown play. */
   private def holderOf(ctx: PowerCtx): Option[PlayerId] = ctx.operation match
-    case CardPlayedFacedown(_, player) => ctx.state.game.current.players
-      .find(_.advisers.exists {
-        case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-        case _ => false
-      }).map(_.player).filter(_ != player)
+    case CardPlayedFacedown(_, player) =>
+      PowerAccess.faceupAdviserHolder(ctx.state, cardId).filter(_ != player)
     case _ => None
 
 object Gossip:

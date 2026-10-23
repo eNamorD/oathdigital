@@ -5,6 +5,7 @@ import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PhasePower, PowerCtx, Restriction}
 import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
 import oathdigital.gameplay.powers.cardplay.FavorBankChoice
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object VowOfPovertyCard extends Denizen(DenizenId("193"), "Vow of Poverty", Suit.Beast) with Locked with AdviserOnly:
@@ -79,10 +80,7 @@ case object VowOfPoverty extends PhasePower with ContributingPower:
 
   /** Whether `player` holds this card as a faceup adviser. */
   private def holds(ready: ReadyGame, player: PlayerId): Boolean =
-    ready.game.current.players.find(_.player == player).exists(_.advisers.exists {
-      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
-      case _ => false
-    })
+    PowerAccess.holdsFaceupAdviser(ready, player, cardId)
 
   /** The favor `player` took from one bank in the step before the note. */
   private def tookNote(source: DecisionOptionRef, player: PlayerId)(

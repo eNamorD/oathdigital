@@ -136,13 +136,6 @@ object ForgeProcedure:
   /** Forge spends exactly one Supply to start, whatever the printed cost. */
   private val supplyCost: Int = 1
 
-  /** The actor's current pawn site -- the single definition `build`,
-    * `rebuild` and [[eligibleTargets]] all read, so nothing in this module can
-    * derive "the Forge site" a different way and silently disagree.
-    */
-  def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
-    state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
-
   /** The empty faceup denizens at the actor's CURRENT pawn site, as assignment
     * targets: exactly the options the assignment decision declares, and so
     * exactly the set a client is offered. Read live off
@@ -152,7 +145,7 @@ object ForgeProcedure:
     */
   def eligibleTargets(state: ReadyGame,
       actor: PlayerId): Vector[SiteDenizenTarget] =
-    actorSite(state, actor).fold(Vector.empty[SiteDenizenTarget]) { siteId =>
+    state.game.current.pawnSite(actor).fold(Vector.empty[SiteDenizenTarget]) { siteId =>
       state.game.current.map.sites.get(siteId)
         .fold(Vector.empty[SiteDenizenTarget])(_.denizens.collect {
           case denizen: DenizenState
@@ -186,7 +179,7 @@ object ForgeProcedure:
     */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for
-    siteId <- actorSite(state, actor).toRight(
+    siteId <- state.game.current.pawnSite(actor).toRight(
       OathViolation.PawnSiteMissing(actor))
     cost <- printedCost(catalog, siteId)
   yield tree(actor, cost)

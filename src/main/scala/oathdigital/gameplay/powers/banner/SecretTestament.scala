@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.actions.challenge.ChallengeProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
+import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
 object SecretTestamentCard extends Relic(RelicId("R38"), "Secret Testament", value = 82, defense = 2):
@@ -89,7 +90,4 @@ case object SecretTestament extends ContributingPower:
 
   /** The player holding the relic faceup, if any. */
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
-    ready.game.current.players.find(_.relics.exists {
-      case RelicState(`cardId`, Orientation.FaceUp, _) => true
-      case _ => false
-    }).map(_.player)
+    PowerAccess.faceupRelicHolder(ready, cardId)
