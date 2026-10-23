@@ -53,7 +53,8 @@ related powers share one.
 ## The walker
 
 `WalkerProcedureRegistry` maps each `ProcedureRef` to its `build` and
-`rebuild` functions, its modifier window and its ignored-rule kind.
+`rebuild` functions, its modifier window, its ignored-rule kind, and the
+optional roll, start-fact, roll-feedback and pricing hooks.
 `ProcedureWalker` walks a tree from the parked position. It folds each
 node's power window, runs leaf operations through `OperationPipeline`, and
 parks at a `Decide` or a `Roll`. Each executed leaf becomes a

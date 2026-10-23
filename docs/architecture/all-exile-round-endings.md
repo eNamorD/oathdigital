@@ -2,8 +2,9 @@
 
 This slice follows the current New Foundations rules, not the original Oath
 ending procedure. The authoritative sources are *Oath Combined Rulebook* p.19,
-*Oath: Welcome to New Foundations* p.8, and the current Oathkeeper goal back in
-`reference/2026-03-17-new-foundations-rev1/oathkeeper-goal-backs.pdf`.
+*Oath: Welcome to New Foundations* p.8, and the current Oathkeeper goal card
+backs (New Foundations revision 1, March 2026). The goal-back scan is not in
+the repository.
 
 ## Procedure
 

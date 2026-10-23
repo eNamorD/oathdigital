@@ -104,7 +104,8 @@ gameplay.
    Put a `PowerWindow` on each node where powers may contribute.
 3. Register both functions in `WalkerProcedureRegistry.entries`. The `Entry`
    also names the `ActionKind` whose ignored rules the start records, the
-   modifier window, and the optional roll, start-fact and pricing hooks.
+   modifier window, and the optional roll, start-fact, roll-feedback and
+   pricing hooks.
 4. Offer it. An Act action joins `ActOffers.all` with its label, and
    `ActOffers.reason` words why it cannot start. `PhaseMenu` builds the menu
    from these offers and prices each option.
