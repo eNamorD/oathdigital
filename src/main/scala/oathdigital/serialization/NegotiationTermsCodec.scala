@@ -8,6 +8,7 @@ import oathdigital.serialization.WireError.InvalidValue
   * answer codec writes and reads.
   */
 private[serialization] object NegotiationTermsCodec:
+  import GameEventJsonSupport.traverse
   def encode(terms: NegotiationTerms): ujson.Value = ujson.Obj(
     "transfers" -> ujson.Arr.from(terms.transfers.map(transfer => ujson.Obj(
       "recipientPlayerId" -> transfer.recipient.value,
@@ -70,9 +71,3 @@ private[serialization] object NegotiationTermsCodec:
     case "vision" => Right(VisionId(value("id").str))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown world card kind '$other'"))
-
-  private def traverse[A, B](values: Vector[A])(
-      f: A => Either[WireError, B]): Either[WireError, Vector[B]] =
-    values.foldLeft[Either[WireError, Vector[B]]](Right(Vector.empty)):
-      case (Right(acc), value) => f(value).map(acc :+ _)
-      case (failure @ Left(_), _) => failure

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.CardPlay
 import oathdigital.model._
 
 /** The region discard of Dazzle, Threatening Roar and Riots (catalog batch
@@ -36,7 +37,7 @@ private[whenplayed] final class RegionDiscard(catalog: ExecutableCatalog,
         case (acc, (site, card)) => acc.flatMap(done =>
           suitOf(card).map(suit =>
             if kept(suit) then done ++ discard(site, card, suit,
-              RegionDiscard.next(origin), actor)
+              CardPlay.nextRegion(origin), actor)
             else done))
       })
 
@@ -93,12 +94,6 @@ private[whenplayed] object RegionDiscard:
   /** "Nothing was discarded." */
   val none: NoteKey = notes.key("none", Vector(
     NotePart.Text("Nothing was discarded.")))
-
-  /** The region whose discard pile takes the cards discarded in `origin`. */
-  def next(origin: Region): Region = origin match
-    case Region.Cradle => Region.Provinces
-    case Region.Provinces => Region.Hinterland
-    case Region.Hinterland => Region.Cradle
 
   /** The cards of `found` that no site holds in `ready`. */
   def gone(found: Vector[CardId], ready: ReadyGame): Vector[CardId] =

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.setup
 
 import oathdigital.catalog.{ExecutableCatalog, SiteOnly}
-import oathdigital.gameplay.actions.ProcedureNotes
+import oathdigital.gameplay.actions.{CardPlay, ProcedureNotes}
 import oathdigital.model._
 import oathdigital.model.OathViolation._
 
@@ -240,7 +240,7 @@ object SetupProcedure:
         resultingOrientation = Some(Orientation.FaceDown)) +:
       rejected.map(id => Move(Piece.Card(id),
         PositionedLocation(Location.Hand(player)),
-        PositionedLocation(Location.RegionalDiscard(nextRegion(region)),
+        PositionedLocation(Location.RegionalDiscard(CardPlay.nextRegion(region)),
           StackPosition.Top)))
 
   private def adviserSelection(pending: PendingTree, decisionId: String)
@@ -261,8 +261,3 @@ object SetupProcedure:
   private def denizen(ref: DecisionOptionRef): Option[DenizenId] = ref match
     case DecisionOptionRef.Denizen(id) => Some(id)
     case _ => None
-
-  private def nextRegion(region: Region): Region = region match
-    case Region.Cradle => Region.Provinces
-    case Region.Provinces => Region.Hinterland
-    case Region.Hinterland => Region.Cradle

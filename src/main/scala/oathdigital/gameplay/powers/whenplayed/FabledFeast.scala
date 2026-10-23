@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers, RuledCards}
+import oathdigital.gameplay.powers.cardplay.FavorBankChoice
 import oathdigital.model._
 
 object FabledFeastCard extends Denizen(DenizenId("136"), "Fabled Feast", Suit.Hearth):
@@ -37,7 +38,7 @@ final case class FabledFeast private (catalog: ExecutableCatalog)
     Vector(Branch((live, _) =>
       val count = RuledCards.count(catalog, live, SiteRuler.Player(ctx.actor),
         Suit.Hearth)
-      val banks = stocked(live)
+      val banks = FavorBankChoice.stocked(live)
       if count == 0 then Vector(Note(id, _ =>
         Some(none(source, NoteArg.Player(ctx.actor)))))
       else if banks.isEmpty then Vector(Note(id, _ => Some(empty(source))))
@@ -65,10 +66,6 @@ object FabledFeast:
   def forCatalog(catalog: ExecutableCatalog): FabledFeast =
     new FabledFeast(catalog)
 
-  /** The banks that hold favor, in suit order. */
-  private def stocked(ready: ReadyGame): Vector[Suit] =
-    Suit.all.filter(suit => ready.banks.favor.getOrElse(suit, 0) > 0)
-
   /** The question, when two or more banks hold favor. */
   private def ask(actor: PlayerId, banks: Vector[Suit], count: Int)
       : Vector[Operation] =
@@ -81,7 +78,7 @@ object FabledFeast:
   /** The gain from the only stocked bank, or from the bank answered. */
   private def take(ready: ReadyGame, actor: PlayerId, pending: PendingTree,
       count: Int): Either[OathViolation, Vector[CoreOperation]] =
-    val banks = stocked(ready)
+    val banks = FavorBankChoice.stocked(ready)
     val bank = banks match
       case Vector(only) => Right(only)
       case _ => PowerAnswers.one(pending, decisionId)

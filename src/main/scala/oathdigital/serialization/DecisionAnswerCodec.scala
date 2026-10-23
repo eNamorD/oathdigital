@@ -23,6 +23,7 @@ import oathdigital.serialization.WireError.InvalidValue
   * here, in the command protocol, and in the projection.
   */
 private[serialization] object DecisionAnswerCodec:
+  import GameEventJsonSupport.traverse
   private val ChooseOneTag = "choose-one"
   private val ChooseManyTag = "choose-many"
   private val ChooseAmountTag = "choose-amount"
@@ -107,9 +108,3 @@ private[serialization] object DecisionAnswerCodec:
     val id = value("id").str
     DecisionOptionRef.fromWire(kind, id).toRight(InvalidValue(path,
       s"unknown decision option '$kind/$id'"))
-
-  private def traverse[A, B](values: Vector[A])(
-      f: A => Either[WireError, B]): Either[WireError, Vector[B]] =
-    values.foldLeft[Either[WireError, Vector[B]]](Right(Vector.empty)):
-      case (Right(acc), value) => f(value).map(acc :+ _)
-      case (failure @ Left(_), _) => failure

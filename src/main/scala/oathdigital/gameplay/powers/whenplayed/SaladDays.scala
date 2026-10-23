@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.catalog.{Denizen, PrintedPower}
 import oathdigital.gameplay.powerresolver.PowerCtx
 import oathdigital.gameplay.powers.PowerAnswers
+import oathdigital.gameplay.powers.cardplay.FavorBankChoice
 import oathdigital.model._
 
 object SaladDaysCard extends Denizen(DenizenId("147"), "Salad Days", Suit.Hearth):
@@ -34,17 +35,13 @@ case object SaladDays extends WhenPlayedPower:
   val empty: NoteKey = notes.key("none", Vector(
     NotePart.Text("Every favor bank was empty.")))
 
-  /** The banks that hold favor, in suit order. */
-  private def stocked(ready: ReadyGame): Vector[Suit] =
-    Suit.all.filter(suit => ready.banks.favor.getOrElse(suit, 0) > 0)
-
   private def gains(actor: PlayerId, suits: Vector[Suit])
       : Vector[CoreOperation] = suits.map(Gain.Favor(actor, _, Each))
 
   /** The three different stocked banks answered. */
   private def chosen(ready: ReadyGame, pending: PendingTree)
       : Either[OathViolation, Vector[Suit]] =
-    val banks = stocked(ready)
+    val banks = FavorBankChoice.stocked(ready)
     PowerAnswers.many(pending, decisionId)
       .toRight(PowerAnswers.missing(decisionId)).flatMap { refs =>
         val suits = refs.collect { case DecisionOptionRef.FavorBank(suit) =>
@@ -59,11 +56,11 @@ case object SaladDays extends WhenPlayedPower:
 
   def effect(ctx: PowerCtx): Vector[Operation] =
     Vector(Branch((live, _) =>
-      val banks = stocked(live)
+      val banks = FavorBankChoice.stocked(live)
       if banks.isEmpty then Vector(Note(id, _ =>
         Some(empty(PowerSourceRef.Card(cardId)))))
       else if banks.size <= Banks then Vector(BuildOps((ready, _) =>
-        Right(gains(ctx.actor, stocked(ready)))))
+        Right(gains(ctx.actor, FavorBankChoice.stocked(ready)))))
       else Vector(
         Decide(decisionId, ctx.actor, DecisionQuery.ChooseMany(Banks, Banks,
           banks.map(suit => DecisionOption.FavorBank(

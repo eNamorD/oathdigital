@@ -22,7 +22,7 @@ private[operations] object OperationSecretPlanner:
       .groupBy(_._1.from.location)
       .toVector
       .sortBy(_._2.map(_._2).min)
-    sequence(grouped.map { case (source, indexed) =>
+    OperationStateWrites.sequence(grouped.map { case (source, indexed) =>
       planSecretSource(ready, source, indexed.sortBy(_._2))
     }).map(_.flatten.sortBy(_._1).map { case (_, move, split) =>
       move -> split
@@ -146,12 +146,3 @@ private[operations] object OperationSecretPlanner:
 
   private def clampNonNegative(value: Long): Int =
     math.max(0L, math.min(Int.MaxValue.toLong, value)).toInt
-
-  private def sequence[A](
-      values: Vector[Either[OperationError, A]]
-  ): Either[OperationError, Vector[A]] =
-    values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)):
-      case (result, value) => for
-        accumulated <- result
-        next <- value
-      yield accumulated :+ next

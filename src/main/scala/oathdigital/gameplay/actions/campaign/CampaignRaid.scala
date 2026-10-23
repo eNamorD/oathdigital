@@ -1,6 +1,6 @@
 package oathdigital.gameplay.actions.campaign
 
-import oathdigital.gameplay.actions.{BannerRules, VisionRules}
+import oathdigital.gameplay.actions.{BannerRules, CardPlay, VisionRules}
 import oathdigital.model._
 
 /** Step 9 for a Raid victory: the printed transfer (the takes, then the
@@ -39,11 +39,6 @@ private[campaign] object CampaignRaid:
       .flatMap(_.pawnSite)
     ready.game.current.map.inPlay.filterNot(site => origin.contains(site))
 
-  private def next(region: Region): Region = region match
-    case Region.Cradle => Region.Provinces
-    case Region.Provinces => Region.Hinterland
-    case Region.Hinterland => Region.Cradle
-
   /** The Raid's defender and the region its facedown advisers are
     * discarded to, the one after the origin's, from live state. */
   private def defeated(ready: ReadyGame, result: CampaignResult)
@@ -60,7 +55,7 @@ private[campaign] object CampaignRaid:
         OathViolation.PawnSiteMissing(result.attacker))
       region <- current.map.regionOf(origin).toRight(
         OathViolation.InvalidEventOrder("the Raid's origin has no region"))
-    yield (defender, next(region))
+    yield (defender, CardPlay.nextRegion(region))
 
   /** What the attacker targeted, taken: the relics, then the banners. A
     * banner's favor and secrets leave with it. */

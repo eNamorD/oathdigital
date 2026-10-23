@@ -423,6 +423,12 @@ private[serialization] trait GameEventJsonSupport:
   protected final def traverse[A, B](
       values: Vector[A]
   )(f: A => Either[WireError, B]): Either[WireError, Vector[B]] =
+    GameEventJsonSupport.traverse(values)(f)
+
+private[serialization] object GameEventJsonSupport:
+  /** Decodes every element, stopping at the first failure. */
+  def traverse[A, B](values: Vector[A])(
+      f: A => Either[WireError, B]): Either[WireError, Vector[B]] =
     values.foldLeft[Either[WireError, Vector[B]]](Right(Vector.empty)):
       case (Right(acc), value) => f(value).map(acc :+ _)
       case (failure @ Left(_), _) => failure
