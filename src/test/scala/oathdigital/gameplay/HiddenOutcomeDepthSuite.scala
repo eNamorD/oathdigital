@@ -6,6 +6,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome}
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.DecisionOptions.button
 
 /** The legality search stops at hidden information wherever the pipeline
   * would run it, not only at the top of a built batch (hidden outcome depth
@@ -45,8 +46,6 @@ class HiddenOutcomeDepthSuite extends munit.FunSuite:
       Region.Provinces, catalog.suitOf(lockedCard).get, 0, 0, p1,
       required = true)
 
-  private def button(key: String) =
-    DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private def ref(key: String): DecisionOptionRef =
     DecisionOptionRef.Button(key)
 

@@ -7,6 +7,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
 import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.p1
+import oathdigital.testkit.DecisionOptions.button
 
 /** A choose-one marked `passWhenEmpty` is passed by a search when it is
   * left no option, and the live walk parks it on its Continue screen; it
@@ -20,8 +21,6 @@ class PassWhenEmptySuite extends munit.FunSuite:
   private val ready = Table.start.adviser(p1, lockedCard).ready
   private val ask = "test.ask"
   private val next = "test.next"
-  private def button(key: String) =
-    DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private def ref(key: String): DecisionOptionRef = DecisionOptionRef.Button(key)
   private def chose(key: String): DecisionAnswer =
     DecisionAnswer.ChooseOneAnswer(ref(key))

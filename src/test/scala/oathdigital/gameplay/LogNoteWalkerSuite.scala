@@ -8,6 +8,7 @@ import oathdigital.model.TestGameFixtures._
 import oathdigital.testkit.Outcomes.{finished, parked}
 import oathdigital.testkit.CatalogNames
 import oathdigital.testkit.Unwrap.{accepted, present}
+import oathdigital.testkit.DecisionOptions.button
 
 /** The `Note` node (power log lines design, section 1). */
 class LogNoteWalkerSuite extends munit.FunSuite:
@@ -19,8 +20,6 @@ class LogNoteWalkerSuite extends munit.FunSuite:
   private def note(word: String): Note = Note(power, _ => Some(said(word)))
   private def noted(word: String) =
     LogNoted(power, said(word), covers = false)
-  private def button(key: String) =
-    DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private val ask = Decide("ask", actor,
     DecisionQuery.ChooseOne(Vector(button("yes"))))
   private val yes = Answered("ask",

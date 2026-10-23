@@ -8,6 +8,7 @@ import oathdigital.model._
 import oathdigital.testkit.{CatalogNames, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Outcomes.parked
+import oathdigital.testkit.DecisionOptions.button
 
 /** The walker hides an option from which no path reaches a legal end, and
   * stops looking at hidden information (global operation restrictions
@@ -20,8 +21,6 @@ class LazyPruningSuite extends munit.FunSuite:
   private val ready = Table.start.adviser(p1, lockedCard).ready
   private val ask = "test.ask"
   private val next = "test.next"
-  private def button(key: String) =
-    DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private def ref(key: String): DecisionOptionRef =
     DecisionOptionRef.Button(key)
 

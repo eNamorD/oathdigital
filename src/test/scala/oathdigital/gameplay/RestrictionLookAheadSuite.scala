@@ -8,6 +8,7 @@ import oathdigital.testkit.PowerStubs.RestrictionStub
 import oathdigital.testkit.Table
 import oathdigital.testkit.Outcomes
 import oathdigital.testkit.Unwrap.accepted
+import oathdigital.testkit.DecisionOptions.button
 
 /** The walker hides an option whose answer would break a `Restriction`, even
   * when the restriction's window exists only once that answer is given, so a
@@ -19,8 +20,6 @@ class RestrictionLookAheadSuite extends munit.FunSuite:
   private val nested = PowerWindow.CampaignActionEligibility
   private val ask = "test.ask"
   private val violation = OathViolation.CampaignUnavailable("the test forbids it")
-  private def button(key: String) =
-    DecisionOption.Button(DecisionOptionRef.Button(key), key)
   private def ref(key: String): DecisionOptionRef = DecisionOptionRef.Button(key)
 
   private val forbidding = RestrictionStub(PowerId("test.forbidding"),

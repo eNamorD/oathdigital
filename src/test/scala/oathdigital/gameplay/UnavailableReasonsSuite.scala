@@ -6,6 +6,7 @@ import oathdigital.testkit.Table
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.PowerStubs.{ActionForbiddingStub, OptionHidingStub, hideSource, hidNote}
 import oathdigital.testkit.Outcomes.parked
+import oathdigital.testkit.DecisionOptions.button
 
 /** An option a power hides is still shown, as unavailable, when the power
   * says why (board decisions design, "Unavailable options"): the reason is
@@ -45,8 +46,6 @@ class UnavailableReasonsSuite extends munit.FunSuite:
     val nested = PowerWindow.CampaignActionEligibility
     val forbidder = PowerId("test.forbidder")
     val powers = WalkerPowers(Vector(ActionForbiddingStub(forbidder, nested)))
-    def button(key: String) =
-      DecisionOption.Button(DecisionOptionRef.Button(key), key)
     val tree = Sequence(Vector[Operation](Decide("ask", actor,
         DecisionQuery.ChooseOne(Vector(button("yes"), button("no")))),
       Branch((_, pending) => if pending.answered.exists {
