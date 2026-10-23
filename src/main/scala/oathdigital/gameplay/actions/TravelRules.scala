@@ -7,23 +7,16 @@ import oathdigital.model.{OathViolation, ReadyGame, Region, SiteId}
 /** Travel's printed rules: the region-to-region Supply table, and nothing
   * else.
   *
-  * What this used to also do, and no longer does (batch-1 Task 5):
-  *
-  *  - **Terrain.** `cost` ended in a window fold that added Mountain and
-  *    Island and replaced the whole cost on a coast route. Terrain is now
-  *    stated by the site powers themselves as `Transform`s over the pay node
-  *    ([[oathdigital.gameplay.powers.travel.TravelSitePowers]]), folded by the
-  *    walker at `PowerWindow.TravelCost`. This table returns the PRINTED base
-  *    a transform then shapes.
-  *  - **Legal destinations.** `legalDestinations` computed costs a second way
-  *    and filtered them against the actor's Supply. The candidate list is now
-  *    `TravelProcedure.candidates`, which dry-runs the same declared tree the
-  *    command walks, so what a client is offered and what the command accepts
-  *    are one expression rather than two that agree by convention.
-  *  - **Role and Foundation gates.** `validateSupportedState` refused a Travel
-  *    in a non-exile game or beside an altered Foundation. Neither is a fact
-  *    about the printed Travel action, and `OathViolation.UnsupportedTravelState`
-  *    went with them.
+  * The table returns the printed base of a route; everything that shapes it
+  * lives elsewhere. Terrain is stated by the site powers themselves
+  * ([[oathdigital.gameplay.powers.travel.TravelSitePowers]]) as `Transform`s
+  * over the pay node, folded by the walker at `PowerWindow.TravelCost`. The
+  * destinations a client is offered come from
+  * [[oathdigital.gameplay.actions.travel.TravelProcedure]], which prices every
+  * route through this table inside the tree the command walks, so what a
+  * client is offered and what the command accepts are one expression. Role
+  * and Foundation faces gate nothing here: the procedure previews every
+  * destination and says why none can be reached.
   */
 object TravelRules:
 
