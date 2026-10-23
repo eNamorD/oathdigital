@@ -18,15 +18,15 @@ class ServerUiSupportSuite extends FunSuite:
     assertEquals(ServerUiSupport.canonicalGameId("/games/a/api"), None)
     assertEquals(ServerUiSupport.canonicalGameId("/games/%broken"), None)
 
-  test("secret summaries lead with available over total and explain unavailable tokens"):
-    assertEquals(ServerUiSupport.secretSummaryLabel(1, 1, 0, 0),
-      "1 available of 1 owned; 0 facedown and 0 committed")
-    assertEquals(ServerUiSupport.secretSummaryLabel(0, 1, 0, 1),
-      "0 available of 1 owned; 0 facedown and 1 committed")
-    assertEquals(ServerUiSupport.secretSummaryLabel(0, 1, 1, 0),
-      "0 available of 1 owned; 1 facedown and 0 committed")
-    assertEquals(ServerUiSupport.secretSummaryLabel(1, 2, 0, 1),
-      "1 available of 2 owned; 0 facedown and 1 committed")
+  test("secret summaries lead with available over total and explain unavailable tokens on a line of their own"):
+    assertEquals(ServerUiSupport.secretSummaryLines(1, 1, 0, 0),
+      Vector("1/1 secrets available", "0 facedown on board, 0 committed to cards"))
+    assertEquals(ServerUiSupport.secretSummaryLines(0, 1, 0, 1),
+      Vector("0/1 secrets available", "0 facedown on board, 1 committed to cards"))
+    assertEquals(ServerUiSupport.secretSummaryLines(0, 1, 1, 0),
+      Vector("0/1 secrets available", "1 facedown on board, 0 committed to cards"))
+    assertEquals(ServerUiSupport.secretSummaryLines(1, 2, 0, 1),
+      Vector("1/2 secrets available", "0 facedown on board, 1 committed to cards"))
 
   test("banner and Challenge action labels are presentable"):
     assertEquals(ServerUiSupport.actionLabel("challenge"), "Challenge")
