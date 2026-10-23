@@ -78,12 +78,20 @@ for grafted in GRAFTED_MODEL_FILES:
 
 qualified_reference = re.compile(
     r"\boathdigital\.([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?")
+# `import oathdigital.{application, model => m}` names packages inside the
+# braces, where the pattern above cannot see them.
+brace_group_import = re.compile(r"\bimport\s+oathdigital\.\{([^}]*)\}")
 
 
 def outward_references(path: Path, allowed_packages: tuple[str, ...]):
     """Each (line number, package) naming a package outside `allowed_packages`,
     except the sanctioned model names."""
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        for group in brace_group_import.finditer(line):
+            for item in group.group(1).split(","):
+                package = item.strip().split("=>")[0].strip().split(".")[0]
+                if package and package not in allowed_packages:
+                    yield line_number, package
         for match in qualified_reference.finditer(line):
             package, member = match.group(1), match.group(2)
             if package in allowed_packages:
