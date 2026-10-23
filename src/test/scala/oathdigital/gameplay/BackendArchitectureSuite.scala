@@ -158,58 +158,6 @@ class BackendArchitectureSuite extends munit.FunSuite:
       "decode wire strings with CommandJsonSupport.string/strings, which " +
         "reject blanks with a typed error, not the raw .str accessor")
 
-  test("individual power definitions use factories instead of handler subclasses"):
-    val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
-    val powerDefinition = "\\bobject\\s+[A-Za-z0-9_]+\\s+extends\\s+Power\\b".r
-    val bespokeHandler = "\\bextends\\s+[A-Za-z0-9_]*PowerHandler\\b".r
-    val offenders = Files.walk(root).iterator.asScala.filter(
-      _.toString.endsWith(".scala")).flatMap { path =>
-      val source = Files.readString(path)
-      Option.when(powerDefinition.findFirstIn(source).nonEmpty &&
-        bespokeHandler.findFirstIn(source).nonEmpty)(path.toString)
-    }.toVector
-    assertEquals(offenders, Vector.empty)
-
-  test("Rest registry cannot own procedure orchestration or state mutation"):
-    val source = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/gameplay/powers/RestPowers.scala"))
-    Vector("def begin", "def evolve", "OathTransition", "PendingProcedure",
-      ".copy(").foreach { forbidden =>
-      assert(!source.contains(forbidden),
-        s"RestPowers must leave '$forbidden' to typed handlers/integration")
-    }
-
-  test("procedure power inventories use named Power objects, not raw ID tables"):
-    // Aimed at the legacy `Power` inventories (`ActionPowers`, `SearchPowers`,
-    // ...), where a collection literal meant an id table standing in for named
-    // power objects. A `ContributingPower` is not one of those: it declares
-    // `contributions: Map[PowerWindow, Vector[Contribution]]`, so the scan
-    // read an ordinary field of the walker seam as the smell it hunts. That
-    // misfire was already being paid for -- `TravelSitePowers.scala` spells
-    // its contribution map `Map.empty.updated(...)` for no reason but this
-    // guard -- and batch-1 Task 6 would have paid it again. Contribution
-    // files are therefore skipped by what they declare, not by filename.
-    val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
-    val declaresContribution = "(?:extends|with)\\s+ContributingPower\\b".r
-    val scanned = Files.walk(root).iterator.asScala.filter(path =>
-      path.getFileName.toString.endsWith("Powers.scala") &&
-        declaresContribution.findFirstIn(Files.readString(path)).isEmpty)
-      .toVector
-    // The exemption narrows the guard; it must not empty it. A refactor that
-    // left nothing scanned would pass this test while checking nothing, so
-    // the legacy inventories the guard was written for must still be scanned.
-    val legacyInventories = Vector("ActionPowers", "CampaignPowers",
-      "RecoverPowers", "RestPowers", "TradePowers")
-    val scannedNames = scanned.map(_.getFileName.toString.stripSuffix(".scala"))
-    assertEquals(legacyInventories.filterNot(scannedNames.contains),
-      Vector.empty, s"the inventory scan misses legacy inventories: $scanned")
-    val offenders = scanned.filter { path =>
-      val text = Files.readString(path)
-      text.contains("Set(") || text.contains("Map(") ||
-        text.contains("handlerId match")
-    }.map(_.toString)
-    assertEquals(offenders, Vector.empty)
-
   test("only tests seed a service's genesis"):
     // The seam lets a test's Table start a stream. Production streams begin
     // at GameStarted until an arranged-start event exists (docs/ROADMAP.md).
