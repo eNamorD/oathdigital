@@ -4,9 +4,7 @@ import ServerUiSupport._
 private[frontend] object ActionDecisionRenderer:
  def status(value: GameProjection, presentation: ViewerPresentation): dom.Element =
    val node = element("div", "status")
-   presentation.procedureStatus match
-     case Some(message) => node.textContent = message
-     case None => presentation.waitingForPlayerId match
+   presentation.waitingForPlayerId match
      case Some(playerId) =>
        node.appendChild(dom.document.createTextNode("Waiting for "))
        node.appendChild(playerReference(value, playerId))

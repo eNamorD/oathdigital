@@ -250,8 +250,7 @@ private[frontend] object ServerUiSupport:
       showGameplayControls: Boolean,
       waitingForPlayerId: Option[String],
       waitingForDisplayName: Option[String],
-      playerId: String,
-      procedureStatus: Option[String] = None
+      playerId: String
   )
 
   private[frontend] def viewerPresentation(
