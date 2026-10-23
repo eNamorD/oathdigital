@@ -6,7 +6,7 @@ import oathdigital.gameplay.operations.OperationRestrictions
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
-import oathdigital.gameplay.powers.{DeclaredNotes, PhasePowerCatalog}
+import oathdigital.gameplay.powers.PhasePowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
@@ -24,7 +24,7 @@ object PhasePowerHarness:
   val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowers(Vector.empty,
       restrictionSet = OperationRestrictions.forCatalog(catalog),
-      declared = Some(DeclaredNotes.of(catalog))),
+      declared = PowerRules.declared),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
   private val projector = new GameProjector(catalog)
 
