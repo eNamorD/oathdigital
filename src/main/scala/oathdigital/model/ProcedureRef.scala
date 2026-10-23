@@ -111,14 +111,8 @@ object ActionRef:
     val key: String = s"${UsePower.Prefix}${power.value}"
   object UsePower { private[model] val Prefix = "use-power:" }
 
-  /** Every finite action reference.
-    *
-    * `TakeWealth` names the Wake phase's action, not `ActionKind.Wake`,
-    * which names the phase's power timing. Take Wealth's registry entry
-    * points at that kind through `fallbackKind`, which keeps the fallback
-    * diagnostics the legacy `Wake` command ran under. A preview asked for
-    * the Wake kind takes its existing path rather than being answered as
-    * Take Wealth.
+  /** Every finite action reference. `TakeWealth` names the Wake phase's
+    * action.
     */
   val all: Vector[ActionRef] = Vector(Search, PlayFacedownAdviser,
     Recover, Forge, Travel, TakeWealth, Muster, Trade, Challenge,

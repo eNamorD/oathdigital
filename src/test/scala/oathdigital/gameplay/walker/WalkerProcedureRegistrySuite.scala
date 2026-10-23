@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.model.{ActionRef, DecisionOptionRef, ActionKind, OathViolation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId, TriggeredProcedureRef}
+import oathdigital.model.{ActionRef, DecisionOptionRef, OathViolation, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId, TriggeredProcedureRef}
 
 /** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -69,7 +69,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     assert(WalkerProcedureRegistry.isRegistered(TriggeredProcedureRef.ActMenu))
 
   /** Batch-1 Task 1: the modifier-selection window is per-action registry
-    * data, alongside `fallbackKind`/`rollDecisionId`. Recover declares the
+    * data, alongside `rollDecisionId`. Recover declares the
     * window `OathRules.offerableWalkerPowers` used to name as a literal, so
     * its behaviour is unchanged by construction.
     */
@@ -115,12 +115,10 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
 
   /** The Forge entry's own facts, asserted as a whole rather than left to
     * whichever end-to-end test happens to exercise them: a wrong
-    * `fallbackKind` or `modifierWindow` here is a silent misrouting, not a
-    * failure.
+    * `modifierWindow` here is a silent misrouting, not a failure.
     */
-  test("the Forge entry declares Forge's own kind and modifier window"):
+  test("the Forge entry declares Forge's own modifier window and no roll"):
     val entry = WalkerProcedureRegistry.entries(ActionRef.Forge)
-    assertEquals(entry.fallbackKind, Some(ActionKind.Forge))
     assertEquals(entry.modifierWindow, Some(PowerWindow.ForgeModifierSelection))
     assertEquals(entry.rollDecisionId, None)
 
@@ -130,22 +128,14 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite:
     * Travel has is a fact about the route, so a resume must re-check exactly
     * what a start checked.
     */
-  test("the Travel entry declares Travel's own kind and rolls nothing"):
+  test("the Travel entry declares Travel's own modifier window and rolls nothing"):
     val entry = WalkerProcedureRegistry.entries(ActionRef.Travel)
-    assertEquals(entry.fallbackKind, Some(ActionKind.Travel))
     assertEquals(entry.modifierWindow, Some(PowerWindow.TravelModifierSelection))
     assertEquals(entry.rollDecisionId, None)
-
-  test("Begin Rest records Rest diagnostics and Finish Rest records none"):
-    assertEquals(WalkerProcedureRegistry.fallbackKind(
-      PhaseTransitionRef.BeginRest), Right(Some(ActionKind.Rest)))
-    assertEquals(WalkerProcedureRegistry.fallbackKind(
-      PhaseTransitionRef.FinishRest), Right(None))
 
   test("every use-power reference is registered"):
     val use = ActionRef.UsePower(PowerId("denizen.anything"))
     assert(WalkerProcedureRegistry.isRegistered(use))
-    assertEquals(WalkerProcedureRegistry.fallbackKind(use), Right(None))
 
   /** An action that selects nothing at its start must REJECT a selection, not
     * ignore one.

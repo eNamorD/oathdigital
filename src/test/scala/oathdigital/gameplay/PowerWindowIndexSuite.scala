@@ -27,16 +27,16 @@ class PowerWindowIndexSuite extends munit.FunSuite:
     val rollRestriction = Restriction((_, _) => None)
     val recoverOnlyTransform = Transform((_, ops) => ops)
     val hooksBoth = powerHooking("power.both",
-      PowerWindow.RecoverEligibility -> Vector(recoverTransform),
+      PowerWindow.RecoverAfterRelic -> Vector(recoverTransform),
       PowerWindow.RecoverBeforeFirstRoll -> Vector(rollRestriction))
     val hooksRecover = powerHooking("power.recover",
-      PowerWindow.RecoverEligibility -> Vector(recoverOnlyTransform))
+      PowerWindow.RecoverAfterRelic -> Vector(recoverOnlyTransform))
 
     // Input order puts "power.recover" first, against id order, so the index
     // must keep input order rather than sort.
     val index = PowerWindowIndex.of(Vector(hooksRecover, hooksBoth))
 
-    assertEquals(hookedAt(index, PowerWindow.RecoverEligibility), Vector(
+    assertEquals(hookedAt(index, PowerWindow.RecoverAfterRelic), Vector(
       PowerId("power.recover") -> Vector(recoverOnlyTransform),
       PowerId("power.both") -> Vector(recoverTransform)))
     assertEquals(hookedAt(index, PowerWindow.RecoverBeforeFirstRoll),

@@ -25,11 +25,8 @@ import oathdigital.model._
   * Wake in the same turn is never offered.
   *
   * **No window.** A `Sequence` with no window gathers no contributions, which
-  * is the honest statement for a tree nothing can modify. `PowerWindow
-  * .WakeBoundary` exists and would have compiled, but it names the Wake
-  * timing's fallback diagnostics -- which this procedure already runs through
-  * its registry entry's `fallbackKind` -- and declaring it here would invite
-  * powers to transform a phase change.
+  * is the honest statement for a tree nothing can modify. Declaring a window
+  * here would invite powers to transform a phase change.
   */
 object EndWakeProcedure:
 

@@ -42,7 +42,7 @@ class ContributionCollectorSuite extends munit.FunSuite:
         windows.map(_ -> contribs).toMap
       override def applicable(ctx: PowerCtx): Boolean = applicableFlag
 
-  private val window = PowerWindow.RecoverEligibility
+  private val window = PowerWindow.RecoverAfterRelic
   private val otherWindow = PowerWindow.RecoverBeforeFirstRoll
 
   test("a power that does not declare the window is not gathered"):

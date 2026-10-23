@@ -18,7 +18,7 @@ import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure
 import oathdigital.gameplay.phases.{PhaseMenu, PhasePowerProcedure}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.model.{ActionRef, Answered, Decide, DecisionOption, DecisionOptionRef, ActionKind, OathViolation, Operation, PendingTree, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
+import oathdigital.model.{ActionRef, Answered, Decide, DecisionOption, DecisionOptionRef, OathViolation, Operation, PendingTree, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions,
   * keyed by [[oathdigital.model.ProcedureRef]]. `OathRules` and
@@ -38,13 +38,7 @@ object WalkerProcedureRegistry:
   type OptionPricing = (ReadyGame, Operation, PendingTree, WalkerPowers,
     Decide) => Vector[DecisionOption]
 
-  /** `fallbackKind` is the [[oathdigital.model.ActionKind]] whose ignored-rule
-    * diagnostics (`PowerRuntime.ignored`) a start of this procedure records.
-    * `None` for a triggered procedure, which declares no kind: the
-    * `fallbackKind` accessor turns that into a typed rejection rather than
-    * handing a sentinel kind onward.
-    *
-    * `rollDecisionId` is the client-facing decision id surfaced when the
+  /** `rollDecisionId` is the client-facing decision id surfaced when the
     * walker parks on this procedure's `Roll` node itself (a `Roll` leaf
     * carries no `decisionId` of its own). `OathRulesWalker.checkAnswerable`
     * and `WalkerDecisionProjector` both read it here.
@@ -99,7 +93,6 @@ object WalkerProcedureRegistry:
     * Procedures that do not opt in are untouched.
     */
   private[gameplay] final case class Entry(
-      fallbackKind: Option[ActionKind],
       rollDecisionId: Option[String],
       modifierWindow: Option[PowerWindow],
       build: (ExecutableCatalog, ReadyGame, PlayerId,
@@ -135,7 +128,6 @@ object WalkerProcedureRegistry:
     */
   private[gameplay] val entries: Map[ProcedureRef, Entry] = Map(
     ActionRef.PlayFacedownAdviser -> Entry(
-      fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       build = CardPlayProcedure.buildFacedown,
@@ -147,7 +139,6 @@ object WalkerProcedureRegistry:
       * gate. Its source options are priced: each shows what it costs, or why
       * it cannot be searched. */
     ActionRef.Search -> Entry(
-      fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       build = SearchProcedure.build,
@@ -156,7 +147,6 @@ object WalkerProcedureRegistry:
       optionPricing = Some(SearchOptions.priced)),
 
     ActionRef.Recover -> Entry(
-      fallbackKind = Some(ActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = Some(PowerWindow.RecoverModifierSelection),
       build = (catalog, state, actor, args) => noStartArgs(ActionRef.Recover,
@@ -169,7 +159,6 @@ object WalkerProcedureRegistry:
       * `None` (R18).
       */
     ActionRef.Forge -> Entry(
-      fallbackKind = Some(ActionKind.Forge),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ForgeModifierSelection),
       build = (catalog, state, actor, args) => noStartArgs(ActionRef.Forge,
@@ -184,7 +173,6 @@ object WalkerProcedureRegistry:
       * pawn moved reads it back rather than from the pawn.
       */
     ActionRef.Travel -> Entry(
-      fallbackKind = Some(ActionKind.Travel),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.TravelModifierSelection),
       build = TravelProcedure.build,
@@ -200,7 +188,6 @@ object WalkerProcedureRegistry:
       * not priced.
       */
     ActionRef.Muster -> Entry(
-      fallbackKind = Some(ActionKind.Muster),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.MusterModifierSelection),
       build = (catalog, state, actor, args) => noStartArgs(ActionRef.Muster,
@@ -210,7 +197,6 @@ object WalkerProcedureRegistry:
       requiresPlayableOption = true),
 
     ActionRef.Trade -> Entry(
-      fallbackKind = Some(ActionKind.Trade),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.TradeModifierSelection),
       build = TradeProcedure.build,
@@ -222,7 +208,6 @@ object WalkerProcedureRegistry:
       * preview gate; the banner decision's own option filter is the gate.
       */
     ActionRef.Challenge -> Entry(
-      fallbackKind = Some(ActionKind.Challenge),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ChallengeModifierSelection),
       build = ChallengeProcedure.build,
@@ -232,18 +217,15 @@ object WalkerProcedureRegistry:
       * and, like Take Wealth, no modifier window.
       */
     ActionRef.PlaceBannerResource -> Entry(
-      fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
       build = PlaceBannerResourceProcedure.build,
       rebuild = PlaceBannerResourceProcedure.rebuild),
 
     /** Negotiation is a minor action: no modifier window (none of its powers
-      * is player-selected), and an `ActionKind` of its own so a start records
-      * the Negotiation rules it ignores.
+      * is player-selected).
       */
     ActionRef.Negotiation -> Entry(
-      fallbackKind = Some(ActionKind.Negotiation),
       rollDecisionId = None,
       modifierWindow = None,
       build = NegotiationProcedure.build,
@@ -255,7 +237,6 @@ object WalkerProcedureRegistry:
       * `None`.
       */
     ActionRef.Campaign -> Entry(
-      fallbackKind = Some(ActionKind.Campaign),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.CampaignModifierSelection),
       build = CampaignProcedure.build,
@@ -267,19 +248,16 @@ object WalkerProcedureRegistry:
       * handler they take no modifiers and record no fallback diagnostics.
       */
     ActionRef.PeekSiteRelics -> Entry(
-      fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
       build = MinorActionProcedures.buildPeek,
       rebuild = MinorActionProcedures.rebuildPeek),
     ActionRef.RevealOwnedRelic -> Entry(
-      fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
       build = MinorActionProcedures.buildReveal,
       rebuild = MinorActionProcedures.rebuildReveal),
     ActionRef.MoveWarbands -> Entry(
-      fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
       build = MinorActionProcedures.buildMove,
@@ -296,7 +274,6 @@ object WalkerProcedureRegistry:
       * never parks at all.
       */
     ActionRef.TakeWealth -> Entry(
-      fallbackKind = Some(ActionKind.Wake),
       rollDecisionId = None,
       modifierWindow = None,
       build = TakeWealthProcedure.build,
@@ -311,23 +288,14 @@ object WalkerProcedureRegistry:
       * boundary runs only after a completed `ActionRef`, whatever phase it
       * ran in (`OathDriver`) -- End Wake is
       * a `PhaseTransitionRef`, so it never runs one.
-      *
-      * `fallbackKind` is `ActionKind.Wake`, which is the kind the
-      * deleted `Wake` object's `withFallback` wrapper used, so the Wake
-      * timing's ignored-rule diagnostics are recorded exactly as before.
       */
     PhaseTransitionRef.EndWake -> Entry(
-      fallbackKind = Some(ActionKind.Wake),
       rollDecisionId = None,
       modifierWindow = None,
       build = EndWakeProcedure.build,
       rebuild = EndWakeProcedure.build),
 
-    /** Records the Rest timing's ignored-rule diagnostics, as the legacy
-      * `withFallback(ActionKind.Rest)` wrapper does.
-      */
     PhaseTransitionRef.BeginRest -> Entry(
-      fallbackKind = Some(ActionKind.Rest),
       rollDecisionId = None,
       modifierWindow = None,
       build = BeginRestProcedure.build,
@@ -338,7 +306,6 @@ object WalkerProcedureRegistry:
       * generic Rest decision, so this entry names no concrete power.
       */
     PhaseTransitionRef.FinishRest -> Entry(
-      fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
       build = FinishRestProcedure.build,
@@ -349,13 +316,11 @@ object WalkerProcedureRegistry:
       * its diagnostics), no modifier window and no start selection.
       */
     TriggeredProcedureRef.Oathkeeper -> Entry(
-      fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
       build = OathkeeperProcedure.build,
       rebuild = OathkeeperProcedure.build),
     TriggeredProcedureRef.Setup -> Entry(
-      fallbackKind = None,
       rollDecisionId = None,
       modifierWindow = None,
       build = oathdigital.gameplay.setup.SetupProcedure.build,
@@ -412,7 +377,6 @@ object WalkerProcedureRegistry:
     */
   private def usePowerEntry(id: PowerId, powers: PhasePowers,
       walkerPowers: WalkerPowers): Entry = Entry(
-    fallbackKind = None,
     rollDecisionId = None,
     modifierWindow = None,
     build = PhasePowerProcedure.build(id, powers, walkerPowers),
@@ -422,7 +386,6 @@ object WalkerProcedureRegistry:
     * started by the turn boundary, so it has no fallback kind, no modifier
     * window and no start selection. */
   private def forcedWakeEntry(powers: PhasePowers): Entry = Entry(
-    fallbackKind = None,
     rollDecisionId = None,
     modifierWindow = None,
     build = ForcedWakeProcedure.build(powers),
@@ -433,7 +396,6 @@ object WalkerProcedureRegistry:
     * it has no fallback kind, no modifier window and no start selection. */
   private def followUpOfferEntry(phasePowers: PhasePowers,
       powers: WalkerPowers): Entry = Entry(
-    fallbackKind = None,
     rollDecisionId = None,
     modifierWindow = None,
     build = FollowUpOffer.build(phasePowers, powers),
@@ -444,7 +406,6 @@ object WalkerProcedureRegistry:
     * fallback kind, no modifier window and no start selection. */
   private def menuEntry(menu: PhaseMenu.Menu, phasePowers: PhasePowers,
       powers: WalkerPowers): Entry = Entry(
-    fallbackKind = None,
     rollDecisionId = None,
     modifierWindow = None,
     build = PhaseMenu.build(menu, phasePowers, powers),
@@ -469,21 +430,6 @@ object WalkerProcedureRegistry:
         Right(menuEntry(PhaseMenu.Menu.Act, powers, walkerPowers))
       case _ => registrations.get(procedure).toRight(OathViolation
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
-
-  /** `procedure`'s [[oathdigital.model.ActionKind]] for the `PowerRuntime.ignored`
-    * fallback diagnostics `OathRules.startWalker` records alongside the
-    * command (I4) -- queried here instead of a bare `ActionKind
-    * .Recover` literal at the `startWalker` call site, so a second
-    * registered procedure supplies its own kind without editing
-    * `OathRules`.
-    *
-    * Typed `StartableRef`, not `ProcedureRef` (Task 4): only a startable
-    * procedure ever reaches `startWalker`'s fallback diagnostics. `None`
-    * means the start records no fallback diagnostics.
-    */
-  def fallbackKind(procedure: StartableRef)
-      : Either[OathViolation, Option[ActionKind]] =
-    lookup(procedure, entries).map(_.fallbackKind)
 
   /** `procedure`'s synthetic Roll-park decision id (I4) -- see `Entry`'s doc.
     * Both `OathRulesWalker.checkAnswerable` and `WalkerDecisionProjector` read

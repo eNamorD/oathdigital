@@ -11,7 +11,7 @@ class WalkerPreviewSuite extends munit.FunSuite:
   private val cheap = DecisionOptionRef.Button("cheap")
   private val dear = DecisionOptionRef.Button("dear")
   private val extra = DecisionOptionRef.Button("extra")
-  private val hooked = PowerWindow.SearchEligibility
+  private val hooked = PowerWindow.SearchCost
 
   /** The start with p1's Supply at `amount`. */
   private def withSupply(amount: Int): ReadyGame =

@@ -60,10 +60,8 @@ object PowerWindow:
     val key = "action.card-played-facedown"
   case object ActionAfterMajorAction extends OtherWindow:
     val key = "action.after-major-action"
-  case object SearchEligibility extends SearchWindow { val key = "search.eligibility" }
   case object SearchCost extends SearchWindow { val key = "search.cost" }
   case object SearchBeforeDraw extends SearchWindow { val key = "search.before-draw" }
-  case object SearchPlayToSite extends SearchWindow { val key = "search.play-to-site" }
   case object SearchPlayAdviser extends SearchWindow:
     val key = "search.play-adviser"
   /** The `search.source` decision: a power adds piles to it, warns one, or
@@ -159,7 +157,6 @@ object PowerWindow:
   case object PlaceBannerResourcePlacement extends OtherWindow:
     val key = "place-banner-resource.placement"
   case object ForgeCost extends ForgeWindow { val key = "forge.cost" }
-  case object RecoverEligibility extends RecoverWindow { val key = "recover.eligibility" }
   case object RecoverBeforeFirstRoll extends RecoverWindow:
     val key = "recover.before-first-roll"
   case object RecoverAfterRelic extends RecoverWindow { val key = "recover.after-relic" }
@@ -176,8 +173,6 @@ object PowerWindow:
     val key = "recover.roll"
   case object RestStart extends OtherWindow { val key = "rest.start" }
   case object RestReturnFavor extends OtherWindow { val key = "rest.return-favor" }
-  case object RestReturnSecrets extends OtherWindow { val key = "rest.return-secrets" }
-  case object RestEnd extends OtherWindow { val key = "rest.end" }
   /** Where the placing player's site is fixed for this player's Setup turn
     * (2026-09-21 Chronicle design, "Setup powers"): Great Forge and Broken
     * Forge hook here. */

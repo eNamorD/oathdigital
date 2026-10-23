@@ -23,7 +23,7 @@ class OperationRewriteSuite extends munit.FunSuite:
   private val foldState = Table.start.ready
   private val walkState = Table.start.supply(actor, 1).ready
   private val walkAnswers = PendingTree(Vector("0", "2"), Vector.empty)
-  private val window = PowerWindow.RecoverEligibility
+  private val window = PowerWindow.RecoverAfterRelic
   private val otherWindow = PowerWindow.RecoverBeforeFirstRoll
   private val gainOne: GainSupply = GainSupply(actor, 1)
 
