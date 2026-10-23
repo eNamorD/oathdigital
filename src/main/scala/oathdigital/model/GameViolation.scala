@@ -31,8 +31,6 @@ object OathViolation:
       extends OathViolation
   final case class UnsupportedWakeVictoryState(reason: String)
       extends OathViolation
-  final case class UnsupportedOathkeeperTie(reason: String)
-      extends OathViolation
   final case class PawnSiteMissing(playerId: PlayerId)
       extends OathViolation
   final case class ResourceUnavailable(siteId: SiteId, resource: WakeResource)
@@ -64,13 +62,9 @@ object OathViolation:
       extends OathViolation
   final case class InsufficientSecrets(required: Int, available: Int)
       extends OathViolation
-  final case class UnsupportedSearchState(reason: String)
-      extends OathViolation
   final case class SearchSourceUnavailable(source: SearchSource)
       extends OathViolation
   final case class SearchDrawMismatch(detail: String)
-      extends OathViolation
-  final case class SearchDecisionMismatch(expected: DecisionId, actual: DecisionId)
       extends OathViolation
   final case class SearchChoiceMismatch(detail: String)
       extends OathViolation
@@ -84,12 +78,8 @@ object OathViolation:
       extends OathViolation
   final case class ConspiracyUnavailable(detail: String) extends OathViolation
   final case class NegotiationUnavailable(detail: String) extends OathViolation
-  final case class SearchCostMismatch(expected: Int, actual: Int)
-      extends OathViolation
-  final case class UnsupportedRecoverState(reason: String) extends OathViolation
   final case class CampaignUnavailable(reason: String) extends OathViolation
   final case class RecoverUnavailable(detail: String) extends OathViolation
-  final case class UnsupportedForgeState(reason: String) extends OathViolation
   final case class ForgeUnavailable(detail: String) extends OathViolation
   final case class UnsupportedBannerState(reason: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
@@ -101,8 +91,6 @@ object OathViolation:
     * from a Chronicle").
     */
   final case class UnsupportedChronicle(reason: String) extends OathViolation
-  final case class UnsupportedRoundEndRule(sourceKey: String, handlerId: String)
-      extends OathViolation
   case object ParticipantsEmpty extends OathViolation
   final case class DuplicatePlayer(id: PlayerId)
       extends OathViolation

@@ -83,10 +83,6 @@ private[gamelog] final class LogJournal(
         }
     case _ => false
 
-  /** Every operation of `run` from its first event through `at`. */
-  def runOps(run: Run, at: Int): Vector[(Int, OpStep)] =
-    (run.first to at).toVector.flatMap(index => ops(index).map(index -> _))
-
   /** Every answer `run` recorded from its first event through `at`. */
   def answers(run: Run, at: Int): Vector[Answered] =
     (run.first to at).toVector.map(event).collect {

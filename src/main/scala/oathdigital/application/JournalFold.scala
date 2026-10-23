@@ -20,7 +20,6 @@ final case class FoldedJournal(state: OathState,
     steps: Vector[ReplayStep[OathState, OathEvent]],
     live: List[CommandBatch], redo: List[CommandBatch] = Nil):
   def undoable: Option[CommandBatch] = live.headOption
-  def redoable: Option[CommandBatch] = redo.headOption
 
   /** The sequence of the latest void marker: a client whose log predates it
     * must refetch the whole log (undo design, "Game Log"). */

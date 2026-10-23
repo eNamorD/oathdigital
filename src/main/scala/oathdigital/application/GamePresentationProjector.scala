@@ -52,60 +52,36 @@ private[application] final class GamePresentationProjector(
       }), favor = value.tokens.favor, secrets = value.tokens.secrets,
       implemented = face.exists(cardImplemented))
 
-  def setupPlayers(participants: Vector[FirstGameParticipant]) =
-    participants.map { participant =>
-      SetupPlayerProjection(participant.playerId.value,
-        playerLabel(participant.playerId), "exile", participant.color)
-    }
-
   def readyPlayers(ready: ReadyGame) = ready.game.current.players.map { player =>
     SetupPlayerProjection(player.player.value, playerLabel(player.player),
       "exile", ready.playerColors(player.player))
   }
 
-  def setupWorld(sites: Vector[SiteId]): Vector[SetupRegionProjection] = Vector(
-    region("cradle", Region.Cradle, sites.take(2)),
-    region("provinces", Region.Provinces, sites.slice(2, 5)),
-    region("hinterland", Region.Hinterland, sites.slice(5, 8)))
-
-  def setupWorld(material: FirstGameSetupMaterial): Vector[SetupRegionProjection] = Vector(
-    region("cradle", Region.Cradle, material.map.cradle, material.map.sites,
-      material.commonCards.discard(Region.Cradle)),
-    region("provinces", Region.Provinces, material.map.provinces, material.map.sites,
-      material.commonCards.discard(Region.Provinces)),
-    region("hinterland", Region.Hinterland, material.map.hinterland, material.map.sites,
-      material.commonCards.discard(Region.Hinterland)))
-
   def readyWorld(ready: ReadyGame, viewer: Option[PlayerId]) =
     val current = ready.game.current
     Vector(
-      region("cradle", Region.Cradle, current.map.cradle, current.map.sites,
-        current.commonCards.discard(Region.Cradle), Some(ready), viewer),
-      region("provinces", Region.Provinces, current.map.provinces, current.map.sites,
-        current.commonCards.discard(Region.Provinces), Some(ready), viewer),
-      region("hinterland", Region.Hinterland, current.map.hinterland, current.map.sites,
-        current.commonCards.discard(Region.Hinterland), Some(ready), viewer))
+      region("cradle", Region.Cradle, current.map.cradle, ready, viewer),
+      region("provinces", Region.Provinces, current.map.provinces, ready, viewer),
+      region("hinterland", Region.Hinterland, current.map.hinterland, ready, viewer))
 
   private def region(id: String, where: Region, sites: Vector[SiteId],
-      states: Map[SiteId, SiteState] = Map.empty,
-      discard: Vector[CardId] = Vector.empty,
-      ready: Option[ReadyGame] = None,
-      viewer: Option[PlayerId] = None): SetupRegionProjection =
+      ready: ReadyGame, viewer: Option[PlayerId]): SetupRegionProjection =
+    val current = ready.game.current
     // The pile is stored top last; the client reads it top first. A card is
     // a face only to a viewer whose knowledge records it: one who knew it
     // before it was discarded, or peeked it in the pile.
-    val cards = discard.reverse.map { card =>
-      if ready.exists(game => identifiesCard(game, viewer, card, None,
-          CardContainer.RegionalDiscard(where)))
+    val cards = current.commonCards.discard(where).reverse.map { card =>
+      if identifiesCard(ready, viewer, card, None,
+          CardContainer.RegionalDiscard(where))
       then cardDetails(card, None, hidden = false)
       else hiddenCard(cardKind(card))
     }
     SetupRegionProjection(id, sites.map(site =>
-      siteProjection(site, states.get(site), ready, viewer)),
+      siteProjection(site, current.map.sites.get(site), ready, viewer)),
       cards.size, cards.headOption.map(_.cardKind), cards)
 
   private def siteProjection(siteId: SiteId, state: Option[SiteState],
-      ready: Option[ReadyGame], viewer: Option[PlayerId]): SetupSiteProjection =
+      ready: ReadyGame, viewer: Option[PlayerId]): SetupSiteProjection =
     val definition = catalog.site(siteId)
     SetupSiteProjection(siteId.value, siteLabel(siteId),
       state.fold(0)(_.tokens.favor), state.fold(0)(_.tokens.secrets),
@@ -124,12 +100,10 @@ private[application] final class GamePresentationProjector(
         SiteCardProjection(denizen.id.value, label, details)
       },
       SiteRelicsProjection(state.toVector.flatMap(_.relics).map(relic =>
-        val known = for
-          game <- ready
-          player <- viewer
-        yield game.knowledge.siteRelics.getOrElse(player, Map.empty)
-          .getOrElse(siteId, Vector.empty).contains(relic.id)
-        if known.contains(true) then
+        val known = viewer.exists(player =>
+          ready.knowledge.siteRelics.getOrElse(player, Map.empty)
+            .getOrElse(siteId, Vector.empty).contains(relic.id))
+        if known then
           cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)
         else hiddenCard("relic"))),
       definition.fold(0)(_.defense),
@@ -139,12 +113,7 @@ private[application] final class GamePresentationProjector(
         ForgeCostProjection(tokens.favor, tokens.secrets)),
       definition.toVector.flatMap(_.handlers).map(sitePower),
       state.flatMap(_.forces match {
-        case value: SiteForces.Occupied => ready match {
-          case Some(game) => Some(forceProjection(value, game))
-          case None if value.kind == ForceKind.Bandit => Some(
-            SiteForcesProjection.Bandit(value.count, "Bandit Warbands"))
-          case None => None
-        }
+        case value: SiteForces.Occupied => Some(forceProjection(value, ready))
         case SiteForces.Empty => None
       }))
 
