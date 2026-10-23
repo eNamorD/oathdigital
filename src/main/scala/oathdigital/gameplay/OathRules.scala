@@ -17,11 +17,11 @@ import oathdigital.model.OathViolation._
 /** Deterministic aggregate boundary for setup and gameplay routing.
   *
   * `walkerPowerCatalog` is the full set of `ContributingPower`s this instance
-  * may offer to a walker command (empty in production until Task 5 registers
-  * a real power) -- a constructor parameter so a suite can drive a real
-  * command against a real power. `OathRules.walkerPowers` (Task 4) is the
-  * per-command projection of that catalog: restrictions are gathered from it
-  * at command entry and its transforms fold the tree during the walk.
+  * may offer to a walker command (`WalkerPowerCatalog.default` in production)
+  * -- a constructor parameter so a suite can drive a real command against a
+  * real power. `OathRules.walkerPowers` is the per-command projection of that
+  * catalog: restrictions are gathered from it at command entry and its
+  * transforms fold the tree during the walk.
   * `walkerTree` is the same injection seam for the action tree a walker
   * command walks; production derives it from the action's own module.
   */

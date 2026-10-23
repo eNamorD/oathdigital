@@ -20,15 +20,11 @@ import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.model.{ActionRef, Answered, Decide, DecisionOption, DecisionOptionRef, ActionKind, OathViolation, Operation, PendingTree, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
-/** The one place a procedure registers its walker tree-building functions
-  * (Task 8; re-keyed by [[oathdigital.model.ProcedureRef]] family at Task 4). Before this,
-  * `OathRules.buildWalker` and `WalkerDecisionProjector.rebuild` each
-  * carried their own `case ActionRef.Recover =>` match, so adding a second
-  * procedure meant editing both call sites -- and a missing branch there
-  * was a runtime `MatchError`, not a typed rejection. Both dispatch through
-  * `entries` here instead: registering a second procedure is one entry, and
-  * a procedure absent from it produces `Left(OathViolation
-  * .InvalidEventOrder(...))`.
+/** The one place a procedure registers its walker tree-building functions,
+  * keyed by [[oathdigital.model.ProcedureRef]]. `OathRules` and
+  * `WalkerDecisionProjector` both dispatch through `entries`: registering a
+  * procedure is one entry, and a procedure absent from it produces
+  * `Left(OathViolation.InvalidEventOrder(...))` rather than a `MatchError`.
   *
   * `build` and `rebuild` stay separate because a fresh start runs the
   * procedure's start gates while resume reconstructs an already-started
@@ -42,30 +38,23 @@ object WalkerProcedureRegistry:
   type OptionPricing = (ReadyGame, Operation, PendingTree, WalkerPowers,
     Decide) => Vector[DecisionOption]
 
-  /** `fallbackKind` (I4) is the [[oathdigital.model.ActionKind]] `OathRules.startWalker`
-    * runs `PowerRuntime.ignored` fallback-diagnostics against for this
-    * procedure -- previously a bare `ActionKind.Recover` literal at the
-    * `startWalker` call site regardless of which action was actually
-    * starting. `None` for a triggered procedure, which declares no fallback
-    * kind at all (Task 4): the `fallbackKind` accessor turns that into a
-    * typed rejection rather than handing a sentinel kind onward.
+  /** `fallbackKind` is the [[oathdigital.model.ActionKind]] whose ignored-rule
+    * diagnostics (`PowerRuntime.ignored`) a start of this procedure records.
+    * `None` for a triggered procedure, which declares no kind: the
+    * `fallbackKind` accessor turns that into a typed rejection rather than
+    * handing a sentinel kind onward.
     *
-    * `rollDecisionId` (I4) is the synthetic client-facing decision id
-    * surfaced when the walker parks on this procedure's Roll node itself (a
-    * `Roll` leaf carries no `decisionId` of its own -- see
-    * `RecoverProcedure`'s doc). Exposed here so both `OathRulesWalker
-    * .checkAnswerable` and `WalkerDecisionProjector` read the same
-    * per-procedure value instead of each importing `RecoverProcedure`
-    * directly.
+    * `rollDecisionId` is the client-facing decision id surfaced when the
+    * walker parks on this procedure's `Roll` node itself (a `Roll` leaf
+    * carries no `decisionId` of its own). `OathRulesWalker.checkAnswerable`
+    * and `WalkerDecisionProjector` both read it here.
     *
-    * It is `Option` (batch-1 Task 3, ruling R18) because a procedure whose
-    * tree carries no `Roll` node can never park on one: Forge is two
-    * `BuildOps` around a single `Decide`. The alternative -- a placeholder
-    * id no tree ever parks on -- would compile and pass while turning both
-    * consulting call sites into a silent match against a string with no
-    * meaning. `None` is therefore a rule, and the `rollDecisionId`
-    * accessor below turns it into a typed rejection rather than handing a
-    * sentinel onward.
+    * It is `Option` because a procedure whose tree carries no `Roll` node can
+    * never park on one. The alternative -- a placeholder id no tree ever
+    * parks on -- would compile and pass while turning both consulting call
+    * sites into a silent match against a string with no meaning. `None` is
+    * therefore a rule, and the `rollDecisionId` accessor below turns it into
+    * a typed rejection rather than handing a sentinel onward.
     *
     * `modifierWindow` is the [[oathdigital.model.PowerWindow]] at which the
     * procedure's modifier decision (`ModifierChoice`) offers player-selected
@@ -81,29 +70,22 @@ object WalkerProcedureRegistry:
     * `WakeModifierSelection` case purely to keep this field total would put a
     * window in the audited vocabulary that no rulebook clause backs.
     *
-    * `build`/`rebuild` receive the player's start selections (batch-1 Task
-    * 5): what they chose before the walk began, for a procedure whose tree
-    * cannot be built without it. Recover and Forge derive their whole tree
-    * from the actor's pawn site and select nothing, so they take an empty
-    * vector and reject anything else. No registered procedure takes a start
-    * selection now: Search and Travel ask theirs inside the walk.
+    * `build`/`rebuild` receive the player's start selections: what they
+    * chose before the walk began, for a procedure whose tree cannot be built
+    * without it. A procedure that selects nothing takes an empty vector and
+    * rejects anything else.
     *
     * They are `DecisionOptionRef`s -- the same game-object vocabulary a
     * decision option names, already spelled for the wire once in
     * `DecisionOptionRef.kind`/`wireId` -- and NOT a per-procedure payload
-    * type. That is deliberate and is the constraint this batch is held to:
-    * nothing outside the declaring procedure may learn what its start
+    * type: nothing outside the declaring procedure may learn what its start
     * selection means, so the model, the journal codec and the walker all
     * handle a vector of references and none of them names a procedure.
-    * Interpreting the vector -- "exactly one site, and it is the
-    * destination" -- is the procedure's own job, in its `build`, where a
-    * wrong shape is a typed rejection.
-    *
-    * The limit worth stating: a selection that is not a game-object reference
-    * (a warband count, say) has no spelling here. The first procedure that
-    * needs one widens this vocabulary rather than growing a case per
-    * procedure, which is the shape the retired legacy pending procedures had
-    * and the walker migration existed to end.
+    * Interpreting the vector is the procedure's own job, in its `build`,
+    * where a wrong shape is a typed rejection. A selection that is not a
+    * game-object reference (a warband count, say) has no spelling here; the
+    * first procedure that needs one widens this vocabulary rather than
+    * growing a case per procedure.
     *
     * `rebuild` receives the selections `startWalker` was given, read back from
     * the durable `CurrentGameState.walkerStartArgs`: a resumed command must
@@ -146,13 +128,10 @@ object WalkerProcedureRegistry:
     * asserts this map's keys cover `ProcedureRef.all` (catching a registered
     * procedure missing its entry) and its type is referenced when the suite
     * calls `build`/`rebuild` with a `registrations` map that omits a real,
-    * registered-in-production procedure.
-    *
-    * Widened from `private[walker]` at batch-1 Task 1: `OathRules`
-    * (`oathdigital.gameplay`) now takes the same `registrations` parameter on
-    * `offerableWalkerPowers`, for the same reason and by
-    * the same precedent, so the `Entry` type has to be nameable one package
-    * up. It stays out of reach of every other package.
+    * registered-in-production procedure. `OathRules` (`oathdigital.gameplay`)
+    * takes the same `registrations` parameter on `offerableWalkerPowers`, so
+    * the `Entry` type has to be nameable one package up. It stays out of
+    * reach of every other package.
     */
   private[gameplay] val entries: Map[ProcedureRef, Entry] = Map(
     ActionRef.PlayFacedownAdviser -> Entry(

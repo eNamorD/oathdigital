@@ -23,7 +23,7 @@ import oathdigital.gameplay.powers.whenplayed._
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
-  * seam (Task 5's first entry: Catacombs). Catalog-parameterized like
+  * seam. Catalog-parameterized like
   * `ReviewedPowerCatalog.resolver`/`registry`: a contribution that carries a
   * catalog-specific card id must be resolved against the same catalog the
   * caller is running. A site power whose site is absent from `catalog`
@@ -32,9 +32,9 @@ import oathdigital.gameplay.walker.WalkerPowers
   *
   * A power carrying no catalog id is simply always present: Take Wealth's
   * once-per-turn limit states a rulebook clause about whichever site the pawn
-  * stands on, so there is nothing to look up and nothing to omit. It is inert
-  * until an action declares `PowerWindow.WakeTakeWealth` (batch-1 Task 7),
-  * since discovery keeps only powers that hook the window being gathered.
+  * stands on, so there is nothing to look up and nothing to omit. Discovery
+  * keeps only powers that hook the window being gathered, so it acts only
+  * where Take Wealth walks `PowerWindow.WakeTakeWealth`.
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
   * Silver Tongue's, Insomnia's and Assassin's adviser limits, Lost
   * Tapestry's and Pied Piper's exemptions, and Family Wagon's lifted limit

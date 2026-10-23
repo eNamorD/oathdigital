@@ -152,8 +152,8 @@ private[gameplay] trait OathRulesWalker:
     ModifierOffers.offerable(walkerPowerCatalog, ready, actor, procedure,
       registrations)
 
-  /** Task 3 wiring rule: restrictions run once per command, at command entry,
-    * before the walk -- collected across the whole derived `tree` via
+  /** Restrictions run once per command, at command entry, before the walk
+    * -- collected across the whole derived `tree` via
     * [[ProcedureWalker.restrictionViolations]]. The first violation (if any)
     * rejects the command with no events appended, exactly like any other
     * `withFallback`/`for`-comprehension short-circuit here.
