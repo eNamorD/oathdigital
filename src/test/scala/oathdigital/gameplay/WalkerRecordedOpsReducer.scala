@@ -8,7 +8,7 @@ import oathdigital.model._
 /** Test-only scaffolding shared by `RecoverProcedureSuite` and
   * `WalkerReplayDriftSuite`: folds a walker command's recorded
   * `WalkerStepRecorded` events into `ReadyGame` state by merging roll
-  * outcomes the same way `ProcedureWalker.writeRollOutcome` merges them and
+  * outcomes the same way `ProcedureWalker.roll` merges them and
   * otherwise re-applying each step's recorded ops through
   * `OperationPipeline`.
   *

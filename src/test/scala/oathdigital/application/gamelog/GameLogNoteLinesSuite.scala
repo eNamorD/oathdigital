@@ -271,7 +271,7 @@ class GameLogNoteLinesSuite extends munit.FunSuite:
         fail(s"no 'said 2 favor.' line for $viewer in ${texts(posted)}"))
     assertEquals(text(line(script.actor)),
       s"a Denizen: ${playerLabel(script.actor)} said 2 favor.")
-    assert(line(hiddenOwner).spans.head == LogSpan.Card(hiddenAdviser.value,
+    assertEquals(line(hiddenOwner).spans.head, LogSpan.Card(hiddenAdviser.value,
       presentation.cardLabel(last, hiddenAdviser)), line(hiddenOwner).spans)
 
   test("the same note in another action posts again"):

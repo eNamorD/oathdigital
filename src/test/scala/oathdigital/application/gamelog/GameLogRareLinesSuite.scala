@@ -159,4 +159,5 @@ class GameLogRareLinesSuite extends munit.FunSuite:
       "the Order bank")
     // Nothing is parked, so a button falls back to its key's label.
     assertEquals(said(DecisionOptionRef.Button("search:world")), "World")
-    assert(said(DecisionOptionRef.Vision(VisionRules.Sanctuary)) == "a Vision")
+    assertEquals(said(DecisionOptionRef.Vision(VisionRules.Sanctuary)),
+      "a Vision")
