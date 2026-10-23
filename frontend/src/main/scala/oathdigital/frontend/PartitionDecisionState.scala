@@ -161,13 +161,16 @@ private[frontend] final case class WalkerPartitionDraft(
   def move(item: String, sectionKey: String): WalkerPartitionDraft =
     copy(partition = partition.moveTo(item, sectionKey))
 
-  /** Drops one item in front of another, wherever that anchor sits. Order
+  /** Places one item into a section after the first `index` of the items
+    * already there, the item itself not counted, so the same index means the
+    * same slot whether the item comes from this section or another. Order
     * within a section is part of the answer -- a discard section is
     * discarded in the order it is left in.
     */
-  def moveBefore(item: String, anchor: String): WalkerPartitionDraft =
-    partition.sectionOf(anchor).filterNot(_ => item == anchor).fold(this)(key =>
-      copy(partition = partition.placeBefore(item, key, Some(anchor))))
+  def placeAt(item: String, sectionKey: String, index: Int)
+      : WalkerPartitionDraft =
+    copy(partition = partition.placeBefore(item, sectionKey,
+      partition.itemsIn(sectionKey).filterNot(_ == item).lift(index)))
 
   def shift(item: String, delta: Int): WalkerPartitionDraft =
     copy(partition = partition.shift(item, delta))

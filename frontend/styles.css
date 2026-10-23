@@ -538,6 +538,9 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .partition-zone .decision-option { display: flex; flex-direction: column;
   justify-content: flex-end; align-items: center; margin: 0; padding: 0;
   border: 0; border-radius: 0; width: var(--card-w); }
+/* The held card stays in the row at the place a drop would put it, faded,
+   so the row reads as the answer it would become. */
+.partition-zone .decision-option.dragging { opacity: 0.4; }
 .partition-instruction { color: var(--ink-dim); font-size: 0.9rem; }
 /* The answer stays in view: the footer pins to the pane's bottom edge on
    the pane's own fill while the zones scroll above it, and its negative

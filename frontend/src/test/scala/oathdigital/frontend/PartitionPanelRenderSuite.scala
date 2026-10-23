@@ -254,16 +254,84 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(as[dom.Element](confirm(panel).parentNode)
       .getAttribute("class"), "partition-footer")
 
-  test("dropping an option on another places it before that one"):
+  test("a card dropped short of a card's midpoint lands before it"):
     val ui = controls()
-    val draft = forgeDraft()
-    val panel = render(ui, draft)
+    val panel = layOutInRows(render(ui, forgeDraft()))
     val dragged = dragStartPayload(optionNode(panel, 3))
-    drop(optionNode(panel, 1), dragged)
+    drop(optionNode(panel, 1), dragged, at = (40, 70))
     assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
       Vector("Denizen 3", "Denizen 1", "Denizen 2"))
     assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-secret"),
       Vector.empty)
+
+  /** A drop on a card used to place the dragged one in front of it, so a
+    * card dropped on its right-hand neighbour never moved.
+    */
+  test("a card dropped past its right-hand neighbour's midpoint lands after it"):
+    val ui = controls()
+    val panel = layOutInRows(render(ui, forgeDraft()))
+    val dragged = dragStartPayload(optionNode(panel, 1))
+    drop(optionNode(panel, 2), dragged, at = (170, 70))
+    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
+      Vector("Denizen 2", "Denizen 1"))
+
+  test("while a card is dragged the zones show where it would land"):
+    val ui = controls()
+    val panel = layOutInRows(render(ui, forgeDraft()))
+    dragStartPayload(optionNode(panel, 1))
+    dragOver(optionNode(panel, 2), at = (170, 70))
+    assertEquals(optionLabelsIn(panel, "pay-favor"),
+      Vector("Denizen 2", "Denizen 1"))
+    assertEquals(ui.drafts.partition, None, "a preview stages nothing")
+    // Back short of the neighbour's midpoint, the card returns before it.
+    dragOver(optionNode(panel, 2), at = (40, 70))
+    assertEquals(optionLabelsIn(panel, "pay-favor"),
+      Vector("Denizen 1", "Denizen 2"))
+
+  test("a drag that ends without a drop puts every card back"):
+    val ui = controls()
+    val panel = layOutInRows(render(ui, forgeDraft()))
+    dragStartPayload(optionNode(panel, 3))
+    dragOver(one(panel, """[data-section-key="pay-favor"]"""), at = (40, 70))
+    assertEquals(optionLabelsIn(panel, "pay-secret"), Vector.empty)
+    dragEnd(optionNode(panel, 3))
+    assertEquals(optionLabelsIn(panel, "pay-favor"),
+      Vector("Denizen 1", "Denizen 2"))
+    assertEquals(optionLabelsIn(panel, "pay-secret"), Vector("Denizen 3"))
+    assertEquals(ui.drafts.partition, None)
+
+  test("a drag that leaves the zones puts every card back"):
+    val panel = layOutInRows(render(controls(), forgeDraft()))
+    dragStartPayload(optionNode(panel, 1))
+    dragOver(optionNode(panel, 2), at = (170, 70))
+    val zones = one(panel, ".partition-zones")
+    zones.asInstanceOf[js.Dynamic].getBoundingClientRect = () =>
+      js.Dynamic.literal(left = 0.0, top = 0.0, right = 1000.0, bottom = 300.0)
+    // Crossing from one card onto another inside the zones leaves the card
+    // it crossed, not the zones.
+    optionNode(panel, 2).dispatchEvent(transferEvent("dragleave",
+      js.Dynamic.literal(), at = (120, 70)))
+    assertEquals(optionLabelsIn(panel, "pay-favor"),
+      Vector("Denizen 2", "Denizen 1"))
+    zones.dispatchEvent(transferEvent("dragleave", js.Dynamic.literal()))
+    assertEquals(optionLabelsIn(panel, "pay-favor"),
+      Vector("Denizen 1", "Denizen 2"))
+
+  /** The preview runs the move a drop would make, so the single slot's swap
+    * shows before the card is let go.
+    */
+  test("dragging a discard over the keep zone previews the swap"):
+    val panel = layOutInRows(pickPanel(keepOneDraft()))
+    dragStartPayload(optionNode(panel, 2))
+    dragOver(one(panel, """[data-section-key="keep"]"""), at = (40, 70))
+    assertEquals(optionLabelsIn(panel, "keep"), Vector("Denizen 2"))
+    assertEquals(optionLabelsIn(panel, "discard"),
+      Vector("Denizen 1", "Denizen 3"))
+    // Carried back over the discard zone, the swap is undone.
+    dragOver(one(panel, """[data-section-key="discard"]"""), at = (40, 70))
+    assertEquals(optionLabelsIn(panel, "keep"), Vector("Denizen 1"))
+    assertEquals(optionLabelsIn(panel, "discard"),
+      Vector("Denizen 2", "Denizen 3"))
 
   test("dropping a dragged option on a zone moves it there"):
     val ui = controls()
@@ -363,15 +431,51 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     node.dispatchEvent(transferEvent("dragstart", transfer))
     written
 
-  private def drop(zone: dom.Element, item: String): Unit =
-    val transfer = js.Dynamic.literal(getData = (_: String) => item)
-    zone.dispatchEvent(transferEvent("drop", transfer))
+  /** Past every card of any zone the tests lay out: a drop there lands
+    * last.
+    */
+  private val pastEveryCard = (10000.0, 10000.0)
 
-  private def transferEvent(name: String, transfer: js.Dynamic): dom.Event =
+  /** Fires `drop` on `target` with the pointer at `at`, carrying `item` the
+    * way a transfer written at `dragstart` would.
+    */
+  private def drop(target: dom.Element, item: String,
+      at: (Double, Double) = pastEveryCard): Unit =
+    val transfer = js.Dynamic.literal(getData = (_: String) => item)
+    target.dispatchEvent(transferEvent("drop", transfer, at))
+
+  /** Fires `dragover` on `target` with the pointer at `at`. A browser hides
+    * the transfer's data until the drop, so this one carries none.
+    */
+  private def dragOver(target: dom.Element, at: (Double, Double)): Unit =
+    target.dispatchEvent(transferEvent("dragover", js.Dynamic.literal(), at))
+
+  private def dragEnd(node: dom.Element): Unit =
+    node.dispatchEvent(transferEvent("dragend", js.Dynamic.literal(),
+      pastEveryCard))
+
+  private def transferEvent(name: String, transfer: js.Dynamic,
+      at: (Double, Double) = pastEveryCard): dom.Event =
     val event = js.Dynamic.newInstance(js.Dynamic.global.Event)(name,
       js.Dynamic.literal(bubbles = true, cancelable = true))
     event.updateDynamic("dataTransfer")(transfer)
+    event.updateDynamic("clientX")(at._1)
+    event.updateDynamic("clientY")(at._2)
     event.asInstanceOf[dom.Event]
+
+  /** jsdom lays nothing out, so every option reports the box it would have
+    * in a row of 100-wide cards 10 apart, from wherever it sits in its row
+    * right now: a card a preview moves reports its new place. Midpoints
+    * fall at 50, 160 and 270.
+    */
+  private def layOutInRows(panel: dom.Element): dom.Element =
+    all(panel, ".decision-option").foreach(node =>
+      node.asInstanceOf[js.Dynamic].getBoundingClientRect = () =>
+        val index = all(as[dom.Element](node.parentNode), ".decision-option")
+          .indexOf(node)
+        js.Dynamic.literal(left = index * 110.0, top = 0.0,
+          right = index * 110.0 + 100, bottom = 140.0))
+    panel
 
   test("a decision option is not a focus stop"):
     val options = all(render(controls(), forgeDraft()), ".decision-option")
