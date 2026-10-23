@@ -60,22 +60,48 @@ for prefix, packages in forbidden_imports.items():
             if needle in text:
                 errors.append(f"{relative(path)}: forbidden inward dependency: {needle}")
 
-for path in scala_sources(ROOT / "frontend/src/main/scala/oathdigital/frontend"):
-    if "Renderer" not in path.name:
-        continue
-    text = path.read_text(encoding="utf-8")
-    for package in ("application", "gameplay", "server"):
-        needle = f"import oathdigital.{package}"
-        if needle in text:
-            errors.append(f"{relative(path)}: renderer imports {package}")
+# The frontend renders projections over the shared protocol and never
+# imports gameplay, application or server rules; the shared protocol
+# imports nothing but itself (docs/architecture/codebase-structure.md).
+# One exception: build.sbt grafts three `model` files into the Scala.js
+# build, and `oathdigital.model.PlayerColor` from them is the one model
+# name the frontend and the shared protocol reference, by import or fully
+# qualified. Any other `oathdigital.<package>` reference, in an import or
+# written out in full, is a violation.
+GRAFTED_MODEL_FILES = ("Identity.scala", "PlayerColor.scala", "Resources.scala")
+SHARED_MODEL_NAMES = {"PlayerColor"}
+build_sbt = (ROOT / "build.sbt").read_text(encoding="utf-8")
+for grafted in GRAFTED_MODEL_FILES:
+    if f'"model" / "{grafted}"' not in build_sbt:
+        errors.append(f"build.sbt: no longer grafts model/{grafted} into the "
+                      "frontend; revisit the frontend gate's model exception")
+
+qualified_reference = re.compile(
+    r"\boathdigital\.([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?")
+
+
+def outward_references(path: Path, allowed_packages: tuple[str, ...]):
+    """Each (line number, package) naming a package outside `allowed_packages`,
+    except the sanctioned model names."""
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        for match in qualified_reference.finditer(line):
+            package, member = match.group(1), match.group(2)
+            if package in allowed_packages:
+                continue
+            if package == "model" and member in SHARED_MODEL_NAMES:
+                continue
+            yield line_number, package
+
+
+for path in scala_sources(ROOT / "frontend/src/main/scala"):
+    for line_number, package in outward_references(path, ("frontend", "protocol")):
+        errors.append(f"{relative(path)}:{line_number}: frontend references {package}")
 
 for path in scala_sources(ROOT / "shared/src/main/scala"):
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        match = re.match(r"\s*import oathdigital\.([A-Za-z0-9_]+)", line)
-        if match and match.group(1) != "protocol":
-            errors.append(
-                f"{relative(path)}:{line_number}: shared protocol imports {match.group(1)}"
-            )
+    for line_number, package in outward_references(path, ("protocol",)):
+        errors.append(
+            f"{relative(path)}:{line_number}: shared protocol references {package}"
+        )
 
 printed_text = re.compile(r"\.text\b")
 for path in scala_sources(ROOT / "src/main/scala/oathdigital/gameplay"):
@@ -113,7 +139,7 @@ for path in sources:
 definition = re.compile(r"\s*(?:sealed trait|final case class)\s+([A-Za-z0-9_]+)")
 shared_only = {
     "GameProjection", "SetupPlayerProjection", "CardDetailsProjection",
-    "PendingCardDecisionProjection", "PlayerBoardProjection",
+    "PlayerBoardProjection",
     "FirstGameBootstrapRequest", "BootstrapParticipantRequest",
 }
 for path in sources:
