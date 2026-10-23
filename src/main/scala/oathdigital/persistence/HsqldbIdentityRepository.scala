@@ -49,7 +49,7 @@ final class HsqldbIdentityRepository private[persistence] (
             statement.executeUpdate()
             Right(())
           catch
-            case error: SQLException if constraintViolation(error) =>
+            case error: SQLException if SqlStates.constraintViolation(error) =>
               Left(DuplicateUser(userId))
         finally statement.close()
     }
@@ -75,7 +75,7 @@ final class HsqldbIdentityRepository private[persistence] (
             statement.executeUpdate()
             Right(())
           catch
-            case error: SQLException if constraintViolation(error) =>
+            case error: SQLException if SqlStates.constraintViolation(error) =>
               Left(DuplicateExternalIdentity(identity))
         finally statement.close()
     }
@@ -126,7 +126,7 @@ final class HsqldbIdentityRepository private[persistence] (
             )
           }
         catch
-          case error: SQLException if constraintViolation(error) =>
+          case error: SQLException if SqlStates.constraintViolation(error) =>
             Left(DuplicateGame(gameId))
     }
 
@@ -150,7 +150,7 @@ final class HsqldbIdentityRepository private[persistence] (
               insertMembership(connection, membership, nowMillis)
               Right(())
             catch
-              case error: SQLException if constraintViolation(error) =>
+              case error: SQLException if SqlStates.constraintViolation(error) =>
                 if membershipExists(
                   connection,
                   membership.gameId,
@@ -254,7 +254,7 @@ final class HsqldbIdentityRepository private[persistence] (
               statement.executeUpdate()
               Right(())
             catch
-              case error: SQLException if constraintViolation(error) =>
+              case error: SQLException if SqlStates.constraintViolation(error) =>
                 Left(DuplicateSession)
           finally statement.close()
       }
@@ -520,9 +520,6 @@ final class HsqldbIdentityRepository private[persistence] (
     case Owner => 0
     case Player => 1
     case Spectator => 2
-
-  private def constraintViolation(error: SQLException): Boolean =
-    Option(error.getSQLState).exists(_.startsWith("23"))
 
   private def parseRole(value: String): MembershipRole = value match
     case "owner" => Owner

@@ -99,7 +99,7 @@ final class HsqldbEventStreamRepository private[persistence] (
             try
               insertStream(connection, gameId)
             catch
-              case error: SQLException if isConstraintViolation(error) =>
+              case error: SQLException if SqlStates.constraintViolation(error) =>
                 return StreamAlreadyExists
             insertEntries(connection, gameId, 0L, records)
             updateNextSequence(connection, gameId, records.size.toLong)
@@ -180,9 +180,6 @@ final class HsqldbEventStreamRepository private[persistence] (
         throw new SQLException(s"stream '$gameId' disappeared during append")
       ()
     finally statement.close()
-
-  private def isConstraintViolation(error: SQLException): Boolean =
-    Option(error.getSQLState).exists(_.startsWith("23"))
 
   private def run[A](
       operation: String
