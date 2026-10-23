@@ -63,7 +63,10 @@ object ActPowerHarness:
     rules.resolveWalker(state, actor, decisionId,
       DecisionAnswer.ChooseOneAnswer(ref))
 
-  /** Ids of the phase powers the actor can use now. */
+  /** Ids of the phase powers the actor's phase menu offers available now,
+    * with no walker powers registered: the printed operation restrictions
+    * are ignored, so a power they would prune still reads as usable here.
+    * `PhasePowerHarness.usableNow` applies them. */
   def usableIds(ready: ReadyGame): Vector[PowerId] =
     PhasePowerHarness.menuPowers(catalog, ready, actor,
       PhasePowerCatalog.default(catalog), WalkerPowers.empty).map(_.power.id)
