@@ -4,7 +4,7 @@ import oathdigital.frontend.Dom.all
 import org.scalajs.dom
 
 /** Catalog `rulesText` carries `[token]` markup and Markdown emphasis
-  * (`CatalogModel.rulesText` joins multiple powers with a blank line before
+  * (`PrintsPowers.rulesText` joins multiple powers with a blank line before
   * the projection ever sees them). The UI printed both verbatim; this suite
   * pins the rendered form. Runs under jsdom (`Test / jsEnv` in `build.sbt`).
   */
