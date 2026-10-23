@@ -43,8 +43,8 @@ object ActPowerHarness:
   /** The parked decision, rebuilt with the powers
     * `rulesWithPrintedRestrictions` carries: a decision the walker powers
     * shape, such as a reroll choice, is found only with them. */
-  val parkedWithWalkerPowers = new ParkedDecisionAssertions(catalog,
-    WalkerPowerCatalog.default(catalog), PhasePowerCatalog.default(catalog))
+  val parkedWithWalkerPowers: ParkedDecisionAssertions =
+    PowerRules.parkedUnderWalkerAndPhasePowers
 
   /** Stub of WalkerDice: the defense dice show exactly these faces, a defense
     * pool of another size fails, and no attack die may be rolled. */

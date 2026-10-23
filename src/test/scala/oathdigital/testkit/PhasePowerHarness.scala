@@ -70,8 +70,7 @@ object PhasePowerHarness:
       facts.procedure == PhaseMenu.Menu.Act.procedure) &&
       turn.phase == Phase.Act && turn.activePlayer == actor
 
-  def pick(ref: DecisionOptionRef): DecisionAnswer =
-    DecisionAnswer.ChooseOneAnswer(ref)
+  export DecisionAnswers.chooseOne as pick
 
   /** The state a journal replay of `events` reaches from `from`, or the
     * violation that stopped it. */

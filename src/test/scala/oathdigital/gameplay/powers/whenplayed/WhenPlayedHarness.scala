@@ -13,7 +13,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers}
 import oathdigital.model._
-import oathdigital.testkit.{PhasePowerHarness, Table}
+import oathdigital.testkit.{DecisionAnswers, RecordedOps, Table}
 import oathdigital.testkit.Unwrap.{accepted, present}
 
 /** Drives a When Played power through its `CardPlayed` hook, the way the
@@ -116,14 +116,14 @@ object WhenPlayedHarness:
     * has run, since `replayed` refuses an empty batch. */
   private def reachedFrom(ready: ReadyGame, events: Vector[OathEvent])
       : ReadyGame =
-    if PhasePowerHarness.ops(events).isEmpty then ready
+    if ops(events).isEmpty then ready
     else replayed(ready, events)
 
   /** The state `events`' recorded operations reach from `from`. The hook is
     * walked bare, outside any action, so its steps replay as operations
     * rather than through the rules' journal evolve. */
   def replayed(from: ReadyGame, events: Vector[OathEvent]): ReadyGame =
-    accepted(OperationPipeline.run(from, PhasePowerHarness.ops(events),
+    accepted(OperationPipeline.run(from, ops(events),
       OperationPolicy.Permissive, Vector.empty)(Right(_))).state
 
   /** The recorded operations of `events` alone rebuild `end` from `from`: a
@@ -168,9 +168,10 @@ object WhenPlayedHarness:
       : Vector[NoteText.Said] =
     NoteText.said(power.id, power.noteKeys, events)
 
-  /** The answer that picks `ref` from a ChooseOne question. */
-  def chooseOne(ref: DecisionOptionRef): DecisionAnswer =
-    DecisionAnswer.ChooseOneAnswer(ref)
+  export DecisionAnswers.chooseOne
+
+  /** The operations the recorded steps among `events` applied, in order. */
+  export RecordedOps.all as ops
 
   /** The options of a ChooseOne question; fails with the query otherwise. */
   def chooseOneOptions(asked: Decide)(using munit.Location)
