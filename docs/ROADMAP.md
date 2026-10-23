@@ -373,10 +373,11 @@ one.
   and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
   used only by tests. Move the remaining users onto the executable catalog and
   delete the reviewed catalog.
-- [ ] **Frontend and protocol clean-up.** Decision option kinds are
-  bare string literals in the frontend, and the id grammars (`stableKey`,
-  decision-id prefixes) have no shared home. The projection has no protocol
-  version field. `WalkerDecisionProjectorSuite` fabricates parks instead of
+- [ ] **Frontend and protocol clean-up.** The projection has no protocol
+  version field. (The decision ids and option ids both sides spell are
+  settled by the
+  [decision-id vocabulary decision](superpowers/specs/2026-10-18-decision-id-vocabulary-decision.md)
+  and are not work.) `WalkerDecisionProjectorSuite` fabricates parks instead of
   reaching them through a Situation. `OathViolation.InvalidSearchPlacement`
   also reports card-play refusals outside Search (a facedown adviser play, a
   forbidden faceup Vision), and renaming it changes the wire format.
