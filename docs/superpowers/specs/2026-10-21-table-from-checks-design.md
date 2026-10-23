@@ -1,6 +1,7 @@
 # A table continued from a state still checks its cards
 
-Date: 2026-10-21. Status: approved design.
+Date: 2026-10-21. Status: approved design; implemented 2026-10-21 (see
+Record).
 
 This is candidate K of the 2026-10-13 architecture review ("one driver for
 'run this card to its ruling'"), re-inventoried at `7b6b2659` and narrowed to

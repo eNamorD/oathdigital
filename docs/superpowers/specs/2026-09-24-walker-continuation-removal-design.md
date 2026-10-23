@@ -8,8 +8,9 @@
 > strengthening on the test side; the two are separated below. The sibling
 > deletions (`OperationShadow`, `ViewerPresentation.procedureStatus`,
 > `PeekedRelicPresentation`) and the Act-action control merge are not part of
-> this design. `DeltaMeaning` is retained; see
-> [the delta meaning retention decision](2026-09-24-delta-meaning-retention-decision.md).
+> this design. `DeltaMeaning` was retained at the time; see
+> [the delta meaning retention decision](2026-09-24-delta-meaning-retention-decision.md),
+> which was reversed on 2026-10-18 when `DeltaMeaning` was removed.
 >
 > Revised 2026-09-24 while writing
 > [the implementation plan](../plans/2026-09-24-walker-continuation-removal.md),

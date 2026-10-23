@@ -6,7 +6,7 @@
 > so a fourth review finds them already weighed. Taken alongside the
 > [decision form tag separation decision](2026-09-25-decision-form-tag-separation-decision.md),
 > which settled a neighbouring question the opposite way, for reasons that do
-> not all carry over.
+> not all carry over. Items 1 and 3 landed on 2026-10-18.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **phase menu**, **parked
 decision** and **answered options**.

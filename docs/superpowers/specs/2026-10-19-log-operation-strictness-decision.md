@@ -4,8 +4,8 @@
 > raised this as candidate I. It records what the log's operation-application
 > path is, what its leniency was actually covering, and why the
 > [replay posture decision](2026-09-24-replay-posture-decision.md) does not
-> reach it. That posture is untouched here. No implementation is authorized by
-> this document alone.
+> reach it. That posture is untouched here. The strict fold landed on
+> 2026-10-19, after the payload move it sequences first.
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **command batch**, **void
 marker** and **taken-back group**.

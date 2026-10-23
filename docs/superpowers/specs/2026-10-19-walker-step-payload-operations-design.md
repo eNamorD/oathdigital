@@ -1,8 +1,9 @@
 # Walker Step Payload Operations: Operations Belong to the Payload That Carries Them
 
 **Status:** designed 2026-10-19 from an architecture review of the game log's
-second operation pass. No implementation is authorized by this document alone;
-a plan follows it.
+second operation pass. Implemented 2026-10-19 by
+[the plan](../plans/2026-10-19-walker-step-payload-operations.md), which
+records its execution and the two expectations it got wrong.
 
 ## Goal
 
