@@ -75,10 +75,7 @@ object ActPowerHarness:
     * the violation that stopped it. */
   def replayed(rules: OathRules, from: ReadyGame, events: Vector[OathEvent])(
       using munit.Location): ReadyGame =
-    val replay = events.foldLeft[Either[OathViolation, OathState]](
-      Right(Ready(from)))((state, event) =>
-      state.flatMap(rules.evolve(_, event)))
-    Outcomes.ready(Unwrap.accepted(replay))
+    Outcomes.ready(Unwrap.accepted(Journal.evolved(rules, from, events)))
 
   /** The events up to the first walk's end, before the driver goes on: a
     * power that ends the Act phase leaves the player in Rest here, where the

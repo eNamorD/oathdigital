@@ -76,10 +76,7 @@ object PhasePowerHarness:
   /** The state a journal replay of `events` reaches from `from`, or the
     * violation that stopped it. */
   def replayed(from: ReadyGame, events: Vector[OathEvent])
-      : Either[OathViolation, OathState] =
-    events.foldLeft[Either[OathViolation, OathState]](
-      Right(OathState.Ready(from)))((state, event) =>
-      state.flatMap(rules.evolve(_, event)))
+      : Either[OathViolation, OathState] = Journal.evolved(rules, from, events)
 
   /** The operations the walk recorded, in order. */
   def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
