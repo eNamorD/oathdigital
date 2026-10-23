@@ -531,12 +531,13 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .partition-zone > .decision-zone-order { margin: 0.35em 0 0; color: var(--ink-dim);
   font-size: 0.85em; font-style: italic; }
 .partition-zone > .partition-options { margin-top: auto; padding-top: 1.15em; }
-/* The card sets the option's width. The step is the smallest that keeps
-   the card's name and its picker over 11px. The card sits on the option's
-   floor, so every card in a row shares a baseline. */
+/* The option is its card and nothing else: no box of its own, so the card's
+   border is the only one drawn and the room a box took goes to the card.
+   The card sits on the option's floor, so every card in a row shares a
+   baseline. */
 .partition-zone .decision-option { display: flex; flex-direction: column;
-  justify-content: flex-end; align-items: center; gap: 4px; margin: 0;
-  padding: 5px; width: calc(var(--card-w) + 12px); font-size: 0.84em; }
+  justify-content: flex-end; align-items: center; margin: 0; padding: 0;
+  border: 0; border-radius: 0; width: var(--card-w); }
 .partition-instruction { color: var(--ink-dim); font-size: 0.9rem; }
 /* The answer stays in view: the footer pins to the pane's bottom edge on
    the pane's own fill while the zones scroll above it, and its negative
