@@ -150,20 +150,18 @@ class ParkedDecisionSuite extends munit.FunSuite:
     assertEquals(routeOf(modifiers).surface,
       Some(Surface.BoardDecision(modifiers, one)))
 
-  test("an observer of a parked deal sees its summary beside the notice"):
+  test("an observer of a parked deal sees its summary"):
     val waiting = WalkerWaitingState("blue", Some("Negotiation"),
       Vector("red"), Some(deal))
     assertEquals(ParkedDecision.route(projection(waiting = Some(waiting)),
-      observer), Routed(Some(Surface.Negotiate(deal, None)),
-        Some("Waiting for Blue: Negotiation")))
+      observer), Routed(Some(Surface.Negotiate(deal, None)), None))
 
-  test("the waiting notice names the player and the question"):
+  /** The status line above names who is waited on and the question, so a
+    * notice here would say it twice.
+    */
+  test("a walker wait leaves the waiting line to the status"):
     def notice(waiting: WalkerWaitingState): Option[String] =
       ParkedDecision.route(projection(waiting = Some(waiting)), observer).notice
     assertEquals(notice(WalkerWaitingState("blue", Some("Choose the Oathkeeper"))),
-      Some("Waiting for Blue: Choose the Oathkeeper"))
-    // A parked Roll asks nothing, so the notice has no question to name.
-    assertEquals(notice(WalkerWaitingState("blue")), Some("Waiting for Blue"))
-    // A player the projection does not list is named by id, not dropped.
-    assertEquals(notice(WalkerWaitingState("green", Some("Question"))),
-      Some("Waiting for green: Question"))
+      None)
+    assertEquals(notice(WalkerWaitingState("blue")), None)

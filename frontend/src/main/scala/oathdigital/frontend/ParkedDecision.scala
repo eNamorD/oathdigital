@@ -226,20 +226,9 @@ private[frontend] object ParkedDecision:
     decision.presentation == "board" &&
       options.exists(BoardHomes.has(value, _))
 
-  /** The line shown to a viewer the parked position is not waiting on:
-    * the requester's wait for consent first; nothing for an asked granter,
-    * whose prompt says it all; else who the decision awaits, with the
-    * question's heading when it has one -- `None` for a parked Roll, which
-    * asks nothing. `None` here also means either nothing is parked or this
-    * viewer is the one it awaits, in which case the surface above shows the
-    * decision itself instead.
+  /** The line shown to a requester waiting for consent. A walker wait has
+    * none: the status line above already names who the decision awaits and
+    * the question it asks.
     */
   private def waitingNotice(value: GameProjection): Option[String] =
-    value.consentWaiting.map(ConsentPanels.waiting(value, _)).orElse(
-      if value.consentPrompt.nonEmpty then None
-      else value.walkerWaiting.map { waiting =>
-        val name = value.players.find(_.playerId == waiting.playerId)
-          .map(_.displayName).getOrElse(waiting.playerId)
-        waiting.heading.fold(s"Waiting for $name")(heading =>
-          s"Waiting for $name: $heading")
-      })
+    value.consentWaiting.map(ConsentPanels.waiting(value, _))

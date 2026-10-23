@@ -44,6 +44,27 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(active.waitingForPlayerId, Some("blue-exile"))
     assertEquals(active.waitingForDisplayName, Some("Blue Exile"))
 
+  /** The player waited on is named once: the status line carries the
+    * question their parked decision asks, so the pane draws no second
+    * waiting line under it.
+    */
+  test("the status line names who is waited on and their decision's question"):
+    val value = twoSeatProjection(activeParticipantId = "red-exile")
+      .copy(walkerWaiting = Some(WalkerWaitingState("blue-exile",
+        Some("Choose your starting site"))))
+    val status = ActionDecisionRenderer.status(value,
+      ServerUiSupport.viewerPresentation(value, "red-exile"))
+    assertEquals(status.textContent,
+      "Waiting for Blue Exile: Choose your starting site")
+    assertEquals(status.querySelector(".player-ref").textContent, "Blue Exile")
+
+  test("a parked Roll's wait names only the player, having no question"):
+    val value = twoSeatProjection(activeParticipantId = "red-exile")
+      .copy(walkerWaiting = Some(WalkerWaitingState("blue-exile")))
+    val status = ActionDecisionRenderer.status(value,
+      ServerUiSupport.viewerPresentation(value, "red-exile"))
+    assertEquals(status.textContent, "Waiting for Blue Exile")
+
   test("an inactive Act viewer waits for the active player"):
     val value = twoSeatProjection(phase = "act")
     val inactive = ServerUiSupport.viewerPresentation(value, "blue-exile")
