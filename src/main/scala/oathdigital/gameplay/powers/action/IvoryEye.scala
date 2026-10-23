@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object IvoryEyeCard extends Relic(RelicId("R16"), "Ivory Eye", value = 79, defense = 2):

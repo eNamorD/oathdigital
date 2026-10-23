@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
-import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.NoteSupport
 import oathdigital.model._
 
 object ShiftingMapCard extends Relic(RelicId("R17"), "Shifting Map", value = 15, defense = 1):

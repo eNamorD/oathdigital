@@ -1,8 +1,8 @@
 package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.ProcedureNotes
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.model._
 

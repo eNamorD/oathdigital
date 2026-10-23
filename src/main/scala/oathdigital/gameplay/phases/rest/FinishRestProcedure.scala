@@ -1,10 +1,10 @@
 package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.NoteSupport
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.actions.ProcedureNotes
 import oathdigital.gameplay.phases.RestCleanup
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 /** A relic the player holds, faceup or facedown, chosen and then spent:

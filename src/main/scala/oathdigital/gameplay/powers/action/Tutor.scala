@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
-import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.NoteSupport
 import oathdigital.model._
 
 object TutorCard extends Denizen(DenizenId("69"), "Tutor", Suit.Arcane) with AdviserOnly:

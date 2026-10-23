@@ -366,6 +366,14 @@ one.
 
 ### Engine deferred items
 
+- [ ] **Campaign notes read the attack rules.** The attack line counts skull
+  faces as the chosen plans score them (Lancers doubles them), so
+  `CampaignNotes` imports `powers.campaign.AttackScore`, whose `changes` name
+  the plan cards. It is the one exception to "`gameplay/actions` imports
+  nothing from `gameplay.powers`" that `scripts/check-architecture.py`
+  allows. Plans that change the attack's scoring could contribute their
+  `AttackChange` through a power window instead, or the scored roll could
+  record its skull faces.
 - [ ] **Move Campaign's pinned facts onto start facts.**
   `CampaignSetup.pinned` stores the Campaign's kind and defender as sentinel
   `ModifyDicePool` operations; start facts

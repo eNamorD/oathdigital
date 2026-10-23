@@ -2,9 +2,10 @@ package oathdigital.gameplay.powers.setup
 
 import oathdigital.catalog.{Edifice, EdificeFace, ExecutableCatalog, Locked,
   PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 object ProvingGroundsCard extends Edifice(EdificeId("E22"), Suit.Hearth):

@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.QueuedStarts
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object WardOfSilenceCard extends Denizen(DenizenId("202"), "Ward of Silence",

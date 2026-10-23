@@ -1,8 +1,8 @@
 package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.{BannerRules, ProcedureNotes}
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Place Banner Resource on the walker: the holder of a banner moves favor or

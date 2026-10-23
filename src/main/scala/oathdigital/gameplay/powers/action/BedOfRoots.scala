@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.EffectiveSuit
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport}
+import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 object BedOfRootsCard extends Denizen(DenizenId("212"), "Bed of Roots", Suit.Beast) with SiteOnly:

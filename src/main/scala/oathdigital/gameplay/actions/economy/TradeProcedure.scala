@@ -1,8 +1,8 @@
 package oathdigital.gameplay.actions.economy
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.ProcedureNotes
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Trade on the walker. The start selection is one resource button, `favor`

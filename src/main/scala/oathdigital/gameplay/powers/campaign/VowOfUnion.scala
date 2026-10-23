@@ -1,13 +1,12 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.actions.campaign.{CampaignIds,
   CampaignProcedure, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers,
-  WarbandArrangement}
+import oathdigital.gameplay.powers.{PowerAnswers, WarbandArrangement}
 import oathdigital.model._
 
 object VowOfUnionCard extends Denizen(DenizenId("185"), "Vow of Union", Suit.Beast) with Locked with AdviserOnly:

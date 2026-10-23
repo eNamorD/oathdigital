@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.SiteRulers
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.{NoteSupport, SiteRulers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object RovingTerrorCard extends Denizen(DenizenId("46"), "Roving Terror", Suit.Beast) with SiteOnly:

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.whenplayed
 
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.{BannerRules, VisionRules}
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** Conspiracy: when played, take a relic or a banner from a player whose pawn

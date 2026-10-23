@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
-import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
+import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 object WhisperingLeavesCard extends Denizen(DenizenId("211"), "Whispering Leaves", Suit.Beast) with AdviserOnly:

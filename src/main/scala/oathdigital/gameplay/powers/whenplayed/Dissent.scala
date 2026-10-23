@@ -1,10 +1,11 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.BannerRules
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{NoteSupport, RuledCards}
+import oathdigital.gameplay.powers.RuledCards
 import oathdigital.model._
 
 object DissentCard extends Denizen(DenizenId("84"), "Dissent", Suit.Discord):

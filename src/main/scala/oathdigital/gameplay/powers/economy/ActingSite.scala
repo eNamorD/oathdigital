@@ -1,10 +1,9 @@
 package oathdigital.gameplay.powers.economy
 
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.powerresolver.{Contribution, ModifierPicks,
   OfferReason, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers,
-  SelectedModifier}
+import oathdigital.gameplay.powers.{PowerAnswers, SelectedModifier}
 import oathdigital.model._
 
 /** What Small Friends and Friendly Familiar share (catalog batch 8, slice

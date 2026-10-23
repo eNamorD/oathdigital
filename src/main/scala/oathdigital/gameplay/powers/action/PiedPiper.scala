@@ -1,11 +1,12 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.AdviserFace
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object PiedPiperCard extends Denizen(DenizenId("182"), "Pied Piper", Suit.Beast) with AdviserOnly:

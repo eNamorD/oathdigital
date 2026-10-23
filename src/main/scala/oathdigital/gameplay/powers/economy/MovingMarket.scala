@@ -1,11 +1,10 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.{NoteSupport, SiteRulers}
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers,
-  SelectedModifier, SiteRoom}
+import oathdigital.gameplay.powers.{PowerAnswers, SelectedModifier, SiteRoom}
 import oathdigital.model._
 
 object MovingMarketCard extends Denizen(DenizenId("241"), "Moving Market", Suit.Nomad) with SiteOnly:

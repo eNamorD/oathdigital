@@ -2,11 +2,12 @@ package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.economy.TradeProcedure
 import oathdigital.gameplay.powerresolver.{Contribution, Deferred,
   FoldPhase, ModifierHost, OfferReason, OperationRewrite, PowerCtx,
   Transform}
-import oathdigital.gameplay.powers.{NoteSupport, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 object SecretSignalCard extends Denizen(DenizenId("55"), "Secret Signal", Suit.Arcane) with AdviserOnly:

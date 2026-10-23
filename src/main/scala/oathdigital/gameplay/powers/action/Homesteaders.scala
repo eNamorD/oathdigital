@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
-import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers,
-  SiteRoom}
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
+import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers, SiteRoom}
 import oathdigital.model._
 
 object HomesteadersCard extends Denizen(DenizenId("127"), "Homesteaders", Suit.Hearth):

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.dice.RollStep
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object GamblingHallCard extends Denizen(DenizenId("93"), "Gambling Hall", Suit.Discord) with SiteOnly:

@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object BookOfRecordsCard extends Relic(RelicId("R19"), "Book of Records", value = 50, defense = 1):

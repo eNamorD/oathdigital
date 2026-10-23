@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.NoteSupport
 import oathdigital.model._
 
 object ArcaneBrokersCard extends Denizen(DenizenId("204"), "Arcane Brokers", Suit.Arcane):

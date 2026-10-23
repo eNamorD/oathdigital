@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, SelectedModifier}
+import oathdigital.gameplay.powers.{PlayerFacts, SelectedModifier}
 import oathdigital.model._
 
 object DragonskinDrumCard extends Relic(RelicId("R20"), "Dragonskin Drum", value = 59, defense = 2):

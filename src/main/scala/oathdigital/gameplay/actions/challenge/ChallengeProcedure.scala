@@ -1,8 +1,8 @@
 package oathdigital.gameplay.actions.challenge
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.{BannerRules, ProcedureNotes}
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
 

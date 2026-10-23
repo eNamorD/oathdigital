@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
-import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object SleightOfHandCard extends Denizen(DenizenId("17"), "Sleight of Hand", Suit.Discord) with AdviserOnly:

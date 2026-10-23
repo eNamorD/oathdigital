@@ -1,8 +1,8 @@
 package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.{BannerRules, ProcedureNotes}
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.campaign.AttackScore
 import oathdigital.model._
 

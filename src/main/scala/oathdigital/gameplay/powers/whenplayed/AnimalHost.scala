@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 object AnimalHostCard extends Denizen(DenizenId("190"), "Animal Host", Suit.Beast):

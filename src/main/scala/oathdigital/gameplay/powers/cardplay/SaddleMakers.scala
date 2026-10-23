@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
-import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport, PowerAccess}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.model._
 
 object SaddleMakersCard extends Denizen(DenizenId("142"), "Saddle Makers", Suit.Hearth) with AdviserOnly:

@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object WhistleCard extends Relic(RelicId("R08"), "Whistle", value = 6, defense = 1):

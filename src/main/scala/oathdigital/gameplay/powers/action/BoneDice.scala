@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.dice.RollStep
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 object BoneDiceCard extends Relic(RelicId("R24"), "Bone Dice", value = 1, defense = 1):

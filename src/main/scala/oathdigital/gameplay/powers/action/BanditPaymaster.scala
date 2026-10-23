@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 object BanditPaymasterCard extends Denizen(DenizenId("219"), "Bandit Paymaster", Suit.Discord):

@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.actions.dice.RollStep
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powers.wake.MarbleFountainsCard
 import oathdigital.model._
 

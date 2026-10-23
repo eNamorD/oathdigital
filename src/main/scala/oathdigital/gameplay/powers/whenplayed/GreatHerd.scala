@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.{NoteSupport, SiteRulers}
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object GreatHerdCard extends Denizen(DenizenId("30"), "Great Herd", Suit.Nomad) with SiteOnly:

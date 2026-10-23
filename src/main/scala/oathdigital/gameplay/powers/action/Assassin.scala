@@ -2,10 +2,10 @@ package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
-import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport, PowerAccess}
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.gameplay.powers.rest.HolderAdviserLimit
 import oathdigital.model._
 

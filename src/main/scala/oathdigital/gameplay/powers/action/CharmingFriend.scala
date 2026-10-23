@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{AdviserOnly, Denizen, PrintedPower}
-import oathdigital.gameplay.PowerAccess
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object CharmingFriendCard extends Denizen(DenizenId("131"), "Charming Friend", Suit.Hearth) with AdviserOnly:

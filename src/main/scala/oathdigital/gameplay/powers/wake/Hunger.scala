@@ -2,9 +2,9 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
-import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport, PowerAccess}
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object HungerCard extends Denizen(DenizenId("216"), "Hunger", Suit.Beast) with Locked with AdviserOnly:

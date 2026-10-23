@@ -47,15 +47,26 @@ forbidden_imports = {
     "src/main/scala/oathdigital/application": (
         "persistence", "serialization", "server"
     ),
+    # Actions are the engine's procedures; powers contribute to them through
+    # power windows (docs/architecture/gameplay-modules.md).
+    "src/main/scala/oathdigital/gameplay/actions": ("gameplay.powers",),
     "src/main/scala/oathdigital/catalog": (
         "application", "gameplay", "persistence", "serialization", "server"
     ),
+}
+# Known exceptions, each a file and the one import it may keep. The attack
+# line counts skull faces as the chosen plans score them, which only the
+# plan cards know (ROADMAP "Campaign notes read the attack rules").
+allowed_imports = {
+    "src/main/scala/oathdigital/gameplay/actions/campaign/CampaignNotes.scala":
+        "import oathdigital.gameplay.powers.campaign.AttackScore\n",
 }
 for prefix, packages in forbidden_imports.items():
     root = ROOT / prefix
     needles = tuple(f"import oathdigital.{package}" for package in packages)
     for path in scala_sources(root):
         text = path.read_text(encoding="utf-8")
+        text = text.replace(allowed_imports.get(relative(path), "\0"), "")
         for needle in needles:
             if needle in text:
                 errors.append(f"{relative(path)}: forbidden inward dependency: {needle}")

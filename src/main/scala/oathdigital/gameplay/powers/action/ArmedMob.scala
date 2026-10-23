@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport, PowerAccess}
 import oathdigital.gameplay.actions.{BannerRules, CardPlay}
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, PowerAnswers}
+import oathdigital.gameplay.powers.{PlayerFacts, PowerAnswers}
 import oathdigital.gameplay.powers.banner.CardPowerBanners
 import oathdigital.model._
 

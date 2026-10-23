@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.NoteSupport
 import oathdigital.model._
 
 object ScoutsCard extends Denizen(DenizenId("8"), "Scouts", Suit.Order):

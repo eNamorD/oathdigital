@@ -2,8 +2,8 @@ package oathdigital.gameplay.powers.rest
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object SilverTongueCard extends Denizen(DenizenId("92"), "Silver Tongue", Suit.Discord) with Locked with AdviserOnly:

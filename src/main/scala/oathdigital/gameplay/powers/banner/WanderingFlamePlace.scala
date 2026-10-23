@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powers.action.{PaidAction, PawnMoves}
 import oathdigital.model._
 

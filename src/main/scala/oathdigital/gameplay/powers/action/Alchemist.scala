@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
-import oathdigital.gameplay.powers.NoteSupport
+import oathdigital.gameplay.NoteSupport
 import oathdigital.model._
 
 object AlchemistCard extends Denizen(DenizenId("9"), "Alchemist", Suit.Arcane) with SiteOnly:

@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.operations.SupplyStrip
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts,
-  SelectedModifier}
+import oathdigital.gameplay.powers.{PlayerFacts, SelectedModifier}
 import oathdigital.model._
 
 object AwaitedReturnCard extends Denizen(DenizenId("150"), "Awaited Return", Suit.Hearth):

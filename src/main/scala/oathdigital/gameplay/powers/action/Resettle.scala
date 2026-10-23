@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower, SiteOnly}
-import oathdigital.gameplay.EffectiveSuit
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers, SiteRoom}
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport}
+import oathdigital.gameplay.powers.{PowerAnswers, SiteRoom}
 import oathdigital.model._
 
 object ResettleCard extends Denizen(DenizenId("159"), "Resettle", Suit.Nomad) with SiteOnly:

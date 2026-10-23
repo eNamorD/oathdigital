@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers.economy
 
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 /** A vow's warbands gained after a Muster's own gain (Vow of Beastkin, Vow

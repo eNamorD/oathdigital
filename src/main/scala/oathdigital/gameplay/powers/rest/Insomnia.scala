@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object InsomniaCard extends Denizen(DenizenId("97"), "Insomnia", Suit.Discord) with Locked with AdviserOnly:

@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.model._
 
 object VowOfObedienceCard extends Denizen(DenizenId("121"), "Vow of Obedience", Suit.Order) with Locked with AdviserOnly:

@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object RoyalTaxCard extends Denizen(DenizenId("117"), "Royal Tax", Suit.Order):

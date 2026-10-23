@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{PowerAccess, SpitefulMirrorCard}
+import oathdigital.gameplay.{NoteSupport, PowerAccess, SpitefulMirrorCard}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.powerresolver.{Contribution, Transform}
-import oathdigital.gameplay.powers.{NoteSupport, SelectedModifier}
+import oathdigital.gameplay.powers.SelectedModifier
 import oathdigital.model._
 
 /** Spiteful Mirror (relic R41), a selected Trade and Muster modifier:

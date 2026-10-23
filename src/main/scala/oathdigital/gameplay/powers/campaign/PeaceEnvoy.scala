@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.campaign.{CampaignAnswers, CampaignIds,
   CampaignSetup}
 import oathdigital.gameplay.powerresolver.{OptionRestriction, PowerCtx}
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object PeaceEnvoyCard extends Denizen(DenizenId("125"), "Peace Envoy", Suit.Order):

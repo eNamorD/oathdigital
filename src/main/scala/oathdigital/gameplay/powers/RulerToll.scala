@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.SiteRulers
+import oathdigital.gameplay.{NoteSupport, SiteRulers}
 import oathdigital.model._
 
 /** The toll Curfew and Forced Labor charge an enemy of their ruler, on top

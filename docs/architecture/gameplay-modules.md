@@ -115,6 +115,11 @@ These rules are enforced by `scripts/check-architecture.py` and
   `ContributingPower` or `PhasePower`.
 - A file that declares a `ContributingPower` or `PhasePower` imports nothing
   from `gameplay.walker`.
+- `gameplay/actions` imports nothing from `gameplay.powers`; powers reach
+  procedures only through power windows. A rule both sides read lives outside
+  `powers`, as `NoteSupport` and `VowOfWanderingRule` do. The one exception
+  is `CampaignNotes`, which reads `AttackScore` (ROADMAP "Campaign notes read
+  the attack rules").
 - `actions`, `phases`, `powers` and `StateBasedEvaluation` change owned
   material (cards, site tokens, banks, hands) only through core operations.
   A direct write needs the `// executor bypass:` comment directly above it.

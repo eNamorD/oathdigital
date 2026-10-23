@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 /** Taking a relic from a site, as Barbed Net and Skeleton Key do.

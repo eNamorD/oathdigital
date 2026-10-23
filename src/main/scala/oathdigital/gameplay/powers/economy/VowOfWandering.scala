@@ -1,13 +1,14 @@
 package oathdigital.gameplay.powers.economy
 
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
+import oathdigital.gameplay.actions.VowOfWanderingRule
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   OperationRewrite, PowerCtx, Transform}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.model._
 
-object VowOfWanderingCard extends Denizen(DenizenId("247"), "Vow of Wandering", Suit.Nomad) with Locked with AdviserOnly:
+object VowOfWanderingCard extends Denizen(VowOfWanderingRule.cardId, "Vow of Wandering", Suit.Nomad) with Locked with AdviserOnly:
   val muster = PrintedPower(PowerId("denizen.vow-of-wandering.muster"),
     persistent = false, cost = Cost.free,
     text = "Gain two more warbands.")
@@ -66,7 +67,7 @@ case object VowOfWandering extends ContributingPower:
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
 
   /** The restriction's detail, which Move Warbands shows. */
-  val Reason: String = "Vow of Wandering forbids placing warbands on sites"
+  val Reason: String = VowOfWanderingRule.Reason
   private val notes = NoteSet(id)
   /** Holds the restriction line, which this power defines but never writes:
     * the powers that place warbands do, and each borrows it from here. */
@@ -98,7 +99,7 @@ case object VowOfWandering extends ContributingPower:
 
   /** Whether `player` holds this card faceup. */
   def holds(ready: ReadyGame, player: PlayerId): Boolean =
-    holderOf(ready).contains(player)
+    VowOfWanderingRule.holds(ready, player)
 
   private def holderOf(ready: ReadyGame): Option[PlayerId] =
     PowerAccess.faceupAdviserHolder(ready, cardId)

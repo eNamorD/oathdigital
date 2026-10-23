@@ -1,9 +1,8 @@
 package oathdigital.gameplay.actions.minor
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.ProcedureNotes
-import oathdigital.gameplay.powers.NoteSupport
-import oathdigital.gameplay.powers.economy.VowOfWandering
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.actions.{ProcedureNotes, VowOfWanderingRule}
 import oathdigital.model._
 import oathdigital.model.OathViolation.{InvalidEventOrder,
   MinorActionUnavailable, PawnSiteMissing}
@@ -218,8 +217,8 @@ object MinorActionProcedures:
               .getOrElse(false) then Left("You do not rule your site")
           else if player.board.warbands == 0 then
             Left("No warbands on your board")
-          else if VowOfWandering.holds(ready, actor) then
-            Left(VowOfWandering.Reason)
+          else if VowOfWanderingRule.holds(ready, actor) then
+            Left(VowOfWanderingRule.Reason)
           else Right(player.board.warbands)
         else site.forces match
           case SiteForces.Occupied(ForceKind.Exile(lineage), count)

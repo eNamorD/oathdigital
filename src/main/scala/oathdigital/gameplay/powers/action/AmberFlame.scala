@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object AmberFlameCard extends Relic(RelicId("R32"), "Amber Flame", value = 26, defense = 2):

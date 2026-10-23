@@ -1,8 +1,8 @@
 package oathdigital.gameplay.actions.forge
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.{ForgeRules, ProcedureNotes}
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.gameplay.walker.ModifierChoice
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.PartitionAnswer

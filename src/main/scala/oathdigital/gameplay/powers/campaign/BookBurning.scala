@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.powers.{NoteSupport, SecretBurns}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.SecretBurns
 import oathdigital.model._
 
 object BookBurningCard extends Denizen(DenizenId("22"), "Book Burning", Suit.Discord):

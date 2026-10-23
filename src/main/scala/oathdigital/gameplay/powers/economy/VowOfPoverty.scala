@@ -3,9 +3,9 @@ package oathdigital.gameplay.powers.economy
 import oathdigital.catalog.{AdviserOnly, Denizen, Locked, PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PhasePower, PowerCtx, Restriction}
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.gameplay.powers.cardplay.FavorBankChoice
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.model._
 
 object VowOfPovertyCard extends Denizen(DenizenId("193"), "Vow of Poverty", Suit.Beast) with Locked with AdviserOnly:

@@ -1,5 +1,6 @@
 package oathdigital.gameplay.powers
 
+import oathdigital.gameplay.NoteSupport
 import oathdigital.model._
 
 /** Relic draws that powers share. */

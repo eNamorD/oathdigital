@@ -1,9 +1,9 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{Denizen, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object RevelationCard extends Denizen(DenizenId("63"), "Revelation", Suit.Arcane):

@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{Edifice, EdificeFace, Locked, PrintedPower}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object MarbleFountainsCard extends Edifice(EdificeId("E15"), Suit.Arcane):

@@ -1,11 +1,10 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{ExecutableCatalog, PrintedPower, Relic}
-import oathdigital.gameplay.{EffectiveSuit, PowerAccess}
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport, PowerAccess}
 import oathdigital.gameplay.actions.{AdviserFace, CardPlay, CardPlayRules}
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.powers.{AdviserLimit, NoteSupport, PlayerFacts,
-  PowerAnswers}
+import oathdigital.gameplay.powers.{AdviserLimit, PlayerFacts, PowerAnswers}
 import oathdigital.model._
 
 object HornedMaskCard extends Relic(RelicId("R06"), "Horned Mask", value = 48, defense = 2):

@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 object FirebrandCard extends Denizen(DenizenId("233"), "Firebrand", Suit.Hearth):

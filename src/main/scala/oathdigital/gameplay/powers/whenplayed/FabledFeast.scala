@@ -1,8 +1,9 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{Denizen, ExecutableCatalog, PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers, RuledCards}
+import oathdigital.gameplay.powers.{PowerAnswers, RuledCards}
 import oathdigital.gameplay.powers.cardplay.FavorBankChoice
 import oathdigital.model._
 

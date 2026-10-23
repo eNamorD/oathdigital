@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.PrintedPower
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
 import oathdigital.gameplay.powerresolver.QueuedStarts
-import oathdigital.gameplay.powers.{NoteSupport, PowerAnswers}
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 /** An ACTION that campaigns from a site other than the pawn's (catalog

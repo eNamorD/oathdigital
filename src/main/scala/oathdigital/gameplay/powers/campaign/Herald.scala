@@ -5,9 +5,9 @@ import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
 import oathdigital.gameplay.actions.campaign.CampaignProcedure
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
-import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
+import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.gameplay.powers.cardplay.FavorBankChoice
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.model._
 
 object HeraldCard extends Denizen(DenizenId("143"), "Herald", Suit.Hearth) with AdviserOnly:

@@ -1,9 +1,10 @@
-package oathdigital.gameplay.powers
+package oathdigital.gameplay
 
 import oathdigital.model._
 
-/** What a power's note reads (power log lines design, "Amounts are what
-  * happened"), and the sentences several powers share. A read compares the
+/** What a note reads (power log lines design, "Amounts are what
+  * happened"), and the sentences several powers and procedures share. It
+  * sits outside `powers` so that procedures may use it. A read compares the
   * states around the step the note restates, so a note never repeats the
   * cap logic of the operation it describes.
   */

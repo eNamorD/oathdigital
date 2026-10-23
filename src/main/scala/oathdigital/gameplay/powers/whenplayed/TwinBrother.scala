@@ -2,9 +2,8 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
-import oathdigital.gameplay.EffectiveSuit
+import oathdigital.gameplay.{EffectiveSuit, NoteSupport}
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object TwinBrotherCard extends Denizen(DenizenId("170"), "Twin Brother", Suit.Nomad) with AdviserOnly:

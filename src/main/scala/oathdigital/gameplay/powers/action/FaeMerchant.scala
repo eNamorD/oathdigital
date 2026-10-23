@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{Denizen, PrintedPower}
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts, RelicDraws}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.{PlayerFacts, RelicDraws}
 import oathdigital.model._
 
 object FaeMerchantCard extends Denizen(DenizenId("180"), "Fae Merchant", Suit.Beast):

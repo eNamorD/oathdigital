@@ -1,7 +1,8 @@
 package oathdigital.gameplay.powers.action
 
 import oathdigital.catalog.{PrintedPower, Relic}
-import oathdigital.gameplay.powers.{NoteSupport, PlayerFacts}
+import oathdigital.gameplay.NoteSupport
+import oathdigital.gameplay.powers.PlayerFacts
 import oathdigital.model._
 
 object MagicWaterskinCard extends Relic(RelicId("R45"), "Magic Waterskin", value = 24, defense = 1):

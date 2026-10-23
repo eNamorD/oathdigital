@@ -1,9 +1,8 @@
 package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{Denizen, PrintedPower, SiteOnly}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.powers.NoteSupport
 import oathdigital.model._
 
 object QuartermasterCard extends Denizen(DenizenId("258"), "Quartermaster", Suit.Order) with SiteOnly:

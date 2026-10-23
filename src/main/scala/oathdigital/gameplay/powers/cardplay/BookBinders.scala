@@ -3,8 +3,8 @@ package oathdigital.gameplay.powers.cardplay
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog,
   PrintedPower}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, PowerCtx, Transform}
-import oathdigital.gameplay.powers.{CatalogResolution, NoteSupport}
-import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.powers.CatalogResolution
+import oathdigital.gameplay.{NoteSupport, PowerAccess}
 import oathdigital.model._
 
 object BookBindersCard extends Denizen(DenizenId("140"), "Book Binders", Suit.Hearth) with AdviserOnly:

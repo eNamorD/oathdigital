@@ -2,9 +2,10 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.{AdviserOnly, Denizen, ExecutableCatalog, Locked,
   PrintedPower}
+import oathdigital.gameplay.NoteSupport
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{NoteSupport, OathkeeperGoalChoice,
-  PowerAnswers, RuledCards}
+import oathdigital.gameplay.powers.{OathkeeperGoalChoice, PowerAnswers,
+  RuledCards}
 import oathdigital.model._
 
 object TrueOathCard extends Denizen(DenizenId("209"), "True Oath",
