@@ -7,7 +7,7 @@ Status: implemented through database schema v4 and event format v1.
 The JVM server is the sole production command authority. Network and UI inputs
 are transient requests. `GameApplicationService` loads the authoritative
 stream, replays it through `JournalFold`, validates one typed command
-(`Begin`, `ResolveWalker`, `RollWalker`, `Undo`, `Redo` or a consent command)
+(`Begin`, `ResolveWalker`, `Undo`, `Redo` or a consent command)
 through `OathRules`, and
 appends only emitted versioned domain-event envelopes. Clients never append
 events or decide that a command was accepted.
@@ -238,7 +238,7 @@ by the route. The loopback commands/load/events routes above only continue
 play for a game created that way.
 
 The command route accepts the intents in `CommandIntentDecoders`: `undo`,
-`redo`, `rollWalker`, `resolveWalker`, `requestConsent`, `answerConsent`, and
+`redo`, `resolveWalker`, `requestConsent`, `answerConsent`, and
 `setConsentPreference`. There is no transport-level `begin`, and no intent
 carries dice faces or draws: bootstrap is the only creation path, and hidden
 outcomes never come from the browser. No Scala class names or reflection are

@@ -110,8 +110,9 @@ gameplay.
    `ActOffers.reason` words why it cannot start. `PhaseMenu` builds the menu
    from these offers and prices each option.
 5. Add no command or event. The generic `ResolveWalker` answers every parked
-   decision, `RollWalker` rolls a parked `Roll` through an application-owned
-   port, and each step is journaled as a `WalkerStepRecorded`.
+   decision, an automatic `Roll` draws its faces from the walker's dice
+   source as the walk runs, and each step is journaled as a
+   `WalkerStepRecorded`.
 6. Write the Game Log lines as notes. Declare the keys in a `NoteSet` named
    by `ProcedureNotes.id`, expose them as `noteKeys`, and list them in
    `ProcedureNotes`. Add the procedure's entry to `ProcedureLogs` in

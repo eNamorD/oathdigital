@@ -15,8 +15,8 @@ a gameplay-rules specification.
   vocabulary (`OathEvent`, `GameEventProtocol.scala`) lives here too.
 - `oathdigital.engine` owns only generic replay abstractions
   (`EventReplayEngine`). Commands live in `application` (`GameCommands.scala`:
-  `Begin`, `ResolveWalker`, `RollWalker`, `Undo`, `Redo` and the consent
-  commands), and rules live in `gameplay`.
+  `Begin`, `ResolveWalker`, `Undo`, `Redo` and the consent commands), and
+  rules live in `gameplay`.
 - The frontend consumes projections. Its presentation IDs and image
   references are not domain identities and never become authoritative state.
 - The Scala card catalog (`catalog/Cards.scala`, `catalog/holding/`, and the
