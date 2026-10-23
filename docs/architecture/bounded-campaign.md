@@ -189,13 +189,9 @@ receives the durable recipient decision before normal Act controls resume.
 
 Unsupported handlers are ignored, not blocking: the Mountain and Plains Campaign
 effects and the unsupported Raid and player-defender powers do not stop a Campaign.
-Bag of Siegeworks, Weeping Banner and Peace Envoy are battle plans. The start
-records what the
-reviewed power catalog lists at the Campaign modifier window through
-`IgnoredRulesRecorded` under `ActionKind.Campaign`. Today that list is empty:
-Bag of Siegeworks is a player-selected plan at the battle-plan window, and the
-resolver reports only unimplemented automatic handlers. The engine does not infer
-mechanics from rules text.
+Bag of Siegeworks, Weeping Banner and Peace Envoy are battle plans. Nothing
+records an unsupported handler. The engine does not infer mechanics from
+rules text.
 
 ## Visibility
 

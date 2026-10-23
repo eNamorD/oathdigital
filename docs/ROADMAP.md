@@ -366,13 +366,6 @@ one.
   single map from card id to the players who know it would make "knowledge
   follows the card" structural instead of maintained per move. Recorded in
   the [Game Log design](superpowers/specs/2026-09-25-game-log-design.md).
-- [ ] **Retire the reviewed-catalog machinery.**
-  `ReviewedPowerInspector` and `PowerRuntime` are still used by 6 main files,
-  the six stub objects (`ActionPowers`, `MusterPowers`, `RestPowers`,
-  `NegotiationPowers`, `CampaignPowers`, `RecoverPowers`) remain,
-  and `IndexedRuleSource.handlerIds`, a temporary compatibility projection, is
-  used only by tests. Move the remaining users onto the executable catalog and
-  delete the reviewed catalog.
 - [ ] **Frontend and protocol clean-up.** The projection has no protocol
   version field. (The decision ids and option ids both sides spell are
   settled by the

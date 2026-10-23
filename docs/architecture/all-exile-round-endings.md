@@ -68,11 +68,9 @@ Rest and the round ending accept only all-Exile lineages
 Four Rest powers are implemented and registered in `PhasePowerCatalog`: Vow of
 Poverty (`powers/economy`), Silver Tongue and Insomnia (`powers/rest`),
 and Vow of Obedience (`powers/cardplay`). Naysayers (`denizen.naysayers`) is
-not implemented. Its card stays in `catalog/holding/`, and the reviewed power
-catalog lists its handler at the `RestStart` window (`RestPowers`). An
-applicable unimplemented Rest handler is ignored, not blocking: Begin Rest
-records it through `IgnoredRulesRecorded` under `ActionKind.Rest`, with its
-stable source key and exact handler ID. Mechanics are never inferred from
+not implemented. Its card stays in `catalog/holding/`. An applicable
+unimplemented Rest handler is ignored, not blocking, and Begin Rest records
+nothing about it. Mechanics are never inferred from
 rules text or handler-name fragments. Banner faces and Foundations are rule
 sources in `RuleSourceIndex` like any card. The Grand Council and Festival
 banner faces and an altered Foundation have no implemented power, so their

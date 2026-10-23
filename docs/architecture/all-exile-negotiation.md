@@ -42,7 +42,7 @@ Owners get the full deal with editing inputs, computed from their own bounds. Ev
 
 ## Unsupported Negotiation rules
 
-`When Negotiating` handlers the engine does not support (Council Arbiter, Deed Writer, Traveling Negotiator, Tribunal faces, Festival District, the Grand Scepter, and High Priest) are ignored and recorded, not blocking. The start records them through `IgnoredRulesRecorded` under `ActionKind.Negotiation`, the same way the other actions record theirs. Separate action powers such as Whispering Stone do not modify a base Negotiation merely by being held. The engine does not infer mechanics from rules text.
+`When Negotiating` handlers the engine does not support (Council Arbiter, Deed Writer, Traveling Negotiator, Tribunal faces, Festival District, the Grand Scepter, and High Priest) are ignored, not blocking, and the start records nothing about them. Separate action powers such as Whispering Stone do not modify a base Negotiation merely by being held. The engine does not infer mechanics from rules text.
 
 ## Journal
 

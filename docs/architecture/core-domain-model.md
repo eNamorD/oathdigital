@@ -92,9 +92,8 @@ campaign/current-game, and projection decisions above are accepted. The
 Scala card catalog is authoritative for its inventory, printed
 identities, reviewed text, restrictions, and stable handler keys. Catalog
 validity does not imply that every handler has executable behavior. An
-applicable power the engine does not implement is ignored, not blocking: the
-procedure start, Wake, card play or action boundary that reaches its timing
-records it through `IgnoredRulesRecorded`.
+applicable power the engine does not implement is ignored, not blocking,
+and nothing records it.
 
 The following remain rules-dependent and are not foundation invariants:
 

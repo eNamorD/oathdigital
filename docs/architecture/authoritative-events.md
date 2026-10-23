@@ -20,7 +20,7 @@ atomic expected-position append.
 `GameEventWire` owns one pre-release envelope format (`formatVersion = 1`)
 for setup and gameplay. It delegates explicit payload cases to cohesive codecs:
 
-- `LifecycleEventCodec` for `GameStarted` and `IgnoredRulesRecorded`;
+- `LifecycleEventCodec` for `GameStarted`;
 - `EndingEventCodec` for bandit refill, round, War Exhaustion, Usurper, and
   Vision victory facts;
 - `WalkerEventCodec` for walker steps, parks, completions, queued procedures,
@@ -70,14 +70,6 @@ step's recorded operations, answers and roll faces as they are. It recomputes
 only the state-based facts above (`StateBasedEvaluation.evolve`) and rejects a
 recorded fact that differs from the recomputed one. Privileged events may
 contain hidden information and are not ordinary player projection data.
-
-Reviewed pre-alpha fallback decisions are also authoritative facts.
-`IgnoredRulesRecorded` stores stable source identity, handler, action, timing,
-and the fixed fallback reason; replay re-discovers the source and rejects a
-missing, newly implemented, differently classified, or otherwise tampered
-diagnostic. Raw diagnostics are available only through loopback development
-surfaces and the privileged event stream. Authenticated and ordinary public or
-player projections omit them so hidden component identity is not exposed.
 
 ## Application and adapters
 

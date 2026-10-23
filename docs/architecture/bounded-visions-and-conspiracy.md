@@ -58,9 +58,8 @@ is recorded core operations, so replay applies them without recalculating.
 Altered Foundations, Empire-only Vision rules, and the alternate banner faces
 (Grand Council, Festival) have no behaviour. `RuleSourceIndex` lists the
 handler ids of those faces and of an altered Foundation. An applicable handler
-the engine does not support is ignored, not blocking. The procedure that
-reaches its timing records it through `IgnoredRulesRecorded`, with its stable
-source identity and handler ID.
+the engine does not support is ignored, not blocking, and nothing records
+it.
 
 Three cards forbid a faceup Vision play and one rewards it. Each is a power on
 the card-play hook `ActionCardPlayedFaceup`:
