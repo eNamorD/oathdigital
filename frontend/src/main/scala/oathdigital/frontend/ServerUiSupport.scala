@@ -5,9 +5,11 @@ import org.scalajs.dom
 import scala.scalajs.js
 
 private[frontend] object ServerUiSupport:
-  private[frontend] def secretSummaryLabel(available: Int, total: Int,
-      facedown: Int, committed: Int): String =
-    s"$available available of $total owned; $facedown facedown and $committed committed"
+  /** The count a player hovers to learn, then why the rest are unavailable. */
+  private[frontend] def secretSummaryLines(available: Int, total: Int,
+      facedown: Int, committed: Int): Vector[String] =
+    Vector(s"$available/$total secrets available",
+      s"$facedown facedown on board, $committed committed to cards")
 
   private[frontend] def siteLabel(value: GameProjection, siteId: String): String =
     value.world.flatMap(_.sites).find(_.siteId == siteId)

@@ -145,18 +145,28 @@ class PlayerBoardSuite extends munit.FunSuite:
     // A development session holds a seat but is named by no viewer.
     assertEquals(strip(None, "blue"), Vector("blue", "white", "red"))
 
-  /** The count alone cannot say which secrets are spendable, so the sentence
-    * the old line carried stays as the accessible name.
+  private def resourceShowing(rendered: dom.Element, token: String): dom.Element =
+    present(all(rendered, ".resource").find(resource =>
+      all(resource, ".token-glyph").exists(_.getAttribute("aria-label") == token)),
+      s"the $token resource")
+
+  /** The count alone cannot say which secrets are spendable, so the note
+    * answers that first and gives the reasons on a line of their own; the
+    * accessible name speaks both lines as sentences.
     */
-  test("the secrets breakdown survives as the accessible name"):
+  test("the secrets note puts the available count above the breakdown"):
     // Red owns 2 secrets: 1 faceup and 1 facedown, none committed.
     val owned = board.withSecrets(faceUp = 1, faceDown = 1, committed = 0)
-    val secrets = present(all(render(owned, supplyMaximum = 7),
-      ".resource").find(resource => all(resource, ".token-glyph")
-        .exists(_.getAttribute("aria-label") == "secret")),
-      "the secrets resource")
+    val secrets = resourceShowing(render(owned, supplyMaximum = 7), "secret")
+    assertEquals(secrets.getAttribute("data-tip"),
+      "1/2 secrets available\n1 facedown on board, 0 committed to cards")
     assertEquals(secrets.getAttribute("aria-label"),
-      "Secrets 1/2. 1 available of 2 owned; 1 facedown and 0 committed")
+      "1/2 secrets available. 1 facedown on board, 0 committed to cards")
+
+  /** The favor glyph carries no word beside it, so its note names it. */
+  test("the favor note names the resource"):
+    val favor = resourceShowing(render(board, supplyMaximum = 7), "favor")
+    assertEquals(favor.getAttribute("data-tip"), "Favor")
 
   /** A title and a Vision are states of the player, not cards in a hand, so
     * they get a row of their own between the identity line and the cards.

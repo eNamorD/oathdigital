@@ -56,13 +56,14 @@ private[frontend] object WorldBoardRenderer:
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
      val resources = element("span", "resources")
      resources.appendChild(text("span", "resource", s"Warbands ${board.warbands}"))
-     resources.appendChild(counted("favor", board.favor.toString, s"Favor ${board.favor}"))
+     val favor = counted("favor", board.favor.toString, s"Favor ${board.favor}")
+     HoverTip.set(favor, "Favor")
+     resources.appendChild(favor)
+     val summary = secretSummaryLines(board.faceUpSecrets, board.totalSecrets,
+       board.faceDownSecrets, board.committedSecrets)
      val secrets = counted("secret", s"${board.faceUpSecrets}/${board.totalSecrets}",
-       s"Secrets ${board.faceUpSecrets}/${board.totalSecrets}. " +
-         secretSummaryLabel(board.faceUpSecrets, board.totalSecrets,
-           board.faceDownSecrets, board.committedSecrets))
-     HoverTip.set(secrets, secretSummaryLabel(board.faceUpSecrets,
-       board.totalSecrets, board.faceDownSecrets, board.committedSecrets))
+       summary.mkString(". "))
+     HoverTip.set(secrets, summary.mkString("\n"))
      resources.appendChild(secrets)
      // Supply is the one figure with a rule behind it: the bag sets the
      // band, the band sets the Rest. The figure opens that rule.
