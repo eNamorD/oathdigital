@@ -100,9 +100,6 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       assertEquals(view.world.flatMap(_.sites).map(_.siteId).toSet,
         finished.game.current.map.inPlay.map(_.value).toSet)
     }
-    val raw = loaded(repository.load("powered-playability")).records
-    assert(raw.exists(_.contains("diagnostic.ignored-rules-recorded")))
-    assert(raw.exists(_.contains("reviewed-unimplemented-pre-alpha-fallback")))
 
   test("create advance and reload replay the complete persisted stream"):
     // Stays on the replayed setup: it checks the length of Setup's journal.
@@ -237,10 +234,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
 
   test("replay violations report the exact index and append nothing"):
     val repository = new InMemoryEventStreamRepository
-    val badDiagnostics = Vector(IgnoredRuleDiagnostic(
-      RuleSourceRef.Adviser(firstPlayer, DenizenId("insomnia")),
-      "denizen.insomnia", ActionKind.Rest, RuleTiming.Trigger,
-      "corrupted for the test"))
+    // A second GameStarted at index 1 is a fact the aggregate refuses.
     val records = Vector(
       accepted(GameEventWire.encodeEvent(
         "game-replay-corrupt",
@@ -250,8 +244,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       accepted(GameEventWire.encodeEvent(
         "game-replay-corrupt",
         1L,
-        OathEvent.IgnoredRulesRecorded(firstPlayer, ActionKind.Rest,
-          badDiagnostics)))
+        OathEvent.GameStarted(chronicle, orders)))
     ).map(ujson.write(_))
     repository.seed("game-replay-corrupt", records)
 
@@ -263,8 +256,7 @@ class GameApplicationServiceStreamSuite extends munit.FunSuite:
       ),
       Left(GameApplicationError.ReplayFailure(
         1L,
-        oathdigital.model.OathViolation.InvalidEventOrder(
-          "ignored-rule diagnostics do not match authoritative discovery"))))
+        oathdigital.model.OathViolation.GameAlreadyExists)))
     assertEquals(
       loaded(repository.load("game-replay-corrupt")).records,
       records)

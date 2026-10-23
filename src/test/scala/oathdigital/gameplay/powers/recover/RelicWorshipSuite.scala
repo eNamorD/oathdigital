@@ -134,8 +134,3 @@ class RelicWorshipSuite extends munit.FunSuite:
       DecisionOption.Unavailable(
         DecisionOption.Denizen(DecisionOptionRef.Denizen(worship)),
         OptionReason.Written("Cannot be paid for now")))
-
-  test("a Recover that selects no power records no ignored-rule diagnostic"):
-    val events = recover(relicWorshipAtFairIsle(), Vector.empty).events
-    assertEquals(events.collect {
-      case ignored: OathEvent.IgnoredRulesRecorded => ignored }, Vector.empty)

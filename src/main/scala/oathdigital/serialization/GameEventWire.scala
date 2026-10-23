@@ -25,7 +25,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val FormatVersion: Int = 1
   val MaxSafeSequence: Long = 9007199254740991L
   val GameStartedType = "setup.game-started"
-  val IgnoredRulesRecordedType = "diagnostic.ignored-rules-recorded"
   val BanditsRefilledType = "gameplay.bandits-refilled"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"

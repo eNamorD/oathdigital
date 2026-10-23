@@ -18,12 +18,6 @@ trait WalkerEvent extends OathEvent
   * stays off the undo stack. */
 sealed trait ConsentEvent extends OathEvent
 object OathEvent:
-  final case class IgnoredRulesRecorded(
-      playerId: PlayerId,
-      action: ActionKind,
-      diagnostics: Vector[IgnoredRuleDiagnostic]
-  ) extends OathEvent:
-    require(diagnostics.nonEmpty, "ignored-rule event must not be empty")
   /** Replaces `FirstGameStarted` (2026-09-21 Chronicle design, slice 2,
     * "Setup from a Chronicle"). `chronicle` is the between-game record;
     * `orders` is the concrete per-game deal Setup actually deals from --

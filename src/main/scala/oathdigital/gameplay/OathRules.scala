@@ -48,20 +48,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       event: OathEvent
   ): Either[OathViolation, OathState] =
     event match
-      case recorded: IgnoredRulesRecorded => state match
-        case Ready(ready) => (if recorded.action == ActionKind.WhenPlayed then
-          recorded.diagnostics.map(_.source).distinct.foldLeft[
-            Either[OathViolation, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
-              case (Right(found), source) => PowerRuntime.ignoredAtSource(
-                catalog, ready, recorded.playerId, recorded.action, source)
-                .map(found ++ _)
-              case (failure @ Left(_), _) => failure
-            }
-          else PowerRuntime.ignored(catalog, ready,
-            recorded.playerId, recorded.action)).flatMap(expected =>
-          Either.cond(expected == recorded.diagnostics, state,
-            InvalidEventOrder("ignored-rule diagnostics do not match authoritative discovery")))
-        case _ => Left(GameNotStarted)
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
@@ -114,19 +100,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         withSetup <- startTriggered(started, TriggeredProcedureRef.Setup)
       yield withSetup
     case _ => Left(GameAlreadyExists)
-
-  protected def withFallback(state: OathState, actor: PlayerId,
-      action: ActionKind)(
-      operation: => Either[OathViolation, OathTransition])
-      : Either[OathViolation, OathTransition] =
-    state match
-      case Ready(ready) => PowerRuntime.ignored(catalog, ready, actor, action)
-        .flatMap { diagnostics => operation.map { transition =>
-          if diagnostics.isEmpty then transition
-          else transition.copy(events = IgnoredRulesRecorded(actor, action,
-            diagnostics) +: transition.events)
-        }}
-      case _ => operation
 
 object OathRules:
   /** How a walker command derives its procedure tree. `starting`

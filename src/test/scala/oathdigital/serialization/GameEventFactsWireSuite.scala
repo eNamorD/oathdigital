@@ -7,18 +7,9 @@ import oathdigital.serialization.WalkerWireEvents.{assertStreamRoundTrips,
   encodedStreamThatRoundTrips}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
 
-/** Single game facts on the wire: ignored rules, round end, victory, state-based
-  * events and the GameStarted Chronicle. */
+/** Single game facts on the wire: round end, victory, state-based events and
+  * the GameStarted Chronicle. */
 class GameEventFactsWireSuite extends munit.FunSuite:
-  test("ignored-rule diagnostics round trip durable source timing and reason"):
-    val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
-      ActionKind.Rest, Vector(IgnoredRuleDiagnostic(
-        RuleSourceRef.Adviser(PlayerId("red"), DenizenId("insomnia")),
-        "denizen.insomnia", ActionKind.Rest, RuleTiming.Trigger,
-        "reviewed-unimplemented-pre-alpha-fallback")))
-    val encoded = accepted(GameEventWire.encodeEvent("g", 0, event))
-    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-
   test("round ending and War Exhaustion preserve outcome and random domain"):
     val p1 = PlayerId("p1")
     val p2 = PlayerId("p2")

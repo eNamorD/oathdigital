@@ -66,8 +66,7 @@ private[gameplay] trait OathDriver:
       finished: ProcedureRef) =
     for
       marked <- append(transition, ActionBoundaryRan)
-      noted <- boundaryDiagnostics(marked)
-      refilled <- appendEvaluation(noted,
+      refilled <- appendEvaluation(marked,
         StateBasedEvaluation.banditRefill(catalog, _))
       checked <- oathkeeper(refilled, finished)
     yield checked
@@ -83,18 +82,6 @@ private[gameplay] trait OathDriver:
           case OathkeeperOutcome.NoChange => turnStart(transition, finished)
           case _ => startTriggered(transition,
             TriggeredProcedureRef.Oathkeeper))
-      case _ => Right(transition)
-
-  private def boundaryDiagnostics(transition: OathTransition) =
-    transition.state match
-      case Ready(ready) =>
-        val actor = ready.game.current.turn.activePlayer
-        PowerRuntime.ignored(catalog, ready, actor,
-          ActionKind.ActionBoundary).map { diagnostics =>
-          if diagnostics.isEmpty then transition else transition.copy(
-            events = transition.events :+ IgnoredRulesRecorded(actor,
-              ActionKind.ActionBoundary, diagnostics))
-        }
       case _ => Right(transition)
 
   /** Step 2 (plan-time ruling 8). Setup ends as Finish Rest does, so the
@@ -115,25 +102,14 @@ private[gameplay] trait OathDriver:
     case _ => phaseEnd(transition)
 
   private def enterWake(transition: OathTransition) =
-    val prepared = transition.state match
-      case Ready(ready) => PowerRuntime.ignored(catalog, ready,
-          ready.game.current.turn.activePlayer, ActionKind.Wake)
-        .map { diagnostics =>
-          if diagnostics.isEmpty then transition else transition.copy(
-            events = transition.events :+ IgnoredRulesRecorded(
-              ready.game.current.turn.activePlayer, ActionKind.Wake,
-              diagnostics))
-        }
-      case _ => Right(transition)
-    prepared.flatMap(current =>
-      StateBasedEvaluation.atWake(current.state).flatMap {
-        case Some(win: UsurperVictory) => append(current, win)
-        case Some(flip: UsurperFlipped) => append(current, flip)
-          .flatMap(vision)
-        case None => vision(current)
-        case Some(other) => Left(InvalidEventOrder(
-          s"unexpected Wake evaluation event: $other"))
-      }).flatMap(forcedWake)
+    StateBasedEvaluation.atWake(transition.state).flatMap {
+      case Some(win: UsurperVictory) => append(transition, win)
+      case Some(flip: UsurperFlipped) => append(transition, flip)
+        .flatMap(vision)
+      case None => vision(transition)
+      case Some(other) => Left(InvalidEventOrder(
+        s"unexpected Wake evaluation event: $other"))
+    }.flatMap(forcedWake)
 
   private def vision(transition: OathTransition) =
     StateBasedEvaluation.visionAtWake(transition.state).flatMap {

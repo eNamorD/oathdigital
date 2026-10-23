@@ -29,10 +29,6 @@ private[gameplay] trait OathRulesWalker:
   protected def phasePowerCatalog: PhasePowers
   protected def walkerDice: WalkerDice
   protected def walkerTree: OathRules.WalkerTreeSource
-  protected def withFallback(state: OathState, actor: PlayerId,
-      action: ActionKind)(
-      operation: => Either[OathViolation, OathTransition])
-      : Either[OathViolation, OathTransition]
   /** Runs what follows a finished walk (`OathDriver`). */
   private[gameplay] def next(transition: OathTransition,
       finished: ProcedureRef): Either[OathViolation, OathTransition]
@@ -62,24 +58,20 @@ private[gameplay] trait OathRulesWalker:
       startArgs: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] =
     val actor = ready.game.current.walkActor
-    def run =
-      for
-        _ <- requireWalkActor(ready, requester)
-        powers = walkerPowers
-        tree <- buildWalker(procedure, ready, actor, startArgs,
-          starting = true)
-        _ <- checkRestrictions(tree, powers, ready, actor)
-        outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
-          powers, walkerDice))
-        _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
-        transition <- walkerTransition(state, procedure, tree,
-          outcome, powers, startArgs,
-          WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
-            actor))
-      yield transition
-    WalkerProcedureRegistry.fallbackKind(procedure).flatMap:
-      case Some(kind) => withFallback(state, actor, kind)(run)
-      case None => run
+    for
+      _ <- requireWalkActor(ready, requester)
+      powers = walkerPowers
+      tree <- buildWalker(procedure, ready, actor, startArgs,
+        starting = true)
+      _ <- checkRestrictions(tree, powers, ready, actor)
+      outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
+        powers, walkerDice))
+      _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
+      transition <- walkerTransition(state, procedure, tree,
+        outcome, powers, startArgs,
+        WalkerProcedureRegistry.startFacts(procedure, catalog, ready,
+          actor))
+    yield transition
 
   /** Starts a dequeued `Run` entry for its actor, on the state its
     * `ProcedureDequeued` left, so the cost waiver and the phase exemption
@@ -156,7 +148,7 @@ private[gameplay] trait OathRulesWalker:
     * -- collected across the whole derived `tree` via
     * [[ProcedureWalker.restrictionViolations]]. The first violation (if any)
     * rejects the command with no events appended, exactly like any other
-    * `withFallback`/`for`-comprehension short-circuit here.
+    * `for`-comprehension short-circuit here.
     */
   private def checkRestrictions(tree: Operation, powers: WalkerPowers,
       ready: ReadyGame, actor: PlayerId,
@@ -394,7 +386,6 @@ private[gameplay] trait OathRulesWalker:
     case WalkerOutcome.Finished(_, steps) =>
       GameplayTransition(state, steps ++ offerSkipped(state, procedure,
           steps) :+ WalkerCompleted(procedure))(evolve)
-        .flatMap(recordCardPlayFallback(_, procedure, steps))
         .flatMap(next(_, procedure))
 
   /** The Skip line's anchor when a follow-up offer ends on Skip
@@ -405,42 +396,6 @@ private[gameplay] trait OathRulesWalker:
         steps.exists(FollowUpOffer.skips) =>
       ready.game.current.walkerEntry.map(FollowUpSkipped(_)).toVector
     case _ => Vector.empty
-
-  /** Diagnostics for unimplemented WHEN PLAYED handlers follow the recorded
-    * faceup placement, not the pre-play Search state. Implemented walker
-    * powers remain absent from the reviewed fallback registry.
-    */
-  private def recordCardPlayFallback(transition: OathTransition,
-      procedure: ProcedureRef, steps: Vector[OathEvent])
-      : Either[OathViolation, OathTransition] =
-    if procedure != ActionRef.Search &&
-        procedure != ActionRef.PlayFacedownAdviser then Right(transition)
-    else transition.state match
-      case Ready(ready) =>
-        val actor = ready.game.current.turn.activePlayer
-        val sources = steps.collect {
-          case WalkerStepRecorded(_, DeltaPayload(ops), _) =>
-            ops.collect:
-              case Play(card: WorldCardId, _, Location.Site(site),
-                  Orientation.FaceUp, _) =>
-                RuleSourceRef.SiteCard(site, card)
-              case Play(card: WorldCardId, _, Location.PlayArea(player),
-                  Orientation.FaceUp, _) =>
-                RuleSourceRef.Adviser(player, card)
-        }.flatten.distinct
-        sources.foldLeft[Either[OathViolation,
-            Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
-          case (Right(found), source) => PowerRuntime.ignoredAtSource(catalog,
-            ready, actor, ActionKind.WhenPlayed, source)
-            .map(found ++ _)
-          case (failure @ Left(_), _) => failure
-        }.map { diagnostics =>
-          if diagnostics.isEmpty then transition
-          else transition.copy(events = transition.events :+
-            OathEvent.IgnoredRulesRecorded(actor, ActionKind.WhenPlayed,
-              diagnostics))
-        }
-      case _ => Right(transition)
 
   /** Folds `evolve` over `events` in order, threading state — the same
     * left-fold [[GameplayTransition]] performs internally, exposed here so

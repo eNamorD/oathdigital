@@ -16,7 +16,6 @@ import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.Unwrap.{accepted, present}
 
@@ -250,20 +249,6 @@ class MinorActionsSuite extends munit.FunSuite:
     // the start.
     assertEquals(refusing.startWalker(Ready(base), ActionRef.MoveWarbands, p1)
       .left.toOption, refused)
-
-  test("source-scoped fallback and replay use the recorded off-turn actor"):
-    // p2, not the active player, holds Bewitch faceup.
-    val bewitch = CatalogNames.denizen("Bewitch")
-    val changed = minorBoard.adviser(p2, bewitch).ready
-    val source = RuleSourceRef.Adviser(p2, bewitch)
-    val expected = accepted(PowerRuntime.ignoredAtSource(catalog, changed, p2,
-      ActionKind.WhenPlayed, source))
-    assertEquals(expected.map(_.handlerId), Vector("denizen.bewitch"))
-    assertEquals(accepted(PowerRuntime.ignoredAtSource(catalog, changed, p1,
-      ActionKind.WhenPlayed, source)), Vector.empty)
-    // Replay accepts the off-turn player's diagnostics and changes no state.
-    val event = IgnoredRulesRecorded(p2, ActionKind.WhenPlayed, expected)
-    assertEquals(rules.evolve(Ready(changed), event), Right(Ready(changed)))
 
   // The lock itself, which stops a faceup adviser being discarded, is
   // OperationRestrictionsSuite's; this is the facedown side of it.

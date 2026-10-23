@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.whenplayed
 
-import oathdigital.gameplay._
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -36,10 +35,6 @@ class DazzleSuite extends munit.FunSuite:
     assert(!left.contains(homesteaders) && !left.contains(wrestlers), left)
     assertEquals(discarded(done.events), Vector(homesteaders, wrestlers))
     assertJournalRebuilds(twoTargets, done.events, done.treeless)
-    val asAdviser = RuleSourceRef.Adviser(p1, dazzle)
-    val ignored = PowerRuntime.ignoredAtSource(catalog, twoTargets, p1,
-      ActionKind.WhenPlayed, asAdviser)
-    assertEquals(ignored, Right(Vector.empty))
 
   test("Dazzle returns a discarded card's favor to its bank"):
     val done = Outcomes.finished(play(twoTargets, power, dazzle))

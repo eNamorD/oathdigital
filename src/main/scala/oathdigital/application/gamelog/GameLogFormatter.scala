@@ -179,8 +179,6 @@ private[application] final class GameLogFormatter(catalog: ExecutableCatalog,
           words.vision(vision)))), run)
       case OathEvent.WarExhaustionResolved(winner, kind, vision, _) =>
         (Vector(victory(winner, exhaustion(kind, vision))), run)
-      // A diagnostic, not play.
-      case _: OathEvent.IgnoredRulesRecorded => (Vector.empty, run)
       case _: ConsentEvent => (consent.lines(journal, at, viewer), run)
       // Undo's facts post no line of their own; `format` keeps markers out
       // of every journal it formats.

@@ -7,10 +7,9 @@ import oathdigital.testkit.{CatalogNames, Look, MenuPlay, Outcomes, Table,
   WarExhaustionChoices}
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.OathEvent.IgnoredRulesRecorded
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation.UnsupportedRestState
-import oathdigital.testkit.Unwrap.{accepted, as, present, rejected}
+import oathdigital.testkit.Unwrap.{accepted, present, rejected}
 
 class RestSuite extends munit.FunSuite:
   private val rules = new OathRules(catalog)
@@ -176,48 +175,26 @@ class RestSuite extends munit.FunSuite:
         Vector(LegacyState(arbiter, active = true))))))
     rest(Ready(supported), p1).fold(error => fail(error.toString), _ => ())
 
-  test("each relevant Rest handler records fallback diagnostics without " +
-      "blocking, and replay accepts the record but not a tampered one"):
-    // Insomnia's and Vow of Poverty's RESTs run as phase powers, so they
-    // record no diagnostic.
-    val relevant = Map("denizen.naysayers" -> "Naysayers")
-    relevant.foreach { (handler, card) =>
-      val state = restBoard.adviser(p1, card).ready
-      val restedEvents = accepted(rest(Ready(state), p1)).events
-      val recorded = as[IgnoredRulesRecorded](restedEvents.head)
-      assertEquals(recorded.diagnostics.head.handlerId, handler)
-      assert(recorded.diagnostics.head.source.stableKey
-        .startsWith(s"adviser:${p1.value}:"))
-      assertEquals(rules.evolve(Ready(state), recorded), Right(Ready(state)))
-      val tampered = recorded.copy(diagnostics = recorded.diagnostics.map(
-        _.copy(handlerId = "denizen.tampered")))
-      assertEquals(rules.evolve(Ready(state), tampered), Left(
-        OathViolation.InvalidEventOrder(
-          "ignored-rule diagnostics do not match authoritative discovery")))
-    }
-    val siteState = Table.from(act).denizen("Naysayers", at = ancientCity)
-      .ready
-    val siteRecorded = as[IgnoredRulesRecorded](
-      accepted(rest(Ready(siteState), p1)).events.head)
-    assert(siteRecorded.diagnostics.head.source.stableKey
-      .startsWith(s"site-card:${ancientCity.value}:"))
+  test("an unimplemented Rest power, held or at the site, does not block Rest"):
+    // Naysayers is not implemented; Insomnia's and Vow of Poverty's RESTs
+    // run as phase powers.
+    val held = restBoard.adviser(p1, "Naysayers").ready
+    accepted(rest(Ready(held), p1))
+    val atSite = Table.from(act).denizen("Naysayers", at = ancientCity).ready
+    accepted(rest(Ready(atSite), p1))
 
-  test("altered banner and Foundation types record stable fallback identities"):
+  test("an altered banner face and an altered Foundation do not block Rest"):
     val base = act
-    def diagnostic(ready: ReadyGame)(using munit.Location) =
-        as[IgnoredRulesRecorded](
-      accepted(rest(Ready(ready), p1)).events.head).diagnostics.head
     val banner = Table.from(base).peoplesFavor(None, favor = 1,
       face = PeoplesFavorFace.GrandCouncil).ready
-    assertEquals(diagnostic(banner).source.stableKey, "banner:peoples-favor")
+    accepted(rest(Ready(banner), p1))
 
     val number = base.game.campaign.foundations.keys.head
     // No Table step reaches foundations.
     val foundation = base.updateCampaign(_.copy(foundations =
       base.game.campaign.foundations.updated(number,
         FoundationState(FoundationFace.Altered, Set.empty))))
-    assertEquals(diagnostic(foundation).source.stableKey,
-      s"foundation:${number.value}")
+    accepted(rest(Ready(foundation), p1))
 
   test("last player of round eight finishes the game by War Exhaustion, and " +
       "the Act menu still offers Rest"):

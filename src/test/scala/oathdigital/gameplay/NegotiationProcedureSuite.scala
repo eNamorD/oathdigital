@@ -6,11 +6,10 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ParkedDecisionAssertions, WalkerPowers}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseManyAnswer, DeclineDeal, ProposeTerms}
-import oathdigital.model.OathEvent.IgnoredRulesRecorded
 import oathdigital.model.OathState.Ready
 import oathdigital.testkit.{CatalogNames, Journal, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
-import oathdigital.testkit.Unwrap.{accepted, as, present}
+import oathdigital.testkit.Unwrap.{accepted, present}
 import oathdigital.testkit.StartPreview
 
 /** Negotiation through the rules, as a client drives it: start, choose the
@@ -198,13 +197,10 @@ class NegotiationProcedureSuite extends munit.FunSuite:
       "an agreed deal must run the action boundary and its bandit refill")
     assertEquals(MenuPlay.pendingBeyondMenu(Outcomes.ready(agreed.state)), None)
 
-  test("unsupported Negotiation rules are recorded as ignored, not blocking"):
+  test("an unsupported Negotiation rule does not block the Negotiation"):
     val powered = gathered.adviser(p1, "Council Arbiter").ready
     val started = start(powered).getOrElse(
       fail("an unsupported rule must not block"))
-    val recorded = as[IgnoredRulesRecorded](started.events.head)
-    assertEquals(recorded.action, ActionKind.Negotiation)
-    assertEquals(recorded.diagnostics.head.handlerId, "denizen.council-arbiter")
     parked.assertParked(accepted(choose(started.state, p1, p2)).state,
       ActionRef.Negotiation, dealId, p1)
 
