@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.model.PlayerColor
-import oathdigital.protocol.GameIntent => GameCommand
+import oathdigital.protocol.{DecisionAnswerWire, GameIntent => GameCommand}
 
 import oathdigital.protocol.projection.{LogKind, LogPage, LogSpan,
   LogTakenBack}
@@ -363,9 +363,10 @@ class TableSessionSuite extends munit.FunSuite:
 
   test("a submitted command is sent as it is, at the displayed position"):
     displayed(2).map { fixture =>
-      val start = GameCommand.RollWalker("recover.pool")
-      fixture.session.submitCommand(start)
-      assertEquals(fixture.client.submits, Vector(Submit(2L, start)))
+      val command = GameCommand.ResolveWalker("recover.choice",
+        DecisionAnswerWire.ChooseOneWire("button", "continue"))
+      fixture.session.submitCommand(command)
+      assertEquals(fixture.client.submits, Vector(Submit(2L, command)))
     }
 
   test("with no position displayed, nothing is sent"):

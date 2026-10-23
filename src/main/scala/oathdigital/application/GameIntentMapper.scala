@@ -15,7 +15,6 @@ object GameIntentMapper:
     intent match
       case Intent.Undo => Right(actor.undo)
       case Intent.Redo => Right(actor.redo)
-      case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
       case Intent.RequestConsent(id, target, granters) =>

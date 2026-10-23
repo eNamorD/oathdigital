@@ -58,15 +58,3 @@ class DiceStubsSuite extends CampaignDicePortContract:
   protected def shufflers = Vector(
     "blanks" -> Dice.blanks,
     "reversing shuffle" -> Dice.reversingShuffle)
-
-/** The defense pair the Recover and Raid defenders roll. */
-class RandomDefenseDicePortSuite extends munit.FunSuite:
-  test("a roll shows as many defense faces as the port's dice count"):
-    val port = DefenseDicePort.random
-    assertEquals(port.rollTwo().size, port.diceCount)
-
-  test("random shows every defense face over many rolls"):
-    // 300 rolls of two dice; a face with chance 1 in 6 is missed with
-    // probability below 1e-30.
-    val faces = Vector.fill(300)(DefenseDicePort.random.rollTwo()).flatten
-    assertEquals(faces.toSet, DefenseDieFace.values.toSet)

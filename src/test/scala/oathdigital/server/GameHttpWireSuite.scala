@@ -14,16 +14,10 @@ class GameHttpWireSuite extends munit.FunSuite:
         oathdigital.protocol.WalkerStartArgWire("teleport", "x"))))
     assertEquals(failure.path, "$.intent.target")
 
-  test("walker intents bind to RollWalker and ResolveWalker " +
-      "commands for the requester"):
-    // RollWalker takes only a pool key -- there is no field on the wire
-    // intent, the codec, or GameCommand.RollWalker for a client to place
-    // die faces into. It DOES carry the transport-bound actor (C1): the
-    // rules layer checks the requester against the parked position's owner
-    // before resuming anything.
-    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      GameIntent.RollWalker("recover.pool")),
-      Right(GameCommand.RollWalker(PlayerId("actor-1"), PoolKey("recover.pool"))))
+  test("walker intents bind to ResolveWalker commands for the requester"):
+    // The command carries the transport-bound actor (C1): the rules layer
+    // checks the requester against the parked position's owner before
+    // resuming anything.
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.choice",
         DecisionAnswerWire.ChooseOneWire("button", "continue"))),

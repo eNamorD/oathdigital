@@ -30,7 +30,6 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     GameCommand.Begin(chronicle, orders),
     GameCommand.ResolveWalker(actor, TreeDecision("not-parked",
       ChooseOneAnswer(DecisionOptionRef.Button("go")))),
-    GameCommand.RollWalker(actor, PoolKey("not-parked")),
     GameCommand.Undo(actor), GameCommand.Redo(actor),
     GameCommand.SetConsentPreference(actor,
       oathdigital.gameplay.powers.travel.MinesSite.mountain,
@@ -58,8 +57,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite:
     * appends nothing. A preference is legal over a park by design (consent
     * design, ruling 18); the sample's is refused only because the Mines'
     * power cannot be waived.
-    * The sample's `ResolveWalker` and `RollWalker` name no parked position,
-    * so they are refused too. Then `resume`, the parked walker's own answer,
+    * The sample's `ResolveWalker` names no parked position, so it is
+    * refused too. Then `resume`, the parked walker's own answer,
     * is accepted and appends: only a matching resume runs.
     */
   private def assertOnlyItsResume(game: ParkedServiceFixture.ParkedGame,

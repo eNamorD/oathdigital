@@ -46,10 +46,6 @@ private[frontend] object ParkedDecision:
 
   /** Which of its parks Recover's panel is at. */
   enum RecoverStep:
-    /** A Roll park asks nothing, so it has no query behind it -- which is
-      * why its heading is the one Recover string the panel still writes.
-      */
-    case Roll(pool: String)
     /** The projected continue/stop query: its options in declared order,
       * and the heading the action declared above them.
       */
@@ -166,15 +162,14 @@ private[frontend] object ParkedDecision:
 
   /** Recover keeps its own panel for its richer copy, so its parks are
     * claimed before the form is read. A park with nothing to render -- a
-    * roll with no projected pool, a decide park whose query the engine
-    * suppressed because an option could not be presented -- is `None`:
-    * there is no answer the client could safely build.
+    * decide park whose query the engine suppressed because an option could
+    * not be presented -- is `None`: there is no answer the client could
+    * safely build.
     */
   private def recoverStep(decision: WalkerDecisionState)
       : Option[RecoverStep] =
     if decision.action != "recover" then None
     else decision.kind match
-      case "roll" => decision.pool.map(RecoverStep.Roll.apply)
       case "decide" if decision.decisionId == recoverChoiceDecisionId =>
         chooseOneQuery(decision).map(RecoverStep.Choice.apply)
       case "decide" if decision.decisionId == recoverRelicDecisionId =>

@@ -1,7 +1,7 @@
 package oathdigital.testkit
 
-import oathdigital.application.{CampaignDicePort, DefenseDicePort,
-  GameApplicationService, InMemoryEventStreamRepository}
+import oathdigital.application.{CampaignDicePort, GameApplicationService,
+  InMemoryEventStreamRepository}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.phases.PhaseMenu
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
@@ -421,13 +421,12 @@ final case class Table private (private val game: ReadyGame,
     * same ids (a changed Forge cost, say). */
   def service(catalog: ExecutableCatalog = FirstGameSetupFixture.catalog,
       campaignDice: CampaignDicePort = CampaignDicePort.random,
-      defenseDice: DefenseDicePort = DefenseDicePort.random,
       warExhaustion: WarExhaustionRandomPort = WarExhaustionRandomPort.random)(
       using munit.Location)
       : (GameApplicationService, InMemoryEventStreamRepository) =
     val repository = new InMemoryEventStreamRepository
     (new GameApplicationService(catalog, repository,
-      defenseDicePort = defenseDice, campaignDicePort = campaignDice,
+      campaignDicePort = campaignDice,
       warExhaustionRandomPort = warExhaustion, genesis = served.state),
       repository)
 

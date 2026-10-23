@@ -88,7 +88,6 @@ final class GameApplicationService(
     catalog: ExecutableCatalog,
     repository: EventStreamRepository,
     searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative,
-    defenseDicePort: DefenseDicePort = DefenseDicePort.random,
     campaignDicePort: CampaignDicePort = CampaignDicePort.random,
     warExhaustionRandomPort: WarExhaustionRandomPort =
       WarExhaustionRandomPort.random,
@@ -501,13 +500,6 @@ final class GameApplicationService(
       case GameCommand.ResolveWalker(actor, treeDecision) =>
         rules.resolveWalker(state, actor, treeDecision.decisionId,
           treeDecision.answer)
-      case GameCommand.RollWalker(actor, pool) =>
-        rules.rollWalkerPrepared(state, actor, pool) { count =>
-          Either.cond(count == defenseDicePort.diceCount,
-            defenseDicePort.rollTwo(), OathViolation.InvalidEventOrder(
-              s"walker roll pool ${pool.value} requested $count dice but " +
-                s"the defense dice port only rolls ${defenseDicePort.diceCount}"))
-        }
       // `routed` sends Undo and Redo to the fold on every stream; these arms
       // only keep the match exhaustive.
       case GameCommand.Undo(_) => Left(OathViolation.NothingToUndo)
@@ -517,7 +509,7 @@ final class GameApplicationService(
         "a consent command never reaches the rules"))
 
   private def isWalkerResume(command: GameCommand): Boolean = command match
-    case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true
+    case _: GameCommand.ResolveWalker => true
     case _ => false
 
   private def encode(

@@ -53,9 +53,6 @@ final case class AuthorizedPlayer private[application] (
 ):
   def undo: GameCommand = GameCommand.Undo(access.playerId)
   def redo: GameCommand = GameCommand.Redo(access.playerId)
-  def rollWalker(pool: PoolKey): GameCommand =
-    GameCommand.RollWalker(access.playerId, pool)
-
   def resolveWalker(treeDecision: TreeDecision): GameCommand =
     GameCommand.ResolveWalker(access.playerId, treeDecision)
   def requestConsent(decisionId: String, target: DecisionOptionRef,

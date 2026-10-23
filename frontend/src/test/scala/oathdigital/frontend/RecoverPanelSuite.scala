@@ -38,16 +38,6 @@ class RecoverPanelSuite extends munit.FunSuite:
       query = Some(choiceQuery), rollOutcome = rollOutcome),
       RecoverStep.Choice(choiceQuery))
 
-  private def roll(rollOutcome: Option[WalkerRollOutcomeState] = None)
-      : Surface.Recover =
-    Surface.Recover(WalkerDecisionState("recover", "recover.roll", "roll",
-      pool = Some("recover"), rollOutcome = rollOutcome),
-      RecoverStep.Roll("recover"))
-
-  test("the roll button says it rolls"):
-    assertEquals(all(render(roll()), ".recover-roll").map(_.textContent),
-      Vector("Roll the dice"))
-
   /** One click buys the dice and throws them, so the label names both the
     * cost and the roll rather than promising a second button.
     */
@@ -76,9 +66,9 @@ class RecoverPanelSuite extends munit.FunSuite:
       Vector("Rolled shield, two shields -- 3 shields so far (need 4)."))
     assertEquals(all(panel, ".walker-roll-faces .die-faces").size, 1)
 
-  test("before the first roll, Recover shows the target and no dice"):
+  test("with no dice rolled yet, Recover shows the target and no dice"):
     val outcome = WalkerRollOutcomeState("recover", Vector.empty, 0, Some(4))
-    val panel = render(roll(rollOutcome = Some(outcome)))
+    val panel = render(choice(rollOutcome = Some(outcome)))
     assertEquals(all(panel, ".walker-roll-faces").size, 0)
     assertEquals(all(panel, ".walker-roll-totals").map(_.textContent),
       Vector("Shields 0 · need 4"))

@@ -66,28 +66,15 @@ private[frontend] object WalkerPanelSupport:
     * (`ParkedDecision.route`) the walker is at. Shows the roll so far
     * (`rollFeedback`: the dice, then the totals line) above each park's
     * controls, and gates buying more dice on the player actually having
-    * supply -- as the legacy (deleted) Recover panel did. Recover rolls as the walker walks, so the continue answer both
-    * buys the dice and throws them and its label says so; the Roll park
-    * below it is reached only if a power folds a parked roll into the tree,
-    * which is why the panel still knows how to answer one.
+    * supply -- as the legacy (deleted) Recover panel did. Recover rolls as
+    * the walker walks, so the continue answer both buys the dice and throws
+    * them, and its label says so.
     */
   private[frontend] def renderRecoverPanel(
       surface: ParkedDecision.Surface.Recover, value: GameProjection,
       canControl: Boolean, panel: dom.Element, controls: TableControls): Unit =
     val decision = surface.decision
     surface.step match
-      case ParkedDecision.RecoverStep.Roll(pool) =>
-        // The one heading still written here. A Roll park is not a `Decide`
-        // -- it asks no question, carries a synthetic decision id and has no
-        // query behind it -- so there is nothing to read a title from, and
-        // inventing a query for a node that asks nothing would be worse
-        // than this literal.
-        panel.appendChild(text("h2", "", "Recover"))
-        rollFeedback(decision, panel)
-        val roll = button("Roll the dice", "recover-roll")
-        roll.disabled = !canControl
-        roll.onclick = _ => controls.submitCommand(GameCommand.RollWalker(pool))
-        panel.appendChild(roll)
       case ParkedDecision.RecoverStep.Choice(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)

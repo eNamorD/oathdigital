@@ -274,33 +274,6 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
         .filterNot(_ == walkerRelic))
     assertEquals(walkerDice.calls, 2)
 
-  test("RollWalker with a pool key that does not match the parked pool " +
-      "never rolls the campaign dice"):
-    // rollWalkerPrepared validates the parked pool against the command's
-    // pool key BEFORE invoking prepareFaces (OathRules.scala): this is the
-    // entire mechanism the authoritative-dice property relies on to keep a
-    // caller from steering which dice get rolled. Pin the ordering directly
-    // by proving the port is untouched on a mismatch, not just that the
-    // command is rejected.
-    val dice = new Dice.CountingDefense(meetingTheDifficulty)
-    val (service, _) = ParkedServiceFixture.recoverTable
-      .service(campaignDice = dice)
-    val actor = p1
-    val started = accepted(service.handle("walker-pool-mismatch", 0L,
-      MenuPlay.starting(actor, ActionRef.Recover)))
-
-    // The start rolled once on its way to the park; a roll command naming
-    // a pool the walker is not parked on must add nothing to that count.
-    assertEquals(dice.calls, 1)
-    val rejected = service.handle("walker-pool-mismatch", started.nextSequence,
-      GameCommand.RollWalker(actor, PoolKey("not-the-parked-pool")))
-    assert(rejected match {
-      case Left(GameApplicationError.CommandRejected(
-          _: oathdigital.model.OathViolation.InvalidEventOrder)) => true
-      case _ => false
-    }, s"expected InvalidEventOrder, got $rejected")
-    assertEquals(dice.calls, 1)
-
   test("StartWalker drives Catacombs through the full persisted path: its " +
       "recorded ops encode, append and replay (Task 9b prerequisite)"):
     // The only end-to-end way to use Catacombs once Task 9b deletes the

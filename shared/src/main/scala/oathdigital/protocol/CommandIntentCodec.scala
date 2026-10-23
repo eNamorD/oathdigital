@@ -7,7 +7,6 @@ private[protocol] object CommandIntentCodec:
   def encode(intent: GameIntent): ujson.Obj = intent match
     case Undo => tagged("undo")
     case Redo => tagged("redo")
-    case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
       "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))
     case RequestConsent(id, target, granters) => tagged("requestConsent",

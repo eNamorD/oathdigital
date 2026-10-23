@@ -10,11 +10,6 @@ object GameIntent:
   case object Undo extends GameIntent
   /** Restores the sender's latest taken-back step (undo design, "Redo"). */
   case object Redo extends GameIntent
-  /** Answers the currently parked Roll node for `pool`. Carries no die
-    * faces: those are generated application-side once the parked pool is
-    * validated against this command.
-    */
-  final case class RollWalker(pool: String) extends GameIntent
   final case class ResolveWalker(decisionId: String,
       payload: DecisionAnswerWire) extends GameIntent
   /** Asks the rulers of the powers blocking `target` at the parked

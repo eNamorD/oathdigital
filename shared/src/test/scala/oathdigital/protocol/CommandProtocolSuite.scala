@@ -7,7 +7,6 @@ class CommandProtocolSuite extends munit.FunSuite:
 
   private val examples: Vector[GameIntent] = Vector(
     Undo, Redo,
-    RollWalker("recover.pool"),
     ResolveWalker("recover.choice",
       DecisionAnswerWire.ChooseOneWire("button", "continue")),
     ResolveWalker("recover.choice",
@@ -68,10 +67,11 @@ class CommandProtocolSuite extends munit.FunSuite:
         ProtocolDecodeFailure.ActorInjection(s"$$.intent.$field"), field)
     }
 
-  test("the retired Campaign and start intents are rejected as unknown types"):
+  test("the retired Campaign, start and roll intents are rejected as unknown types"):
     Vector("beginCampaignConquest", "beginCampaignRaid", "chooseCampaignPlan",
       "finishCampaignPlans", "chooseCampaignSacrifice", "placeCampaignForce",
-      "relocateCampaignRaidPawn", "startWalker", "usePower", "beginRest")
+      "relocateCampaignRaidPawn", "startWalker", "usePower", "beginRest",
+      "rollWalker")
       .foreach { tag =>
       val json = s"""{"expectedNextSequence":0,"intent":{"type":"$tag"}}"""
       val failure = rejected(ActorlessCommandCodec.decode(json))

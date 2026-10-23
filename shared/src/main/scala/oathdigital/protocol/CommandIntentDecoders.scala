@@ -9,7 +9,6 @@ private[protocol] object CommandIntentDecoders:
       : Either[ProtocolDecodeFailure, GameIntent] = kind match
     case "undo" => empty(value, path, Undo)
     case "redo" => empty(value, path, Redo)
-    case "rollWalker" => one(value, path, "pool")(RollWalker.apply)
     case "resolveWalker" =>
       for
         _ <- exact(value, Set("type", "decisionId", "payload"), path)

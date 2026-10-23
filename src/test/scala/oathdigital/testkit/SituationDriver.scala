@@ -1,7 +1,7 @@
 package oathdigital.testkit
 
-import oathdigital.application.{DefenseDicePort, EventStreamRepository,
-  ExpectedStream, GameCommand, GameApplicationService, TreeDecision}
+import oathdigital.application.{EventStreamRepository, ExpectedStream,
+  GameCommand, GameApplicationService, TreeDecision}
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhaseMenu
@@ -76,8 +76,11 @@ sealed trait SituationDriver:
         s"still parked after ${SituationDriver.parkLimit} answers, on " +
           parked.get.decisionId)
       val resume: GameCommand = parked.get match
-        case ParkedNode.Roll(_, pool, _, _, awaiting) =>
-          GameCommand.RollWalker(awaiting, pool)
+        // No command answers a parked roll: every production roll is
+        // automatic, so a tree that parks on one is the test's own.
+        case ParkedNode.Roll(procedure, pool, _, _, awaiting) =>
+          failed(s"parked on $procedure's roll of ${pool.value} awaiting " +
+            s"$awaiting, which no command answers")
         case ParkedNode.Decision(procedure, decide, awaiting) =>
           val park = Park(decide, situation.ready, awaiting, procedure)
           val form = decide.query.getClass.getSimpleName
@@ -138,7 +141,6 @@ object SituationDriver:
     */
   final case class Rules(catalog: ExecutableCatalog, walkerPowers: WalkerPowers,
       phasePowers: PhasePowers, walkerDice: WalkerDice,
-      defenseDice: DefenseDicePort,
       warExhaustion: WarExhaustionRandomPort, answers: Answers)
       extends SituationDriver:
     private val rules = new OathRules(catalog,
@@ -185,13 +187,6 @@ object SituationDriver:
       case GameCommand.ResolveWalker(actor, decision) =>
         rules.resolveWalker(state, actor, decision.decisionId,
           decision.answer)
-      case GameCommand.RollWalker(actor, pool) =>
-        rules.rollWalkerPrepared(state, actor, pool) { count =>
-          Either.cond(count == defenseDice.diceCount, defenseDice.rollTwo(),
-            OathViolation.InvalidEventOrder(s"walker roll pool ${pool.value} " +
-              s"requested $count dice but the defense dice port only rolls " +
-              s"${defenseDice.diceCount}"))
-        }
       case _: GameCommand.ConsentCommand =>
         Left(OathViolation.InvalidEventOrder(
           "consent commands need a journal; use a journaled situation"))

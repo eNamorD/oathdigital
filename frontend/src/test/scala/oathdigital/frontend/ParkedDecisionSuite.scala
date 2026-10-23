@@ -84,10 +84,6 @@ class ParkedDecisionSuite extends munit.FunSuite:
     assertEquals(routeOf(at).surface, Some(Surface.Inspect(at, inspect)))
 
   test("Recover's parks route to its own panel"):
-    val roll = WalkerDecisionState("recover", "walker.recover.roll", "roll",
-      pool = Some("recover"), count = Some(2))
-    assertEquals(routeOf(roll).surface,
-      Some(Surface.Recover(roll, RecoverStep.Roll("recover"))))
     val choice = parked("recover", ParkedDecision.recoverChoiceDecisionId, one)
     assertEquals(routeOf(choice).surface,
       Some(Surface.Recover(choice, RecoverStep.Choice(one))))
@@ -96,9 +92,6 @@ class ParkedDecisionSuite extends munit.FunSuite:
       Some(Surface.Recover(relic, RecoverStep.Relic(one))))
 
   test("a Recover park with nothing to render routes to no surface"):
-    // A roll with no projected pool: no control could be built for it.
-    assertEquals(routeOf(WalkerDecisionState("recover", "walker.recover.roll",
-      "roll")).surface, None)
     // A decide park whose query was suppressed: no answer could be built.
     Vector(ParkedDecision.recoverChoiceDecisionId,
       ParkedDecision.recoverRelicDecisionId).foreach(id =>
@@ -108,10 +101,6 @@ class ParkedDecisionSuite extends munit.FunSuite:
     // not handed to the generic panel either.
     assertEquals(routeOf(parked("recover", "recover.other", one)).surface,
       None)
-
-  test("a Roll park outside Recover routes to no surface"):
-    assertEquals(routeOf(WalkerDecisionState("teleport", "walker.recover.roll",
-      "roll", pool = Some("recover"))).surface, None)
 
   test("a decide park whose query was suppressed routes to no surface"):
     assertEquals(routeOf(WalkerDecisionState("forge", "forge-9", "decide"))
