@@ -32,8 +32,8 @@ object PowerUse:
       places || printed.cost.favor > 0 || printed.cost.secret > 0)
 
   /** An automatic rule's use (catalog batch 8, slice 10, part 2): printed
-    * non-persistent, costing nothing. Each one's catalog flag is pinned by
-    * `PowerKindsCatalogSuite`. */
+    * non-persistent, costing nothing. `PowerKindsCatalogSuite` checks each
+    * registered power's declared resolution against its catalog flag. */
   def automatic(user: PlayerId, power: PowerId, card: CardId): PowerUse =
     PowerUse(user, power, Some(card), persistent = false,
       costsSecret = false)

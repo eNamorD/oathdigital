@@ -24,8 +24,7 @@ import oathdigital.testkit.Unwrap.{accepted, as, present}
 class ForgeProcedureSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer:
   import ForgeProcedureSuite.Forgeable
-  /** Forge declares no `ContributingPower` (`ForgePowers.powers` is empty),
-    * so every walk states an empty power source explicitly rather than
+  /** Forge declares no `ContributingPower`, so every walk states an empty power source explicitly rather than
     * relying on a default.
     */
   private val noPowers: WalkerPowers = WalkerPowers.empty

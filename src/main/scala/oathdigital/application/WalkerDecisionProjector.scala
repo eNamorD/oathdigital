@@ -25,7 +25,7 @@ import oathdigital.protocol.projection.{CardDetailsProjection,
   * matching on [[ProcedureRef]] itself, so this projector needs no edit when
   * a second procedure registers.
   *
-  * Reuses [[ProcedureWalker.parkedRoll]]/[[ProcedureWalker.parkedDecide]] —
+  * Reuses [[ProcedureWalker.parkedDecide]] —
   * the same reorder-safe, decisionId-keyed introspection `OathRules`
   * dispatches on to check that a live command's park is answerable — rather
   * than inspecting `PendingTree.at` directly, for the identical reason: a

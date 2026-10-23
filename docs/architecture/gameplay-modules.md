@@ -13,7 +13,7 @@ runs. Modules declare trees; they do not run them.
 ```text
 oathdigital/gameplay/
   OathRules.scala          aggregate: evolve, begin game, route commands
-  OathRulesWalker.scala    walker commands: start, resolve, roll, consent
+  OathRulesWalker.scala    walker commands: start, resolve, consent
   OathDriver.scala         what runs between walks: queue, action boundary,
                            turn start, phase menus
   OathLifecycle.scala      GameplayTransition, the event-fold helper
@@ -115,7 +115,6 @@ These rules are enforced by `scripts/check-architecture.py` and
   `ContributingPower` or `PhasePower`.
 - A file that declares a `ContributingPower` or `PhasePower` imports nothing
   from `gameplay.walker`.
-- A power inventory uses named objects, not raw `Set` or `Map` id tables.
 - `actions`, `phases`, `powers` and `StateBasedEvaluation` change owned
   material (cards, site tokens, banks, hands) only through core operations.
   A direct write needs the `// executor bypass:` comment directly above it.

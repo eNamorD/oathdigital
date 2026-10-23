@@ -38,7 +38,7 @@ added the same `declared = Some(DeclaredNotes.of(catalog))` line to all three.
 
 Accidents of three authors on one day (2026-09-20): `pick` and `chooseOne`
 have identical bodies; `ops` and `said` are aliases of testkit members that
-164 suites already call directly; the rules-path replay fold is written twice
+169 suites already call directly; the rules-path replay fold is written twice
 with two return shapes; `parkedWithWalkerPowers` is
 `PowerRules.parkedUnderWalkerAndPhasePowers` by another name; `act` has no
 callers; `withoutAdvisers` bypasses the `Table` with one caller.
@@ -113,7 +113,7 @@ went. Test count 4386 → 4388.
   rather than an `export`: `NoteText.said` is overloaded on `PhasePower` and
   `(PowerId, keys)`, the harness form takes `ContributingPower`, and powers
   that extend both would make an added overload ambiguous.
-- `replayed`'s two return shapes stay. 66 call lines compare against
+- `replayed`'s two return shapes stay. 59 call lines compare against
   `Right(done.state)` and 81 files compare a `ReadyGame`; changing either is
   a sweep for taste.
 - `ActPowerHarness` is not folded into `PhasePowerHarness`: its reason to

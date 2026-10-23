@@ -17,7 +17,7 @@ The reviewed-catalog path was the pre-walker power resolver, kept after the
 walker shipped to record which applicable powers the engine did not yet run.
 It was `gameplay/PowerRuntime.scala`, `powers/PowerSupport.scala`,
 `powers/ReviewedPowerCatalog.scala`, ten stub registries
-(`ActionPowers` ... `NegotiationPowers`, 86 `ReviewedPower` objects),
+(`ActionPowers` ... `NegotiationPowers`, 73 `ReviewedPower` objects),
 `powerresolver/{PowerModel,PowerHandlers,PowerRegistry,PowerResolver}.scala`,
 and the `OathEvent.IgnoredRulesRecorded` event with its
 `IgnoredRuleDiagnostic`, `ActionKind` and `RuleTiming` vocabulary, its
@@ -28,8 +28,8 @@ lifecycle codec arms and its wire tag.
 Two facts, both measured at `6ef76ad4` before anything was deleted.
 
 1. **Nothing read the output.** The path's only product was the
-   `IgnoredRulesRecorded` event, written at five sites (`OathRules`,
-   `OathDriver` twice, `OathRulesWalker` twice). Its one reader in
+   `IgnoredRulesRecorded` event, written at five sites (`OathRules` twice,
+   `OathDriver` twice, `OathRulesWalker` once). Its one reader in
    `src/main` was `GameLogFormatter`, which mapped it to no line. No
    projection, protocol, client or server file named it. Every other
    production reader of the path's types was inside the path.
@@ -52,7 +52,7 @@ would have stopped there; none was.
 ## What was deleted
 
 - The path above: 18 production files deleted outright (630 lines), and
-  1,153 lines deleted against 370 added across `src/main`, in three commits
+  970 lines deleted against 43 added across `src/main`, in three commits
   that each compiled and passed their suites.
 - `PowerImplementationStatus.implemented` is now the covered half alone.
 - What lost its last reader with it: `RuleSourceAccess` (the pre-walker
@@ -82,8 +82,8 @@ would have stopped there; none was.
   answers. They stay with that one reader.
 - `PowerResolution` (`PlayerSelected` / `Automatic`): `ContributingPower
   .resolution` and `ModifierPicks` read it.
-- `CatalogHandlerInventory.handlerIds`: `UnimplementedPowersSuite` and the
-  catalog fingerprint read it.
+- `CatalogHandlerInventory.handlerIds`: `UnimplementedPowersSuite` and
+  `CatalogHandlerInventorySuite` read it.
 
 ## Journals
 

@@ -15,7 +15,8 @@ import oathdigital.testkit.{CatacombsGame, Look, Outcomes, RecordedOps, Table}
 import oathdigital.testkit.Unwrap.accepted
 
 /** Catacombs as the first real walker contribution, exercised through
-  * REAL commands (`OathRules.startWalker` / `rollWalkerPrepared`) rather than
+  * the real rules entry points (`OathRules.startWalker` /
+  * `rollWalkerPrepared`) rather than
   * by calling the contribution directly -- the point is that a
   * power reaches the walker through the generic seam, so a test that invoked
   * `CatacombsContribution.contributions` by hand would prove nothing about the

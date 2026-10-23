@@ -7,8 +7,7 @@
 > frontend gate the scan found narrower than its document (candidate H).
 
 Vocabulary: [CONTEXT.md](../../../CONTEXT.md) defines **parked decision**,
-**form** (a parked decision has one form, or none when it asks nothing: a
-roll) and **roll feedback**.
+**form** and **roll feedback**.
 
 ## The evidence
 
@@ -17,10 +16,13 @@ walker's dice source and keeps walking; `RollMode.Parked` stops the walk
 until a command brings the faces. The undo design made every roll automatic
 so a batch never parks mid-roll, and the code agrees:
 
-- The only production constructor of a `Roll` is `RollStep` in
+- The only production code that builds a `Roll` to walk is `RollStep` in
   `gameplay/actions/dice`, and it builds `RollMode.Automatic`. `Parked` is
-  reached only as the model default (`model/CoreOperations.scala`), and no
-  production or test source names `RollMode.Parked`.
+  the model default (`model/CoreOperations.scala`); the operation codec
+  decodes a `Roll` with that default, but a decoded operation rides a
+  replayed payload and is never walked. In production only
+  `ProcedureWalker`'s park check names `RollMode.Parked`; test trees reach
+  it through the default.
 - `RecoverProcedure` states that its roll is automatic, so that a player is
   never asked to confirm a roll they have already paid for.
 - The path that answered a parked roll — the `rollWalker` intent, the
@@ -105,9 +107,22 @@ architecture script's duplicate-DTO list.
 
 ## Consequence
 
-A parked decision's form is now always one of the forms a `Decide` asks:
-the "or none, when it asks nothing (a roll)" clause of CONTEXT.md's
-**form** describes a park the wire can no longer carry. A procedure that
-wants a player-triggered roll would reintroduce the command, the port, the
-projection kind and the client step together; none is planned in
-`docs/ROADMAP.md`.
+A parked decision's form is now always one of the forms a `Decide` asks;
+CONTEXT.md's **form** entry dropped its "or none, when it asks nothing (a
+roll)" clause the same day. A procedure that wants a player-triggered roll
+would reintroduce the command, the port, the projection kind and the client
+step together; none is planned in `docs/ROADMAP.md`.
+
+The engine half is deliberately left in an asymmetric state, and it is
+worth saying plainly: `OathRulesWalker.rollWalkerPrepared` now has test
+callers only, and `checkAnswerable` still accepts a `Roll` park for a
+procedure that declares a `rollDecisionId`, although the projector projects
+nothing for it and no intent can answer it. If a parked `Roll` were ever
+walked in production the game would stop with no way forward. It cannot be
+today, because nothing in production builds one; the guard is that fact,
+not a check. The half stays because nine engine suites build a parked `Roll`
+to test resume, window folding, lazy pruning and answerability, and
+`ProcedureWalkerRollSuite` answers it through `ProcedureWalker.roll`
+directly; retiring the mode is a hand rewrite of those suites for no
+production gain. Whoever adds a player-triggered roll, or decides to flip
+the model default to `Automatic`, takes this paragraph with them.

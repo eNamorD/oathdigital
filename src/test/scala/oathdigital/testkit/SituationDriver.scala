@@ -37,8 +37,8 @@ sealed trait SituationDriver:
       : Either[String, Option[ParkedNode]]
 
   /** Issues `steps` in order. After each step, every park it caused is
-    * answered -- a Roll park by rolling the parked pool with the adapter's
-    * dice, a decision by [[answers]] -- until nothing is parked but a phase
+    * answered by [[answers]] -- a Roll park fails the test, since no command
+    * answers one -- until nothing is parked but a phase
     * menu, which the test answers itself; except that
     * with `settle = false` the last step's parks are left in place. With no
     * steps and `settle = true`, the park `from` already holds is answered.
