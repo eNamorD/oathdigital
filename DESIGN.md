@@ -231,7 +231,7 @@ suit, token, die and player colors of the physical board.
 ### Primary
 - **Brass** (`brass`): the one accent. Eyebrows, `h2` section titles, the
   current round segment, board-option borders, the
-  pile card frame, and the Add Player control. Used for emphasis and
+  inline pile card frame (the relic deck), and the Add Player control. Used for emphasis and
   legality, never as a fill for large areas.
 - **Bright Brass** (`brass-bright`): brass raised for small readouts: the
   Oathkeeper status, target-detail badges, the debug label, the restart
@@ -643,6 +643,19 @@ ratio, sized in `ex` from `--card-w: 13ex`.
   knowable card adds a Secret pip top-right and reveals a summary on hover or
   focus (pointer devices only, CSS only, no client state).
 - **Hover / Focus:** 2px Cream Focus outline, -3px offset. No lift, no move.
+- **Deck:** the world deck and each region's discard are drawn as a card:
+  Pile Back fill (Base when empty), a 2px Line-mid edge, 7px radius, the
+  top card's back letter centered at 700 and the count ("×4") under it in
+  `#e8d9bb`. A discard is 66×92px, in its region's header with its top level
+  with the region's name; the header is held at the height of a discard
+  carrying a cost badge, so a badge never moves the sites. The world deck is
+  107×150px, as tall as the round tracker's wheel, and the two stand in the
+  Cradle's foot spaced evenly and centred in the height left under the
+  Cradle's sites, the tracker as wide as its wheel. A
+  decision's cost badge sits under the card, and the board-option ring
+  wraps the card and badge only; the caption ("Discard", "World deck") sits
+  under the ring in Parchment Dim 0.78rem. An inspect button takes the
+  card's upper right.
 - **Overlay:** the same card at `font-size: 1.9em` beside a details column
   (Georgia name, `dt`/`dd` property grid), inside a Brass Line box on
   `#1b1811` over the scrim.

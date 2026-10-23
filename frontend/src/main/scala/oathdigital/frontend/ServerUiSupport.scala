@@ -189,54 +189,75 @@ private[frontend] object ServerUiSupport:
     options.decorate(node, Vector(key))
     node
 
-  /** A deck or a pile: its label, one back for the top card, and the count.
-    * With `opens`, a title and the pile's cards top first, the pile is a
-    * button that lists them in the card overlay, the way a log line's card
-    * list opens (`CardInspection.openCards`). Decks pass nothing: a deck's
-    * order is nobody's to see.
+  /** A pile set in a line of text: its label, one back for the top card,
+    * and the count. The relic deck, which no decision offers.
     */
-  private[frontend] def pileDisplay(
-      label: String,
-      count: Int,
-      topCardKind: Option[String],
-      opens: Option[(String, Vector[CardDetails])] = None
-  ): dom.Element = opens match
-    case Some((title, cards)) =>
-      openablePile(label, count, topCardKind, title, cards)
-    case None =>
-      val pile = element("div", "pile-display")
-      fillPile(pile, label, count, topCardKind)
-      pile
+  private[frontend] def pileDisplay(label: String, count: Int,
+      topCardKind: Option[String]): dom.Element =
+    val pile = element("div", "pile-display")
+    pile.appendChild(text("span", "pile-label", s"$label:"))
+    val symbol = pileSymbol(count, topCardKind)
+    val back = text("span", pileCardClasses(count),
+      if symbol.isEmpty then "\u00a0" else symbol)
+    back.setAttribute("role", "img")
+    back.setAttribute("aria-label", topCardLabel(count, topCardKind))
+    pile.appendChild(back)
+    pile.appendChild(text("span", "pile-count", s"x$count"))
+    pile
 
-  /** A pile whose cards a player may list: a button that opens them top
-    * first in the card overlay, disabled while the pile is empty. */
-  private[frontend] def openablePile(label: String, count: Int,
-      topCardKind: Option[String], title: String,
-      cards: Vector[CardDetails]): dom.html.Button =
-    val node = button("", "pile-display pile-open")
+  /** A deck drawn as a card, with the top card's back letter and the count
+    * on its face: the part a decision rings, with its cost badge under the
+    * card. `deckFigure` hangs the caption below it. A deck opens nothing: a
+    * deck's order is nobody's to see.
+    */
+  private[frontend] def deckBody(count: Int,
+      topCardKind: Option[String]): dom.Element =
+    val body = element("div", "deck-body")
+    body.appendChild(deckCard(count, topCardKind))
+    body
+
+  /** A pile whose cards a player may list, drawn as `deckBody` is: a button
+    * that opens them top first in the card overlay, the way a log line's
+    * card list opens (`CardInspection.openCards`), disabled while the pile
+    * is empty.
+    */
+  private[frontend] def openableDeck(count: Int, topCardKind: Option[String],
+      title: String, cards: Vector[CardDetails]): dom.html.Button =
+    val node = button("", "deck-body pile-open")
     node.setAttribute("aria-label",
       s"$title, $count ${if count == 1 then "card" else "cards"}")
     node.disabled = count == 0
     node.onclick = _ => CardInspection.openCards(s"$title ($count)", cards, node)
-    fillPile(node, label, count, topCardKind)
+    node.appendChild(deckCard(count, topCardKind))
     node
 
-  /** The pile's label, one back for the top card, and the count. */
-  private def fillPile(pile: dom.Element, label: String, count: Int,
-      topCardKind: Option[String]): Unit =
-    pile.appendChild(text("span", "pile-label", s"$label:"))
-    val css = pileCardClasses(count)
+  /** `body` (or the box holding it and its inspect button) with `caption`
+    * under it, outside what a decision rings.
+    */
+  private[frontend] def deckFigure(caption: String,
+      body: dom.Element): dom.Element =
+    val figure = element("div", "deck-figure")
+    figure.appendChild(body)
+    figure.appendChild(text("span", "deck-caption", caption))
+    figure
+
+  private def deckCard(count: Int, topCardKind: Option[String]): dom.Element =
+    val card = element("span", s"deck-card ${pileCardClasses(count)}")
     val symbol = pileSymbol(count, topCardKind)
-    val back = text("span", css, if symbol.isEmpty then "\u00a0" else symbol)
-    back.setAttribute("role", "img")
-    back.setAttribute("aria-label", if count == 0 then "Empty pile"
-      else topCardKind match {
-        case Some("denizen") => "Denizen card on top"
-        case Some("vision") => "Vision card on top"
-        case _ => "Facedown card; type hidden"
-      })
-    pile.appendChild(back)
-    pile.appendChild(text("span", "pile-count", s"x$count"))
+    val letter = text("span", "deck-letter",
+      if symbol.isEmpty then "\u00a0" else symbol)
+    letter.setAttribute("role", "img")
+    letter.setAttribute("aria-label", topCardLabel(count, topCardKind))
+    card.appendChild(letter)
+    card.appendChild(text("span", "pile-count", s"×$count"))
+    card
+
+  private def topCardLabel(count: Int, topCardKind: Option[String]): String =
+    if count == 0 then "Empty pile"
+    else topCardKind match
+      case Some("denizen") => "Denizen card on top"
+      case Some("vision") => "Vision card on top"
+      case _ => "Facedown card; type hidden"
 
   /** The pile shows the same back letter a facedown card of that kind would,
     * so `CardFace` owns the mapping. An empty pile, or one whose top the

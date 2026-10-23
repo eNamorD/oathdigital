@@ -26,7 +26,7 @@ class DiscardPileSuite extends munit.FunSuite:
     WorldBoardRenderer.world(projection(pile), BoardOptions.none)
 
   private def discard(root: dom.Element): dom.html.Button =
-    all(root, ".region .pile-display").headOption
+    all(root, ".region .pile-open").headOption
       .getOrElse(fail("no discard pile")).asInstanceOf[dom.html.Button]
 
   override def afterEach(context: AfterEach): Unit = CardInspection.clear()
@@ -48,8 +48,8 @@ class DiscardPileSuite extends munit.FunSuite:
     val pile = discard(world(Vector.empty))
     assert(pile.disabled)
     assertEquals(all(pile, ".pile-empty").size, 1)
-    // The pile shows its count as x<n>.
-    assertEquals(all(pile, ".pile-count").map(_.textContent), Vector("x0"))
+    // The pile shows its count as ×<n>.
+    assertEquals(all(pile, ".pile-count").map(_.textContent), Vector("×0"))
 
   test("a pile that is an option opens its cards from the inspect button " +
       "only"):
