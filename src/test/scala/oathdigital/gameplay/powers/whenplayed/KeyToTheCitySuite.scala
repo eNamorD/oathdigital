@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class KeyToTheCitySuite extends munit.FunSuite:
@@ -55,7 +54,7 @@ class KeyToTheCitySuite extends munit.FunSuite:
   test("the actor rules the site and stands there, so nothing happens"):
     val ready = start.warbandsAt(homeSite, p1, 2).ready
     val done = Outcomes.finished(fire(ready, power, played))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("guarded",
       s"${p1.value} was at ${homeSite.value}.", covers = false)))
 

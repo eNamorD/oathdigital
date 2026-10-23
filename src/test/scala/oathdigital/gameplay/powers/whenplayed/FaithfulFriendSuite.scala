@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 
 class FaithfulFriendSuite extends munit.FunSuite:
@@ -31,4 +30,4 @@ class FaithfulFriendSuite extends munit.FunSuite:
     val other = CatalogNames.denizen("Wrestlers")
     val ready = withSupply(2).adviser(p1, other).ready
     val done = Outcomes.finished(play(ready, power, other))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)

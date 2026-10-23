@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 
 class TownMeetingSuite extends munit.FunSuite:
@@ -48,7 +48,7 @@ class TownMeetingSuite extends munit.FunSuite:
     val ready = Table.start.denizen(meeting, at = homeSite)
       .banksHoldingOnly(Suit.Hearth -> 5).ready
     val done = Outcomes.finished(fire(ready, power, hookAt(meeting, homeSite)))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       s"${p1.value} ruled no Hearth card.", covers = false)))
 

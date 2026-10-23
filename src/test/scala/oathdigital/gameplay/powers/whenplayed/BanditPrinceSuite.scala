@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.{NoteText, PlayerFacts}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{as, rejected}
 
@@ -67,7 +66,7 @@ class BanditPrinceSuite extends munit.FunSuite:
     val first = Outcomes.parked(play(ready, power, prince))
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       BanditPrince.decisionId, choose(Vector.empty)))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector.empty)
 
   test("with no bandit site nothing is asked, and the line says so"):
@@ -119,7 +118,7 @@ class BanditPrinceSuite extends munit.FunSuite:
   test("with an empty bank no site can be replaced, so nothing is asked"):
     val ready = bandited.warbandsInBank(p1, 0).ready
     val done = Outcomes.finished(play(ready, power, prince))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector.empty)
 
   test("a holder of Vow of Wandering is not asked, and the bandits stay"):

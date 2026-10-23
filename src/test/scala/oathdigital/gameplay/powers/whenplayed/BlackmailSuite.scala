@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
@@ -77,6 +76,6 @@ class BlackmailSuite extends munit.FunSuite:
     // p2 holds Lost Tongue faceup, and p1 rules no Nomad card.
     val ready = p2HoldingTheHorn(favor = 4).adviser(p2, "Lost Tongue").ready
     val done = Outcomes.finished(play(ready, power, blackmail))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No relic could be taken.", covers = false)))

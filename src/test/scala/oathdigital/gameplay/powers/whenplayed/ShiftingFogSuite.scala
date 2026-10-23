@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Outcomes, Table}
 import oathdigital.testkit.Table.p1
 
 class ShiftingFogSuite extends munit.FunSuite:
@@ -28,7 +28,7 @@ class ShiftingFogSuite extends munit.FunSuite:
     val ready = holding.banksHoldingOnly(Suit.all.map(_ -> 2)*).ready
     val done = Outcomes.finished(play(ready, power, card))
     val toNext = Suit.all.zip(Suit.all.tail :+ Suit.all.head)
-    assertEquals(PhasePowerHarness.ops(done.events), toNext.map(
+    assertEquals(ops(done.events), toNext.map(
       (from, to) => Move(Piece.Favor(2),
         PositionedLocation(Location.FavorBank(from)),
         PositionedLocation(Location.FavorBank(to)))))
@@ -37,5 +37,5 @@ class ShiftingFogSuite extends munit.FunSuite:
   test("with every bank empty nothing moves and nothing is written"):
     val ready = holding.banksHoldingOnly().ready
     val done = Outcomes.finished(play(ready, power, card))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector.empty)

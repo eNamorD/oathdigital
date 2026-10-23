@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.rejected
 
@@ -60,7 +60,7 @@ class SaladDaysSuite extends munit.FunSuite:
 
   test("with every bank empty it gains nothing, and the line says so"):
     val done = Outcomes.finished(play(staged(), power, salad))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events),
       Vector(NoteText.Said("none", "Every favor bank was empty.",
         covers = false)))

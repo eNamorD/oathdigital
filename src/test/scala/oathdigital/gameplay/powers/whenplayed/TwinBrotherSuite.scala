@@ -3,8 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.walker.WalkerOutcome
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.{as, rejected}
 
@@ -53,7 +52,7 @@ class TwinBrotherSuite extends munit.FunSuite:
     val ready = Table.start.adviser(p1, card)
       .adviser(p2, archers, facedown = true).ready
     val done = Outcomes.finished(play(ready, power, card))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
 
   test("the swap moves both cards faceup, each with its own favor and secrets"):
     val ready = staged.ready
@@ -74,7 +73,7 @@ class TwinBrotherSuite extends munit.FunSuite:
 
   test("keeping Twin Brother changes nothing and writes nothing"):
     val done = answer(staged.ready, TwinBrother.keep).done
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events),
       Vector.empty)
 

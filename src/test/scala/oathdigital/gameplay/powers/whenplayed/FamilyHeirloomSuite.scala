@@ -4,8 +4,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.gameplay.walker.WalkerOutcome
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.{as, rejected}
 
@@ -80,7 +79,7 @@ class FamilyHeirloomSuite extends munit.FunSuite
   test("an empty relic deck does nothing and asks nothing"):
     val emptied = Table.start.adviser(p1, card).relicDeckEmptied.ready
     val done = Outcomes.finished(play(emptied, power, card))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(Look(done.treeless).player(p1).relics,
       Look(emptied).player(p1).relics)
 

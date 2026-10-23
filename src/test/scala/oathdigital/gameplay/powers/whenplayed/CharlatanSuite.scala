@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class CharlatanSuite extends munit.FunSuite:
@@ -29,7 +29,7 @@ class CharlatanSuite extends munit.FunSuite:
   test("a single secret stays, and the line says none was burned"):
     val done = Outcomes.finished(play(withBanner(None, 1), power, charlatan))
     assertEquals(Look(done.treeless).secretsOnDarkestSecret, 1)
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(none))
 
   test("an empty Darkest Secret burns nothing"):

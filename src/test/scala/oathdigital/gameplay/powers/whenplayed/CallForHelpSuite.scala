@@ -3,8 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 
@@ -82,7 +81,7 @@ class CallForHelpSuite extends munit.FunSuite:
   test("an amount of 0 reveals nothing and asks nothing more"):
     val ready = cradlePile("Old Songs", "Spinning Bee").ready
     val walked = walkAnswering(ready, power, played, amount(0))
-    assertEquals(PhasePowerHarness.ops(walked.events), Vector.empty)
+    assertEquals(ops(walked.events), Vector.empty)
     assertEquals(Look(walked.end).discardPile(cradle), named("Old Songs",
       "Spinning Bee"))
     assertEquals(said(power, walked.events), Vector(nothingLine))

@@ -4,8 +4,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.PowerFixture.warbandBank
 import oathdigital.gameplay.WalkerRecordedOpsReducer
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.p1
 import oathdigital.testkit.Unwrap.rejected
 
@@ -49,7 +48,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
   test("a player who rules no site gains and places nothing"):
     val ready = ruling(Vector.empty, onBoard = 5)
     val done = Outcomes.finished(play(ready, power, card))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(Look(done.treeless).player(p1).board.warbands, 5)
 
   test("a short bank leaves a short board, and the player chooses the sites"):
@@ -85,7 +84,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer:
     val ready = ruling(Vector(5, 5, 4), onBoard = 0)
     assertEquals(warbandBank(ready, kind), 0)
     val done = Outcomes.finished(play(ready, power, card))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
 
   test("a choice naming an unruled site is rejected"):
     val ready = ruling(Vector(4, 4, 5), onBoard = 0)

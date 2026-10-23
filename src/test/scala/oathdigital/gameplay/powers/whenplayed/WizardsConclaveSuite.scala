@@ -4,8 +4,7 @@ import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.powers.targeting.LostTongue
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class WizardsConclaveSuite extends munit.FunSuite:
@@ -64,7 +63,7 @@ class WizardsConclaveSuite extends munit.FunSuite:
     val ready = Table.start.adviser(p1, conclave).adviser(p2, "Disciples")
       .adviser(p2, "Glamor").darkestSecret(Some(p2), 1).ready
     val done = Outcomes.finished(play(ready, power, conclave))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("kept",
       s"${p2.value} kept the Darkest Secret.", covers = false)))
 

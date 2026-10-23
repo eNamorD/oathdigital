@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class RiotsSuite extends munit.FunSuite:
@@ -82,7 +81,7 @@ class RiotsSuite extends munit.FunSuite:
     val ready = p1AtHomeSite.adviser(p1, riots)
       .denizen(landWarden, at = awaySite).peoplesFavor(None, 5).ready
     val done = Outcomes.finished(play(ready, power, riots))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(Look(done.treeless).favorOnPeoplesFavor, 5)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nothing was discarded.", covers = true)))

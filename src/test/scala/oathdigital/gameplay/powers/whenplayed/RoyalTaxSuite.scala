@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness}
+import oathdigital.testkit.{Look, Outcomes}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class RoyalTaxSuite extends munit.FunSuite:
@@ -48,6 +48,6 @@ class RoyalTaxSuite extends munit.FunSuite:
     val ready = p1AtHomeSite.adviser(p1, tax).warbandsAt(awaySite, p1, 1)
       .pawn(p2, nearSite).pawn(p3, awaySite).ready
     val done = Outcomes.finished(play(ready, power, tax))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No player could be taxed.", covers = false)))

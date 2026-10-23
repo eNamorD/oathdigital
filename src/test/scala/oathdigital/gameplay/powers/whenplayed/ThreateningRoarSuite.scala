@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Table.p1
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.testkit.AppendedAutomaticUses
@@ -55,7 +55,7 @@ class ThreateningRoarSuite extends munit.FunSuite:
     val ready = p1AtHomeSite.adviser(p1, roar)
       .denizen(homesteaders, at = homeSite).ready
     val done = Outcomes.finished(play(ready, power, roar))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nothing was discarded.", covers = true)))
 

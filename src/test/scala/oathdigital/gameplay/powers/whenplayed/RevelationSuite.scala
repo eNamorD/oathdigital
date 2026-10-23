@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Outcomes.assertWireRoundTrips
 import oathdigital.testkit.Table.{p1, p2, p3}
 import oathdigital.testkit.Unwrap.{accepted, rejected}
@@ -59,7 +59,7 @@ class RevelationSuite extends munit.FunSuite:
   test("with nobody holding favor nothing is asked, and the line says so"):
     val done = Outcomes.finished(play(holdingFavor(0, 0, 0).ready, power,
       revelation))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nobody had favor to burn.", covers = false)))
 

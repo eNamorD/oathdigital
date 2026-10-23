@@ -4,8 +4,7 @@ import oathdigital.gameplay.actions.cardplay.CardPlayProcedure.PlayedAs
 import oathdigital.gameplay.powers.{NoteText, SearchFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class BanditChiefSuite extends munit.FunSuite:
@@ -43,7 +42,7 @@ class BanditChiefSuite extends munit.FunSuite:
     val ready = Table.start.denizen(chief, at = homeSite).bandits(giant, 2)
       .ready
     val done = Outcomes.finished(fire(ready, power, atHome))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "No warband was killed.", covers = false)))
 

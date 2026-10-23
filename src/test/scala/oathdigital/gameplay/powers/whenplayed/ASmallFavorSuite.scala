@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.PowerFixture
 import oathdigital.model.ReadyGame
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 
 class ASmallFavorSuite extends munit.FunSuite:
   import PowerFixture._
@@ -39,10 +38,10 @@ class ASmallFavorSuite extends munit.FunSuite:
     val done = Outcomes.finished(play(empty, power, card))
     assertEquals(Look(done.treeless).player(actor).board.warbands,
       Look(empty).player(actor).board.warbands)
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
 
   test("another card being played does nothing"):
     val other = CatalogNames.denizen("Wrestlers")
     val ready = asAdviser(staged, other)
     val done = Outcomes.finished(play(ready, power, other))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)

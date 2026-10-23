@@ -3,8 +3,7 @@ package oathdigital.gameplay.powers.whenplayed
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.walker.{LogNoted, WalkerStepRecorded}
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class ARoundOfAleSuite extends munit.FunSuite:
@@ -79,5 +78,5 @@ class ARoundOfAleSuite extends munit.FunSuite:
   test("with nothing to clean up it writes its line and changes nothing"):
     val ready = Table.start.denizen(ale, at = homeSite).ready
     val done = Outcomes.finished(fire(ready, power, atHome))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(cleanupLine))

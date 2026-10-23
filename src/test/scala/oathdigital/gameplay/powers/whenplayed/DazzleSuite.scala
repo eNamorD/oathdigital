@@ -4,7 +4,7 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes}
 import oathdigital.testkit.Table.{p1, p2}
 import oathdigital.testkit.Unwrap.rejected
 
@@ -28,7 +28,7 @@ class DazzleSuite extends munit.FunSuite:
     .bankFavor(Suit.Hearth, 3).ready
 
   private def discarded(events: Vector[OathEvent]): Vector[DenizenId] =
-    PhasePowerHarness.ops(events).collect { case d: Discard.Denizen => d.card }
+    ops(events).collect { case d: Discard.Denizen => d.card }
 
   test("Dazzle discards Hearth and Order site cards from the actor region"):
     val done = Outcomes.finished(play(twoTargets, power, dazzle))

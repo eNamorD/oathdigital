@@ -2,8 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{CatalogNames, Look, Outcomes, PhasePowerHarness,
-  Table}
+import oathdigital.testkit.{CatalogNames, Look, Outcomes, Table}
 import oathdigital.testkit.Unwrap.as
 
 class GreatHerdSuite extends munit.FunSuite:
@@ -71,7 +70,7 @@ class GreatHerdSuite extends munit.FunSuite:
     val first = Outcomes.parked(fire(ready, power, played))
     val done = Outcomes.finished(resume(ready, power, played, first.tree,
       GreatHerd.decisionId, pick(GreatHerd.keep)))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector.empty)
 
   test("with no Nomad card at another site nothing is asked, and the line " +

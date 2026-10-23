@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2}
 
 class AnimalHostSuite extends munit.FunSuite:
@@ -54,6 +54,6 @@ class AnimalHostSuite extends munit.FunSuite:
     // Errand Boy is p1's adviser, at no site.
     val ready = Table.start.adviser(p1, host).adviser(p1, "Errand Boy").ready
     val done = Outcomes.finished(play(ready, power, host))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       s"${p1.value} gained no warbands.", covers = false)))

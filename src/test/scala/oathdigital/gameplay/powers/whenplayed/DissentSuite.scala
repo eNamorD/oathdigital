@@ -4,7 +4,7 @@ import oathdigital.gameplay.phases.RestCleanupPlan
 import oathdigital.gameplay.powers.NoteText
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
-import oathdigital.testkit.{Look, Outcomes, PhasePowerHarness, Table}
+import oathdigital.testkit.{Look, Outcomes, Table}
 import oathdigital.testkit.Table.{p1, p2, p3}
 
 class DissentSuite extends munit.FunSuite:
@@ -54,6 +54,6 @@ class DissentSuite extends munit.FunSuite:
     // p1 rules Dissent but holds no favor; p2 and p3 rule nothing.
     val ready = Table.start.adviser(p1, dissent).favor(p1, 0).ready
     val done = Outcomes.finished(play(ready, power, dissent))
-    assertEquals(PhasePowerHarness.ops(done.events), Vector.empty)
+    assertEquals(ops(done.events), Vector.empty)
     assertEquals(said(power, done.events), Vector(NoteText.Said("none",
       "Nobody placed favor.", covers = false)))
