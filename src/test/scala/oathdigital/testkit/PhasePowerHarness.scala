@@ -38,17 +38,6 @@ object PhasePowerHarness:
   def others(ready: ReadyGame): Vector[PlayerId] =
     ready.game.current.players.map(_.player).filter(_ != actor)
 
-  /** Puts `owner`'s advisers at the bottom of the world deck. */
-  def withoutAdvisers(ready: ReadyGame, owner: PlayerId): ReadyGame =
-    val held = Look(ready).player(owner).advisers.map(_.id).collect {
-      case id: WorldCardId => id }
-    // No Table step removes advisers.
-    ready.updateCurrent(c => c.copy(
-      players = c.players.map(p =>
-        if p.player == owner then p.copy(advisers = Vector.empty) else p),
-      commonCards = c.commonCards.copy(
-        worldDeck = c.commonCards.worldDeck ++ held)))
-
   def use(ready: ReadyGame, power: PhasePower, source: DecisionOptionRef)
       : Either[OathViolation, OathTransition] = rules.startWalker(
     OathState.Ready(MenuPlay.withoutMenu(ready)), ActionRef.UsePower(power.id),

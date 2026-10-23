@@ -116,7 +116,8 @@ class IvoryEyeSuite extends munit.FunSuite:
       Some(Refusals.notOffered(IvoryEye.decisionId)))
 
   test("with no facedown adviser the cost is paid and nothing else happens"):
-    val ready = (others(quietTable) :+ actor).foldLeft(staged)(withoutAdvisers)
+    val ready = (others(quietTable) :+ actor)
+      .foldLeft(Table.from(staged))(_.withoutAdvisers(_)).ready
     val t = accepted(use(ready, IvoryEye, source))
     parked.assertNotParked(t.state)
     assertEquals(Look(after(t)).tokensOn(eye), Tokens(0, 1))

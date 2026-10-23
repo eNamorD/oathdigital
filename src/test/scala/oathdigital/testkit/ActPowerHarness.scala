@@ -56,10 +56,6 @@ object ActPowerHarness:
   def attackDice(faces: AttackDieFace*): WalkerDice =
     WalkerDiceFixture.dice(attack = faces.toVector)
 
-  /** The actor's Act. */
-  def act(ready: ReadyGame)(using munit.Location): ReadyGame =
-    Table.from(ready).turn(actor, Phase.Act).ready
-
   def use(rules: OathRules, ready: ReadyGame, id: PowerId,
       source: DecisionOptionRef): Either[OathViolation, OathTransition] =
     rules.startWalker(Ready(MenuPlay.withoutMenu(ready)),

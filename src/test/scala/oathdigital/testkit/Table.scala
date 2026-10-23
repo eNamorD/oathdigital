@@ -136,6 +136,14 @@ final case class Table private (private val game: ReadyGame,
       case vision: VisionId => VisionState(vision, orientation(facedown))
     moving(id).onPlayer(player)(p => p.copy(advisers = p.advisers :+ state))
 
+  /** `owner` with no adviser: each one goes to the bottom of the world
+    * deck, in the order held. */
+  def withoutAdvisers(owner: PlayerId)(using munit.Location): Table =
+    val held: Vector[WorldCardId] = playerOf(owner).advisers.map {
+      case denizen: DenizenState => denizen.id
+      case vision: VisionState => vision.id }
+    worldDeckBottom(held*)
+
   def relic(player: PlayerId, card: String | RelicId,
       facedown: Boolean = false)(using munit.Location): Table =
     val id = CatalogNames.relic(card)

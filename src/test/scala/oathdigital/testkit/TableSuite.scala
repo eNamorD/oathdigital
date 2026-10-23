@@ -272,6 +272,17 @@ class TableSuite extends munit.FunSuite:
     intercept[munit.FailException](
       Table.start.knowsRelicAt(p2, "Sticky Fire", at = "Dunes"))
 
+  test("withoutAdvisers sends each adviser to the world deck's bottom, in " +
+      "the order held, and leaves the other players' advisers alone"):
+    val ready = Table.start
+      .adviser(p1, "Alchemist").adviser(p1, "Magician's Code", facedown = true)
+      .adviser(p2, "Elders")
+      .withoutAdvisers(p1).ready
+    assertEquals(Look(ready).advisers(p1), Vector.empty)
+    assertEquals(ready.game.current.commonCards.worldDeck.takeRight(2), Vector(
+      CatalogNames.denizen("Alchemist"), CatalogNames.denizen("Magician's Code")))
+    assertEquals(Look(ready).advisers(p2), Vector(CatalogNames.denizen("Elders")))
+
   test("a card can be put in a player's hand"):
     val ready = Table.start.hand(p1, "Alchemist", "Magician's Code").ready
     assertEquals(ready.game.current.temporaryHands(p1), Vector(
