@@ -591,6 +591,9 @@ controls are 30px.
   0.72rem 700 text, absolutely placed top-right of a site.
 - **Player title**: pill in Favor color, Favor border, 0.78rem 600, no fill,
   clickable.
+- **First player badge**: the target detail badge's pill (`#a98b58` border,
+  Bright Brass 0.72rem 700) with no fill, inline after the role on the first
+  player's identity line, with no separator dot before it.
 - **Vision slot**: pill, `currentColor` border, 0.85em, no fill.
 - **Plan side**: 1em pill, `0 0.6em` padding, 0.75em; Discord fill for attack,
   Order fill for defense, a Discord-to-Order gradient for both; white text.

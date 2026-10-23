@@ -54,6 +54,16 @@ class PanelPlacementSuite extends munit.FunSuite:
       Some(tracks.copy(limiterRound = 5)))), ".usurper-notice")
       .map(_.textContent), Some("Usurper locked until round 5"))
 
+  test("the round tracker names the first player, not their id"):
+    val tracker = Dom.firstMatch(world(projection()), ".round-tracker")
+      .getOrElse(fail("no round tracker"))
+    assertEquals(Dom.firstMatch(tracker, ".track-summary").map(_.textContent),
+      Some("Visions Drawn 0 · First player Red"))
+    assertEquals(Dom.firstMatch(tracker, ".track-summary .player-ref")
+      .map(_.getAttribute("data-player-id")), Some("red"))
+    assert(tracker.getAttribute("aria-label").endsWith("first player Red"),
+      tracker.getAttribute("aria-label"))
+
   test("an unlimited usurper gets no notice"):
     assertEquals(Dom.all(world(projection(trackState =
       Some(tracks.copy(usurperLimited = false)))), ".usurper-notice"),
