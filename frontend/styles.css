@@ -322,7 +322,8 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .site.board-option-locked::before { content: "🔒"; }
 /* A card and its inspect button share one box: a button may not hold a
    button. The button sits over the card's bottom-right corner, where no
-   card content is drawn; the top-right holds defense dice and the pip.
+   card content is drawn, on every card, banner and deck; the top-right
+   holds defense dice and the pip.
    Around a card face the box takes the card's width and the card fills
    it: a site's card width is a share of its row, and a percentage read
    inside a box sized by its own content has nothing to divide, so the card
@@ -340,10 +341,14 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
   outline: 2px solid var(--cream-bright); outline-offset: 1px; }
 /* A Replace option: the play discards this card. Bottom-left, the one
    corner free: the pick mark holds the top-left, the pip and dice the
-   top-right, the inspect button the bottom-right. */
+   top-right, the inspect button the bottom-right. On a card narrower than
+   the badge and the button side by side, as a player board's is, the
+   button rises to sit above the badge rather than over its word. */
 .board-option-badge { position: absolute; left: 3px; bottom: 3px; z-index: 1;
   padding: 1px 5px; border-radius: 3px; background: var(--brass);
   color: var(--base); font-size: 10px; font-weight: 800; line-height: 1.3; }
+.board-option-card:has(> .board-option-replace) > .board-option-inspect {
+  bottom: calc(3px + 2px + 10px * 1.3 + 3px); }
 /* Three cells so the name is centred on the box, not on what is left over
    after the tokens: equal side columns put it in the middle whether a site
    holds six favor or nothing at all. */
@@ -753,19 +758,28 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 /* Paint without weight, so a board option's border, ring and fill win. */
 :where(.deck-body) { border: 1px solid transparent; background: none; }
 .deck-body > .target-detail-badge { margin: 0; }
-/* The card's own edge is a quiet Line-mid: brass is the option ring's. */
+/* The card's height is named once: the inspect button is placed from it,
+   since a cost badge under the card moves the bottom of the box they
+   share. */
+.deck-figure { --deck-h: 92px; }
+/* The card's own edge is a quiet Line-mid: brass is the option ring's. The
+   letter and count sit a little above the middle, so a two-digit count
+   clears the inspect button in the lower right. */
 .deck-card { box-sizing: border-box; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 0.15em;
-  width: 66px; height: 92px; border: 2px solid var(--line-mid);
-  border-radius: 7px; font-size: 1.9rem; line-height: 1; }
+  width: 66px; height: var(--deck-h); padding-bottom: 12px;
+  border: 2px solid var(--line-mid); border-radius: 7px; font-size: 1.9rem;
+  line-height: 1; }
 .deck-card.pile-back { background: #493751; color: #fff; }
 .deck-card.pile-empty { background: var(--base); }
 .deck-letter { font-weight: 700; }
 .deck-card > .pile-count { color: #e8d9bb; font-size: 0.5em; font-weight: 700; }
 .deck-caption { color: var(--parchment-dim); font-size: 0.78rem; }
-/* The inspect button takes the card's upper right, which draws nothing;
-   the badge holds the bottom. */
-.deck-figure .board-option-inspect { top: 3px; right: 3px; bottom: auto; }
+/* The inspect button takes the card's lower right, as on every card. The
+   box it shares with the deck begins at the card's top, but ends under a
+   cost badge when there is one, so it is placed from the top. */
+.deck-figure .board-option-inspect { top: calc(var(--deck-h) - 22px - 3px);
+  right: 3px; bottom: auto; }
 /* A region's header: the name, and the discard in the upper right with the
    card's top level with the name's. It is as tall as a discard carrying a
    cost badge, so a badge coming and going never moves the sites. */
@@ -782,7 +796,9 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .deck-row { display: flex; flex: 1 0 auto; align-items: center;
   justify-content: space-evenly; margin-top: 10px; }
 .deck-row > .round-tracker { flex: 0 1 150px; min-width: 0; }
-.deck-row .deck-card { width: 107px; height: 150px; font-size: 3rem; }
+.deck-row .deck-figure { --deck-h: 150px; }
+/* The world deck never has an inspect button, so its face stays centred. */
+.deck-row .deck-card { width: 107px; padding-bottom: 0; font-size: 3rem; }
 .deck-row .deck-card > .pile-count { font-size: 0.42em; }
 .player-boards { margin-top: 18px; }
 /* The shared bank stands beside the regions, framed as a region is. The map
