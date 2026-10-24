@@ -31,9 +31,10 @@ class PanelPlacementSuite extends munit.FunSuite:
   test("the oath and its holder are listed in the shared bank"):
     val value = projection(oathkeeper = Some(
       oath.copy(goal = "supremacy", holderPlayerId = None)))
-    val line = Dom.firstMatch(world(value), ".shared-bank .oathkeeper-status")
+    val status = Dom.firstMatch(world(value), ".shared-bank .oathkeeper-status")
       .getOrElse(fail("no oath line in the shared bank"))
-    assertEquals(line.textContent, "Oathkeeper of Supremacy · Oathkeeper: unheld")
+    assertEquals(Dom.all(status, "span").map(_.textContent),
+      Vector("Oathkeeper of Supremacy", "Oathkeeper: unheld"))
 
   /** The goal is projected, so the panel prints the oath actually in play
     * rather than the one the first game happens to start with.
@@ -41,8 +42,8 @@ class PanelPlacementSuite extends munit.FunSuite:
   test("a goal other than supremacy is named as itself"):
     assertEquals(Dom.firstMatch(world(projection(oathkeeper =
       Some(oath.copy(goal = "the-people", holderPlayerId = Some("Blue"))))),
-      ".shared-bank .oathkeeper-status").map(_.textContent),
-      Some("Oathkeeper of the People · Oathkeeper: Blue"))
+      ".shared-bank .oathkeeper-goal").map(_.textContent),
+      Some("Oathkeeper of the People"))
 
   /** Beside the regions rather than under them: the map pane is wider than
     * it is tall, so a column costs nothing at fit and a row below costs the

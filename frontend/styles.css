@@ -793,11 +793,40 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .shared-bank { padding: 10px; border: 1px solid var(--line-dim);
   border-radius: 9px; }
 .shared-bank > h3 { margin-top: 0; }
-/* A banner's option border hugs its words: a block line would draw it
-   across the whole column. */
-.shared-banner, .player-banner { width: fit-content; padding: 3px 8px;
-  border-radius: 6px; }
 .oathkeeper-status { margin: 0 0 6px; color: var(--brass-bright); font-weight: 700; }
+/* The oath and its holder each take a line: run together, the holder
+   wrapped mid-phrase in the bank's column. */
+.oathkeeper-status > span { display: block; }
+/* A banner is drawn as its component: square, its side across the top in
+   the banner's own colour and its name in the middle. The People's Favor
+   is amber and the Darkest Secret teal, as printed. The frame is the
+   banner's colour until it is an option, when the option's marks own it;
+   its width never changes, so nothing moves when it does. */
+.banner-face { --banner: #c88a1e; --banner-ink: #1b1408;
+  justify-content: center; align-items: center; gap: 0.3em;
+  padding: 1.9em 0.4em 0.4em; border-width: 2px; text-align: center; }
+.banner-darkest-secret { --banner: #1a7d8c; --banner-ink: var(--cream-bright); }
+.banner-face:not([data-option-ref]) { border-color: var(--banner); }
+.banner-side { position: absolute; top: 0; right: 0; left: 0;
+  padding: 0.2em 0.4em; background: var(--banner); color: var(--banner-ink);
+  font-size: max(0.7em, 0.7rem); font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+.banner-face .card-header { justify-content: center; }
+.banner-face .card-name { font-family: Georgia, serif;
+  font-size: max(1.05em, 0.7rem); overflow-wrap: normal; hyphens: manual; }
+.banner-face .card-tokens { justify-content: center; }
+/* On a player board the face is a relic's size, too small for the side, the
+   prefix and the name together: it keeps the name and what it holds, and
+   the side stays on the shared bank's face and in the overlay. */
+.player-board .banner-face { padding-top: 0.4em; }
+.player-board .banner-side, .player-board .banner-name-prefix { display: none; }
+/* Two side by side across the bank's column, each a square as large as the
+   column allows: larger than a site's card, so easy to find and click. */
+.shared-banners { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px; margin-top: 10px; }
+.shared-banners .board-option-card { width: 100%; }
+.shared-banners .banner-face { width: 100%; height: auto; aspect-ratio: 1; }
 .favor-banks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px; margin-top: 12px; }
 .favor-bank { display: flex; align-items: center; justify-content: center;
@@ -1050,6 +1079,13 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-compact .card-tokens { justify-content: center; }
 .map-compact .card-face .card-defense, .map-compact .card-face .card-restriction,
 .map-compact .card-face .card-unimplemented-badge { display: none; }
+/* A compact banner shows its name alone, held at the glance size as a
+   site's card is: the side and the "Banner of the" prefix are the study
+   layer, read on a zoom or in the overlay. The name is set in the face its
+   width was measured in. */
+.map-compact .banner-face { padding-top: 0.4em; font-size: var(--glance-text); }
+.map-compact .banner-side, .map-compact .banner-name-prefix { display: none; }
+.map-compact .banner-face .card-name { font-family: inherit; }
 .map-compact .card-hover-summary { justify-content: center;
   align-items: center; text-align: center; }
 /* A name shows whole where its longest word fits one line of floor-sized

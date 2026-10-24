@@ -71,14 +71,14 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
 
   test("a card inside a site option reads the card and does not pick the site"):
     val shown = recording(available(woodsSite))
-    click(one(world(shown.options), "button.card-face"))
+    click(one(world(shown.options), ".site button.card-face"))
     assertEquals(inspected, Vector("Fox"))
     assertEquals(shown.picks, Vector.empty)
 
   test("a card option's body picks it, and its inspect button does not"):
     val shown = recording(available(foxCard))
     val root = world(shown.options)
-    val face = one(root, "button.card-face")
+    val face = one(root, ".site button.card-face")
     assertEquals(face.getAttribute("data-option-ref"), "denizen:fox")
     click(face)
     assertEquals(shown.picks, Vector(foxCard))
@@ -116,8 +116,9 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
       "peoples-favor")), available(option("favor-bank", "beast")))
     val root = world(shown.options)
     val boards = WorldBoardRenderer.playerBoards(table, "red", shown.options)
-    assertEquals(all(boards, """.player-banner[data-option-ref]""").size, 1)
-    assertEquals(all(root, """.shared-banner[data-option-ref]""").size, 1)
+    assertEquals(all(boards, """.banner-face[data-option-ref]""").size, 1)
+    assertEquals(all(root, """.shared-banners .banner-face[data-option-ref]""")
+      .size, 1)
     assertEquals(all(root, """.favor-bank[data-option-ref="favor-bank:beast"]""")
       .size, 1)
 
@@ -127,7 +128,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     val control = recording(available(woodsSite), available(foxCard))
     val controlRoot = world(control.options)
     click(site(controlRoot))
-    click(one(controlRoot, "button.card-face"))
+    click(one(controlRoot, ".site button.card-face"))
     assertEquals(control.picks, Vector(woodsSite, foxCard))
     val shown = recording(
       OptionView(woodsSite, OptionState.Unavailable,
@@ -139,7 +140,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     assertEquals(box.getAttribute("data-tip"), "Not ruled by the defender")
     assertEquals(box.getAttribute("aria-disabled"), "true")
     click(box)
-    val face = one(root, "button.card-face")
+    val face = one(root, ".site button.card-face")
     assert(face.classList.contains("board-option-locked"))
     click(face)
     assertEquals(shown.picks, Vector.empty)
