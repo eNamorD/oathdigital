@@ -322,9 +322,15 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .site.board-option-locked::before { content: "🔒"; }
 /* A card and its inspect button share one box: a button may not hold a
    button. The button sits over the card's bottom-right corner, where no
-   card content is drawn; the top-right holds defense dice and the pip. */
+   card content is drawn; the top-right holds defense dice and the pip.
+   Around a card face the box takes the card's width and the card fills
+   it: a site's card width is a share of its row, and a percentage read
+   inside a box sized by its own content has nothing to divide, so the card
+   would shrink. A deck keeps its own size. */
 .board-option-card { position: relative; display: inline-flex;
   flex: 0 0 auto; }
+.board-option-card:has(> .card-face) { width: var(--card-w); }
+.board-option-card > .card-face { width: 100%; }
 .board-option-inspect { position: absolute; right: 4px; bottom: 4px;
   z-index: 1; width: 22px; height: 22px; padding: 0;
   border: 1px solid var(--brass); border-radius: 50%; background: #211d17;
