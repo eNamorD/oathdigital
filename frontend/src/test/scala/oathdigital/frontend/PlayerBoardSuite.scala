@@ -289,13 +289,28 @@ class PlayerBoardSuite extends munit.FunSuite:
   test("a held banner names what it holds: favor or secrets, not resources"):
     val banners = Vector(
       oathdigital.protocol.projection.BannerProjection("peoples-favor",
-        "peoples-favor", Some("red"), 3),
+        "mob", Some("red"), 3),
       oathdigital.protocol.projection.BannerProjection("darkest-secret",
-        "darkest-secret", Some("red"), 1))
+        "wandering-flame", Some("red"), 1))
     val rendered = render(board.copy(banners = banners), supplyMaximum = 7)
-    val lines = all(rendered, ".player-banner").map(_.textContent)
-    assertEquals(lines.map(_.split(" · ").last), Vector("3 favor", "1 secret"))
-    assert(lines.forall(!_.contains("resources")), lines)
+    val labels = all(rendered, ".banner-face").map(_.getAttribute("aria-label"))
+    assertEquals(labels.map(_.split(", ").last), Vector("3 favor", "1 secret"))
+    assert(labels.forall(!_.contains("resources")), labels)
+
+  /** A banner matters more than a relic, so it comes first among the cards
+    * the player holds, after the advisers and their open slots. */
+  test("a held banner sits in the card row, before the relics"):
+    val node = render(board.withAdvisers(oak)
+      .withRelics(CardDetails("r1", "relic", "Crown",
+        orientation = Some("face-up")))
+      .copy(banners = Vector(oathdigital.protocol.projection.BannerProjection(
+        "peoples-favor", "mob", Some("red"), 2))), supplyMaximum = 7)
+    assertEquals(all(node, ".board-cards .card-face").map(_.getAttribute("class")),
+      Vector("card-face card-face-denizen",
+        "card-face card-face-denizen card-slot-empty",
+        "card-face card-face-denizen card-slot-empty",
+        "card-face card-face-relic banner-face banner-peoples-favor",
+        "card-face card-face-relic"))
 
   test("empty adviser slots are drawn up to the player's limit"):
     def placeholders(limit: Int) = all(render(

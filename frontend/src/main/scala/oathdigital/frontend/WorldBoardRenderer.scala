@@ -118,18 +118,13 @@ private[frontend] object WorldBoardRenderer:
      (board.advisers.size until board.adviserLimit).foreach(at =>
        cards.appendChild(openSlot(options, "denizen", "Empty adviser slot",
          at, BoardOptionViews.key("adviser-slot", s"${player.playerId}:$at"))))
+     // A banner matters more than a relic, so it comes first of the two.
+     board.banners.foreach(banner =>
+       cards.appendChild(BannerFace.place(banner, options)))
      board.relics.zipWithIndex.foreach((card, at) => cards.appendChild(
        options.card(CardFace.render(card), card,
          boardCardKeys("relic-slot", player.playerId, at, card))))
      section.appendChild(cards)
-     board.banners.foreach { banner =>
-       val mark = text("p", s"player-banner banner-${banner.key}",
-         s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-           holds(banner))
-       options.decorate(mark,
-         Vector(BoardOptionViews.key("banner", banner.key)))
-       section.appendChild(mark)
-     }
      }
      panel.appendChild(section)
    }
@@ -327,28 +322,24 @@ private[frontend] object WorldBoardRenderer:
    }
    banks
 
- /** What a banner holds: The People's Favor holds favor, and Darkest Secret
-   * holds secrets. */
- private def holds(banner: BannerState): String = banner.key match
-   case "darkest-secret" =>
-     if banner.resources == 1 then "1 secret" else s"${banner.resources} secrets"
-   case _ => s"${banner.resources} favor"
-
  private def sharedBank(value: GameProjection,
      options: BoardOptions): dom.Element =
    val section = element("section", "shared-bank")
    section.appendChild(text("h3", "", "Shared Bank"))
-   value.oathkeeper.foreach(oath =>
-     section.appendChild(text("p", "oathkeeper-status",
-       s"${oathdigital.protocol.projection.OathkeeperPresentation.title(oath.goal)} · " +
-         s"${oath.side.capitalize}: ${oath.holderPlayerId.getOrElse("unheld")}")))
-   section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
-   value.banners.foreach { banner =>
-     val mark = text("p", s"shared-banner banner-${banner.key}",
-       s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-         holds(banner))
-     options.decorate(mark,
-       Vector(BoardOptionViews.key("banner", banner.key)))
-     section.appendChild(mark)
+   // The oath and its holder on lines of their own: run together, the
+   // holder wrapped mid-phrase in the bank's column.
+   value.oathkeeper.foreach { oath =>
+     val status = element("p", "oathkeeper-status")
+     status.appendChild(text("span", "oathkeeper-goal",
+       oathdigital.protocol.projection.OathkeeperPresentation.title(oath.goal)))
+     status.appendChild(text("span", "oathkeeper-holder",
+       s"${oath.side.capitalize}: ${oath.holderPlayerId.getOrElse("unheld")}"))
+     section.appendChild(status)
    }
+   section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
+   if value.banners.nonEmpty then
+     val banners = element("div", "shared-banners")
+     value.banners.foreach(banner =>
+       banners.appendChild(BannerFace.place(banner, options)))
+     section.appendChild(banners)
    section
