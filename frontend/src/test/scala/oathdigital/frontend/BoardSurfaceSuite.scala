@@ -119,8 +119,6 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assert(waiting.disabled)
     assertEquals(waiting.textContent, "Confirm")
     val drafted = pane(ui, Some(woodsDraft))
-    assertEquals(one(drafted, ".board-decision-summary").textContent,
-      "Deep Woods")
     val confirm = one(drafted, ".board-decision-confirm")
       .asInstanceOf[dom.html.Button]
     assertEquals(confirm.textContent, "Start at Deep Woods")
@@ -128,15 +126,15 @@ class BoardSurfaceSuite extends munit.FunSuite:
     assertEquals(ui.submitted, Vector(placeAtWoods))
 
   /** With nothing picked the summary is only the instruction, so it is set
-    * as a helper line; once a site is picked the summary names it, and no
-    * row repeats the name under it.
+    * as a helper line; once a site is picked the confirm button names it,
+    * and neither a summary nor a row repeats the name above it.
     */
   test("the empty summary is a helper line, and the pick is named once"):
     val ui = new RecordingControls()
     assert(one(pane(ui), ".board-decision-summary").classList
       .contains("board-decision-summary-empty"))
     val drafted = pane(ui, Some(woodsDraft))
-    assert(!one(drafted, ".board-decision-summary").classList
-      .contains("board-decision-summary-empty"))
+    assertEquals(all(drafted, ".board-decision-summary"), Vector.empty)
     assertEquals(all(drafted, ".board-decision-row"), Vector.empty)
+    assertEquals(drafted.textContent.split("Deep Woods", -1).length - 1, 1)
 

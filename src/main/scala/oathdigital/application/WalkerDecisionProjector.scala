@@ -605,9 +605,9 @@ private[application] final class WalkerDecisionProjector(
               if state.denizens.exists(_.id.value == row.id) => site }
       }).nextOption()
 
-  /** A card play's Replace options as the board's summary reads them:
-    * "Discard {replaced}; play {played} here", with the facing after an
-    * adviser play. A replaced card this viewer may not identify keeps the
+  /** A card play's Replace options as the confirm button reads them:
+    * "Discard {replaced}; replace it with {played}", with the facing after
+    * an adviser play. A replaced card this viewer may not identify keeps the
     * option's own label, as does every option that replaces nothing.
     */
   private[application] def replacing(query: DecisionQueryProjection,
@@ -615,7 +615,7 @@ private[application] final class WalkerDecisionProjector(
     def worded(option: DecisionOptionProjection) = option.replaces
       .filterNot(_.hidden).fold(option)(replaced => option.copy(label =
         s"${if option.buries then "Bury" else "Discard"} ${replaced.name}; " +
-          s"play ${played.name} here" +
+          s"replace it with ${played.name}" +
           option.variant.fold("")(word => s", ${word.toLowerCase}")))
     query match
       case one: DecisionQueryProjection.ChooseOne =>

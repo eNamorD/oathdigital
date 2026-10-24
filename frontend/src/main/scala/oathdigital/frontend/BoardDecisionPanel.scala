@@ -3,9 +3,10 @@ package oathdigital.frontend
 import org.scalajs.dom
 
 /** The Action panel of a board decision (board decisions design, "Action
-  * panel"). Top to bottom: the prompt, the summary line, a row per locked
-  * and picked option with its tally values (a choose-one's pick only when
-  * it carries details the summary does not), the tally totals, the options
+  * panel"). Top to bottom: the prompt, the summary line (a choose-one's
+  * only until it has a pick, which its confirm button names), a row per
+  * locked and picked option with its tally values (a choose-one's pick only
+  * when it carries details the button does not), the tally totals, the options
   * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
   * then a rule labelled "Decision" over Clear and the confirm button. The table draws
   * the options themselves, through `BoardOptions`. A choose-one with no
@@ -48,26 +49,31 @@ private[frontend] object BoardDecisionPanel:
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
     // The summary reads the answer so far. With nothing picked it is only
     // the instruction, set as a helper line so it does not compete with the
-    // prompt above it.
+    // prompt above it. A choose-one's pick is named by the confirm button,
+    // so once there is one the summary steps aside rather than repeat it.
+    val pickedOne = query match
+      case _: DecisionQueryState.ChooseOne =>
+        draft.flatMap(_.picked.headOption)
+      case _ => None
     val summary = query match
       case many: DecisionQueryState.ChooseMany =>
         val count = picks.size + many.options.count(_.state == "locked")
         Some(many.summary.fold(s"$count chosen")(_.of(count)))
-      case _ => draft.flatMap(open => open.picked.headOption.map(label)
-        .orElse(Option.when(open.home.nonEmpty)(
-          BoardOptionViews.variantPrompt(open.homeOptions))))
-    panel.appendChild(summary.fold(text("p",
-      "board-decision-summary board-decision-summary-empty",
-      if boardChoices then "Choose on the board."
-      else "Nothing can be chosen."))(text("p", "board-decision-summary", _)))
+      case _ => draft.filter(_.home.nonEmpty).map(open =>
+        BoardOptionViews.variantPrompt(open.homeOptions))
+    if pickedOne.isEmpty then
+      panel.appendChild(summary.fold(text("p",
+        "board-decision-summary board-decision-summary-empty",
+        if boardChoices then "Choose on the board."
+        else "Nothing can be chosen."))(text("p", "board-decision-summary", _)))
 
     // Decided already: a choose-many's locked options, a choose-one's answers
     // so far. Then what this draft holds.
     val locked = (query match
       case _: DecisionQueryState.ChooseOne => decision.answeredOptions
       case _ => Vector.empty) ++ shown.filter(_.state == "locked")
-    // A choose-one's summary already names its pick, so the pick's row
-    // shows only when it carries more than the name.
+    // A choose-one's confirm button already names its pick, so the pick's
+    // row shows only when it carries more than the name.
     val chosen = draft.fold(Vector.empty[DecisionOptionState])(_.picked)
       .filter(option => query match
         case _: DecisionQueryState.ChooseOne => option.details.nonEmpty
@@ -174,13 +180,17 @@ private[frontend] object BoardDecisionPanel:
       // The button says what pressing it does: a choose-many counts its
       // selection, a choose-one names its pick after the query's verb,
       // "Travel to Deep Woods", or after "Confirm" where it declares none.
+      // A pick that replaces a card is already worded as the whole action,
+      // "Discard Tavern Songs; replace it with Wayward Spirit", so it stands
+      // alone.
       val confirm = button(query match
         case many: DecisionQueryState.ChooseMany =>
           WalkerPanelSupport.chooseManyConfirmLabel(many, picks.size)
         case one: DecisionQueryState.ChooseOne =>
           val verb = one.confirmVerb.getOrElse("Confirm")
-          draft.flatMap(_.picked.headOption).fold("Confirm")(option =>
-            s"$verb ${label(option)}"), "board-decision-confirm")
+          pickedOne.fold("Confirm")(option =>
+            if option.replaces.nonEmpty then label(option)
+            else s"$verb ${label(option)}"), "board-decision-confirm")
       confirm.disabled = !canControl || blocked.nonEmpty || current.isEmpty
       confirm.onclick = _ =>
         current.flatMap(_.command).foreach(controls.submitCommand)

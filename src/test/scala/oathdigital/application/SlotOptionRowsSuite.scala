@@ -135,9 +135,9 @@ class SlotOptionRowsSuite extends munit.FunSuite:
     assertEquals(projector.replacing(DecisionQueryProjection.ChooseOne(
       Vector(site, adviser, empty)), played),
       DecisionQueryProjection.ChooseOne(Vector(
-        site.copy(label = "Discard Wrestlers; play Wayward Spirit here"),
-        adviser.copy(label =
-          "Discard Threatening Roar; play Wayward Spirit here, facedown"),
+        site.copy(label = "Discard Wrestlers; replace it with Wayward Spirit"),
+        adviser.copy(label = "Discard Threatening Roar; replace it with " +
+          "Wayward Spirit, facedown"),
         empty)))
 
   test("a Replace option whose card the viewer may not identify keeps " +
