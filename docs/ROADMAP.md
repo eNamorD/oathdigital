@@ -330,12 +330,6 @@ one.
   builders that still lack them, as playtests find options people wonder
   about. Left by the
   [board decisions design](superpowers/specs/2026-10-03-board-decisions-design.md).
-- [ ] **Town Meeting's ruling.** Town Meeting splits its favor across the
-  banks, as Alchemist does, but its text may mean one bank for all, as
-  Fabled Feast's does. The
-  [catalog batch 3 rulings](superpowers/specs/2026-09-29-catalog-batch-3-rulings.md)
-  leave it unresolved. A product-owner answer settles it; one bank would
-  reuse Fabled Feast's question.
 - [ ] **Walker follow-ups.** Audit the first-game rules the walker actions
   dropped as gates (exile-only roles, unaltered Foundations, inactive legacies).
   Add the remaining attacker, defender and bandit battle plan families,

@@ -22,9 +22,9 @@ object TownMeetingCard extends Denizen(DenizenId("236"), "Town Meeting", Suit.He
   * X is counted as Fabled Feast counts it. The favor comes from any banks,
   * split as Alchemist splits ([[FavorSplit]]): the actor is asked only when
   * two or more banks hold favor and they hold more than X in all. The
-  * rulings leave open whether the text means one bank for all; the split is
-  * used until that is settled. Its line tells the whole gain; each bank's
-  * Gain line stays.
+  * rulings settle that the favor may come from any combination of banks,
+  * unlike Fabled Feast's one bank. Its line tells the whole gain; each
+  * bank's Gain line stays.
   */
 final case class TownMeeting private (catalog: ExecutableCatalog)
     extends WhenPlayedPower:

@@ -184,7 +184,7 @@ Catacombs.
 | 226 Bandit Prince | Adviser-only, locked. Choose any number of bandit-ruled sites, or none. At each, `Replace` all its bandits with the actor's warbands from their supply. An answer whose sites hold more bandits than the supply holds is refused, so a site is never half replaced. |
 | 147 Salad Days | Gain 1 favor from each of three different banks. With more than three stocked banks, the actor chooses three. With three or fewer, the actor gains 1 from each and is not asked. |
 | 136 Fabled Feast | X is the number of hearth cards the actor rules, Fabled Feast included where ruled. Take up to X favor from one stocked bank the actor chooses. |
-| 236 Town Meeting | X is counted as for Fabled Feast. Gain X favor, split across the stocked banks as Alchemist splits. **Unresolved ruling:** the text may instead mean one bank for all, as Fabled Feast's does. The split is used until the ruling is settled. |
+| 236 Town Meeting | X is counted as for Fabled Feast. Gain X favor, split across the stocked banks as Alchemist splits. **Resolved 2026-10-22:** the favor may come from any combination of banks, unlike Fabled Feast, which takes from one bank. |
 | 30 Great Herd | Site-only. The actor may swap it with a nomad denizen or ruined nomad edifice at another site in play, whoever rules it. Each card keeps its favor and secrets. The card moved in does not run its own WHEN PLAYED. |
 | 117 Royal Tax | Every other player whose pawn is at a site the actor rules in the pawn's region gives 2 favor to the actor, as a `Take`. Nothing is asked. |
 
