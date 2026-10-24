@@ -215,13 +215,14 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(ui.drafts.board.map(_.keys),
       Some(Vector("adviser-play:red:2:facedown")))
 
-  test("a picked facing is pressed and the summary is its label"):
+  test("a picked facing is pressed and the confirm names it"):
     val panel = pane(new RecordingControls(), placement, placing,
       open(placement, "adviser-play:red:2:faceup"))
     assertEquals(variants(panel).map(_.getAttribute("aria-pressed")),
       Vector("true", "false"))
-    assertEquals(one(panel, ".board-decision-summary").textContent,
-      "Adviser slot 3, faceup")
+    assertEquals(all(panel, ".board-decision-summary"), Vector.empty)
+    assertEquals(one(panel, ".board-decision-confirm").textContent,
+      "Confirm Adviser slot 3, faceup")
 
   test("Confirm submits the picked facing"):
     val ui = new RecordingControls()
@@ -245,17 +246,20 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       Vector("Refused by a test power", null))
     assert(!panel.textContent.contains("Refused by a test power"))
 
-  test("a Replace pick's summary is the sentence the projector wrote"):
+  /** The projector words a Replace option as the whole action, so the
+    * button says it alone, once, with no "Confirm" before it. */
+  test("a Replace pick's confirm is the sentence the projector wrote, alone"):
     val replace = DecisionOptionState("site-slot", "plains:0",
-      "Discard Tavern Songs; play Wayward Spirit here",
+      "Discard Tavern Songs; replace it with Wayward Spirit",
       replaces = Some(CardDetails("songs", "denizen", "Tavern Songs")))
     val query = DecisionQueryState.ChooseOne(Vector(replace),
       Some("Play Wayward Spirit"))
     val panel = pane(new RecordingControls(), query, placing,
       Some(BoardSelectionDraft(context,
         "cardplay.place.denizen.spirit", query, Vector("site-slot:plains:0"))))
-    assertEquals(one(panel, ".board-decision-summary").textContent,
-      "Discard Tavern Songs; play Wayward Spirit here")
+    assertEquals(all(panel, ".board-decision-summary"), Vector.empty)
+    assertEquals(one(panel, ".board-decision-confirm").textContent,
+      "Discard Tavern Songs; replace it with Wayward Spirit")
 
   test("Clear closes an open home that has no pick yet"):
     val ui = new RecordingControls()
