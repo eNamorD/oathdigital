@@ -51,7 +51,7 @@ final case class Jinx private (catalog: ExecutableCatalog)
   private def offer(ctx: PowerCtx): Option[RerollOffer] =
     RerollChoice.throwOf(ctx).filter(rolled =>
       Jinx.rules(ctx.state, rolled.roller)).map(rolled => RerollOffer(
-      JinxCard.id,
+      JinxCard.id, Jinx.label,
       Some(Costs.onCard(rolled.roller, JinxCard.id, JinxCard.power.cost,
         catalog, intoOccupied = true)),
       Vector(Note(id, _ => Some(Jinx.line(rolled)(
@@ -61,6 +61,9 @@ final case class Jinx private (catalog: ExecutableCatalog)
 object Jinx:
   val id: PowerId = JinxCard.power.id
   private val card: DenizenId = JinxCard.id
+
+  /** Its reroll button, after the secret it costs. */
+  val label: String = "Reroll all with Jinx"
 
   private val notes = NoteSet(id)
   def noteKeys: Vector[NoteKey] = notes.declared

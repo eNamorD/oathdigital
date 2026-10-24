@@ -162,7 +162,7 @@ class GamblingHallSuite extends munit.FunSuite:
     parkedWithWalkerPowers.assertParked(parked.state,
       ActionRef.UsePower(GamblingHall.id), reroll, actor)
     val rerolled = accepted(answer(rules0, parked.state, reroll,
-      DecisionOptionRef.Denizen(jinx)))
+      RerollChoice.optionRef(jinx)))
     parkedWithWalkerPowers.assertParked(rerolled.state,
       ActionRef.UsePower(GamblingHall.id), GamblingHall.decisionId, actor)
     assertEquals(ready(rerolled.state).game.current

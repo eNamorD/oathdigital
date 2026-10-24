@@ -102,6 +102,10 @@ class ParkedDecisionSuite extends munit.FunSuite:
     assertEquals(routeOf(parked("recover", "recover.other", one)).surface,
       None)
 
+  test("a Recover reroll is answered on the generic choose-one panel"):
+    val reroll = parked("recover", "recover.reroll.1", one)
+    assertEquals(routeOf(reroll).surface, Some(Surface.ChooseOne(reroll, one)))
+
   test("a decide park whose query was suppressed routes to no surface"):
     assertEquals(routeOf(WalkerDecisionState("forge", "forge-9"))
       .surface, None)

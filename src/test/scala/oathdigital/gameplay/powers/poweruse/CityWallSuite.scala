@@ -160,7 +160,7 @@ class CityWallSuite extends munit.FunSuite:
         case ParkedNode.Decision(_, decide, _)
             if decide.decisionId == firstReroll => decide.query
       }.collect { case one: DecisionQuery.ChooseOne => one.options }
-      .flatMap(_.find(_.ref == DecisionOptionRef.Denizen(jinx)))
+      .flatMap(_.find(_.ref == RerollChoice.optionRef(jinx)))
     jinxOption match
       case Some(DecisionOption.Unavailable(_, ask: OptionReason.Askable)) =>
         assertEquals(ask.note, CityWall.placingAsked(source))

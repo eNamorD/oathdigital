@@ -15,7 +15,7 @@ class RerollChoiceSuite extends munit.FunSuite:
   import DefenseDieFace.{Blank, TwoShields}
   import FreeReroll.bracken
 
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(bracken)
+  private val ref: DecisionOptionRef = RerollChoice.optionRef(bracken)
   private val powers = WalkerPowers(Vector(FreeReroll))
   private val attackReroll = RerollChoice.decisionId(CampaignIds.attackPool, 1)
   private val defenseReroll =

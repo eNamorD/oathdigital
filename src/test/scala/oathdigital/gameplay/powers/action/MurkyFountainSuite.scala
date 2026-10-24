@@ -135,7 +135,7 @@ class MurkyFountainSuite extends munit.FunSuite:
     parkedWithWalkerPowers.assertParked(started.state,
       ActionRef.UsePower(MurkyFountain.id), reroll, actor)
     val rerolled = accepted(answer(rules0, started.state, reroll,
-      DecisionOptionRef.Denizen(jinx)))
+      RerollChoice.optionRef(jinx)))
     // 1 Supply and one shield per rerolled die.
     assertEquals(Look(ready(rerolled.state)).player(actor).board.supply,
       SupplyTrack(1 + MurkyFountain.Dice))

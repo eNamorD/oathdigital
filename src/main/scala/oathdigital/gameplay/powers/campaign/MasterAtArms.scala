@@ -49,9 +49,11 @@ final case class MasterAtArms private (catalog: ExecutableCatalog)
         PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath, ctx.answered),
           ctx.actor, cardRef, sides, afterOutcome = false).nonEmpty)
       .map(rolled => MasterAtArms.hollow(rolled) match
-        case Vector() => RerollOffer(cardId, None, Vector.empty,
+        case Vector() => RerollOffer(cardId, MasterAtArms.rerollLabel, None,
+          Vector.empty,
           Some(OptionReason.Written(MasterAtArms.noHollowSword)))
-        case hollow => RerollOffer(cardId, None, steps(rolled, hollow)))
+        case hollow => RerollOffer(cardId, MasterAtArms.rerollLabel, None,
+          steps(rolled, hollow)))
 
   private def note(amount: Int): Note = Note(id, _ =>
     Some(MasterAtArms.rerolled(PowerSourceRef.Card(cardId),
@@ -75,6 +77,8 @@ object MasterAtArms:
   def decisionId(number: Int): String =
     RerollChoice.followUpId(CampaignIds.attackPool, number, "master-at-arms")
   val label: String = "Master at Arms: reroll hollow swords"
+  /** Its reroll button. */
+  val rerollLabel: String = "Reroll any [hollow-sword] with Master at Arms"
   val heading: String = "Reroll how many hollow swords?"
   val noHollowSword: String = "No die shows a hollow sword"
   private val notes = NoteSet(id)

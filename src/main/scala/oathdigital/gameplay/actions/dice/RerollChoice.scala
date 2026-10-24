@@ -11,9 +11,9 @@ import oathdigital.model._
   * `CampaignPlanChoice`:
   *
   *  - The roller is asked to pick a reroll or "Keep the roll". The rerolls
-  *    listed are those not yet used on this throw: each the roller can pay
-  *    for (a dry run of its payment says so) priced, the rest shown
-  *    unavailable with why. Nothing usable or askable of a ruler means
+  *    listed are those not yet used on this throw, each a button naming its
+  *    card after its cost: those the roller can pay for (a dry run of its
+  *    payment says so), the rest shown unavailable with why. Nothing usable or askable of a ruler means
   *    nothing is asked, the pass does nothing, and the `Repeat` ends.
   *  - The picked reroll pays and runs its steps.
   *
@@ -62,20 +62,15 @@ final class RerollChoice(val pool: PoolKey, val die: DiceKind,
 
   private def option(offered: OfferedReroll, pass: OfferHost.Pass)
       : DecisionOption =
-    val shown = DecisionOption.Denizen(
-      DecisionOptionRef.Denizen(offered.offer.card))
+    val shown = DecisionOption.Button(RerollChoice.refOf(offered),
+      RerollChoice.label(offered.offer))
     offered.offer.withheld match
       case Some(reason) => DecisionOption.Unavailable(shown, reason)
       case None => pass.applies(RerollChoice.application(offered)) match
         case Left(violation) => DecisionOption.Unavailable(shown,
           OptionReason.Written(RerollChoice.shortfall(pass.state, roller,
             offered.offer, violation)))
-        case Right(_) => offered.offer.payment.map(_.cost)
-          .filterNot(_ == Cost.free) match
-          case None => shown
-          case Some(cost) => DecisionOption.Priced(shown,
-            OptionPrice(favor = cost.favor, secrets = cost.secret,
-              favorBurnt = cost.favorBurnt, secretsBurnt = cost.secretBurnt))
+        case Right(_) => shown
 
   private def decision(id: String, listed: Vector[DecisionOption]): Decide =
     Decide(id, roller, DecisionQuery.ChooseOne(listed :+
@@ -132,8 +127,22 @@ object RerollChoice:
     case choice: RerollChoice => choice.throwAt(ctx.state)
     case _ => None
 
-  private[dice] def refOf(offered: OfferedReroll): DecisionOptionRef =
-    DecisionOptionRef.Denizen(offered.offer.card)
+  /** The answer that picks `card`'s reroll. */
+  def optionRef(card: DenizenId): DecisionOptionRef.Button =
+    DecisionOptionRef.Button(s"reroll.${card.value}")
+
+  private[dice] def refOf(offered: OfferedReroll): DecisionOptionRef.Button =
+    optionRef(offered.offer.card)
+
+  /** "[secret] Reroll all with Jinx": the offer's label after its cost's
+    * glyphs, as a card prints a power's cost before its text. */
+  def label(offer: RerollOffer): String =
+    val cost = offer.payment.map(_.cost).getOrElse(Cost.free)
+    val glyphs = Vector(cost.favor -> "[favor]",
+      cost.favorBurnt -> "[favor-burnt]", cost.secret -> "[secret]",
+      cost.secretBurnt -> "[secret-burnt]")
+      .flatMap((count, glyph) => Vector.fill(count)(glyph))
+    (glyphs :+ offer.label).mkString(" ")
 
   /** The rerolls picked on this throw so far, without "Keep the roll". */
   private[dice] def used(pending: PendingTree, decisionId: String)

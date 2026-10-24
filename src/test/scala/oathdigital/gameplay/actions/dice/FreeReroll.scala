@@ -19,5 +19,6 @@ object FreeReroll extends ContributingPower:
           .exists(_.advisers.exists {
             case DenizenState(`bracken`, Orientation.FaceUp, _) => true
             case _ => false
-          })).map(rolled => RerollOffer(bracken, None,
+          })).map(rolled => RerollOffer(bracken,
+        "Reroll all with Bracken", None,
         Vector(Reroll(rolled.pool, rolled.indices)))))))

@@ -159,7 +159,7 @@ class ArcaneArmorSuite extends munit.FunSuite:
       .answer(b.rival, ArcaneArmor.decisionId, ChooseAmountAnswer(1))
       .finishPlanWindows
     assert(awaits(asked, b.rival, reroll))
-    val done = asked.pick(b.rival, reroll, DecisionOptionRef.Denizen(jinx))
+    val done = asked.pick(b.rival, reroll, RerollChoice.optionRef(jinx))
     assertEquals(done.since(asked).collect {
       case Reroll(pool, indices, _) => pool -> indices
     }, Vector(CampaignIds.defensePool -> Vector(1)))
