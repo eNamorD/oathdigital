@@ -33,6 +33,7 @@ class SpellBreakerOfferSuite extends munit.FunSuite:
   private val titleRef: DecisionOptionRef = DecisionOptionRef.Button("title")
   private val jinx = CatalogNames.denizen("Jinx")
   private val jinxRef = DecisionOptionRef.Denizen(jinx)
+  private val jinxReroll = RerollChoice.optionRef(jinx)
   private val broken = Some(OptionReason.Noted(SpellBreaker.id,
     SpellBreaker.plain(PowerSourceRef.Card(breaker))))
 
@@ -120,7 +121,7 @@ class SpellBreakerOfferSuite extends munit.FunSuite:
         case ParkedNode.Decision(_, decide, _)
             if decide.decisionId == firstRecoverReroll => decide.query
       }.collect { case one: DecisionQuery.ChooseOne => one.options }
-      .flatMap(_.find(_.ref == jinxRef))
+      .flatMap(_.find(_.ref == jinxReroll))
 
   test("Jinx after a Recover roll is askable of Spell Breaker's ruler"):
     val jinxOption = jinxAtRecoverReroll(recoverRolledBesideBreaker.state)
@@ -136,7 +137,8 @@ class SpellBreakerOfferSuite extends munit.FunSuite:
         jinxRef) -> ConsentAnswer.Refused.by(Table.p2)),
       turn = Some(ConsentTurn.of(parked)))))
     assertEquals(jinxAtRecoverReroll(refused), broken.map(reason =>
-      DecisionOption.Unavailable(DecisionOption.Denizen(jinxRef), reason)))
+      DecisionOption.Unavailable(DecisionOption.Button(jinxReroll,
+        "[secret] Reroll all with Jinx"), reason)))
 
   test("an enemy's Arcane Armor, which pays X secrets, is withheld too"):
     val arcane = CatalogNames.denizen("Arcane Armor")

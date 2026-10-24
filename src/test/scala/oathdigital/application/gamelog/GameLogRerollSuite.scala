@@ -17,7 +17,7 @@ class GameLogRerollSuite extends munit.FunSuite:
 
   private val pool = RecoverProcedure.recoverPool
   private val decision = RerollChoice.decisionId(pool, 1)
-  private val jinx = DecisionOptionRef.Denizen(CatalogNames.denizen("Jinx"))
+  private val jinx = RerollChoice.optionRef(CatalogNames.denizen("Jinx"))
 
   /** The state the appended steps start from: the Recover pool's two dice
     * show two blanks, so the reroll applies to them. */

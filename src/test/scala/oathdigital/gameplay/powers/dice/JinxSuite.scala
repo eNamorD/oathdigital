@@ -23,7 +23,7 @@ class JinxSuite extends munit.FunSuite:
   import DefenseDieFace.{Blank, TwoShields}
 
   private val jinx = CatalogNames.denizen("Jinx")
-  private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(jinx)
+  private val ref: DecisionOptionRef = RerollChoice.optionRef(jinx)
   private val attackReroll = RerollChoice.decisionId(CampaignIds.attackPool, 1)
   private val defenseReroll =
     RerollChoice.decisionId(CampaignIds.defensePool, 1)
@@ -53,6 +53,16 @@ class JinxSuite extends munit.FunSuite:
       Vector[AttackDieFace](OneSword, OneSword))
     assertEquals(Look(ready(done.state)).faceUpSecrets(b.actor), 0)
     assertEquals(lines(done), Vector(rerolled("attack")))
+
+  test("Jinx is a button naming the card after the secret it costs"):
+    val b = attacker()
+    val game = rules(scripted(Vector(HollowSword, HollowSword),
+      Vector(Blank, Blank)))
+    val asked = commit(game, b, 2).finishPlanWindows
+    assertEquals(asked.options(b.actor), Vector(
+      DecisionOption.Button(RerollChoice.optionRef(jinx),
+        "[secret] Reroll all with Jinx"),
+      DecisionOption.Button(RerollChoice.keep, RerollChoice.keepLabel)))
 
   test("Jinx rerolls a throw only once"):
     val b = attacker(secrets = 2)

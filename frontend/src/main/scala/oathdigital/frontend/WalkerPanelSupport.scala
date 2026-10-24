@@ -159,7 +159,14 @@ private[frontend] object WalkerPanelSupport:
         value.players.find(_.playerId == option.id).map(_.displayName)
           .getOrElse(option.label)
       else option.label
-      val choose = button(label, "walker-choice")
+      // A label may name a cost or a die face as its token ("[secret]
+      // Reroll all with Jinx"), drawn as the glyph and named in words.
+      val choose = button("", "walker-choice")
+      val words = element("span", "walker-choice-label")
+      RulesTextRenderer.inline(label, words)
+      choose.appendChild(words)
+      val spoken = RulesTextRenderer.spoken(label)
+      if spoken != label then choose.setAttribute("aria-label", spoken)
       // A favor bank is named by its suit, and a suit is read as its
       // symbol everywhere else on the table.
       if option.kind == "favor-bank" then
@@ -172,7 +179,7 @@ private[frontend] object WalkerPanelSupport:
         // Named in words: the content alone reads the label and the chip
         // run together.
         choose.setAttribute("aria-label",
-          s"$label, ${RulesTextRenderer.spoken(badge)}")
+          s"$spoken, ${RulesTextRenderer.spoken(badge)}")
       }
       choose.disabled = !canControl
       // A card option reads its rules text on hover, as the menu panel's

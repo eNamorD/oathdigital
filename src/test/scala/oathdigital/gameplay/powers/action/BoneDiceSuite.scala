@@ -104,7 +104,7 @@ class BoneDiceSuite extends munit.FunSuite:
     parkedWithWalkerPowers.assertParked(started.state,
       ActionRef.UsePower(BoneDice.id), reroll, actor)
     val rerolled = accepted(answer(rules0, started.state, reroll,
-      DecisionOptionRef.Denizen(jinx)))
+      RerollChoice.optionRef(jinx)))
     // 2 Supply and the rerolled 2 swords make 4.
     assertEquals(Look(ready(rerolled.state)).player(actor).board.supply,
       SupplyTrack(4))

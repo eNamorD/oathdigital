@@ -43,6 +43,18 @@ class WalkerChoicePanelRenderSuite extends munit.FunSuite:
     assertEquals(all(panel, ".walker-choice-details").map(_.textContent),
       Vector("1 Supply · +2 warbands"))
 
+  test("a label's tokens draw as glyphs, and its name speaks them"):
+    val jinx = DecisionOptionState("button", "reroll.68",
+      "[secret] Reroll all with Jinx")
+    val panel = draw(WalkerDecisionState("campaign",
+      "campaign.attack.reroll.1", query = Some(DecisionQueryState.ChooseOne(
+        Vector(jinx), heading = Some("Reroll the attack dice, or keep the roll")))))
+    val choice = Dom.one(panel, ".walker-choice")
+    assertEquals(all(choice, ".token-glyph.token-secret").size, 1)
+    assertEquals(choice.textContent, " Reroll all with Jinx")
+    assertEquals(choice.getAttribute("aria-label"),
+      "secret Reroll all with Jinx")
+
   test("a card option shows its rules text on hover, and a reason wins"):
     val card = CardDetails("97", "denizen", "Insomnia",
       rulesText = Some("**REST:** Gain [secret]."))

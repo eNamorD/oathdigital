@@ -23,7 +23,8 @@ class MasterAtArmsSuite extends munit.FunSuite:
   private val card = CatalogNames.denizen("Master at Arms")
   private val ref: DecisionOptionRef = DecisionOptionRef.Denizen(card)
   private val jinx = CatalogNames.denizen("Jinx")
-  private val jinxRef: DecisionOptionRef = DecisionOptionRef.Denizen(jinx)
+  private val jinxRef: DecisionOptionRef = RerollChoice.optionRef(jinx)
+  private val rerollRef: DecisionOptionRef = RerollChoice.optionRef(card)
   private val reroll = RerollChoice.decisionId(CampaignIds.attackPool, 1)
 
   private def rerolled(text: String): NoteText.Said =
@@ -44,7 +45,7 @@ class MasterAtArmsSuite extends munit.FunSuite:
     val asked = chosen(b, Vector(HollowSword, OneSword, HollowSword),
       Vector(TwoSwordsSkull), Vector(Blank, Blank))
     assert(awaits(asked, b.actor, reroll))
-    val amount = asked.pick(b.actor, reroll, ref)
+    val amount = asked.pick(b.actor, reroll, rerollRef)
     assert(awaits(amount, b.actor, MasterAtArms.decisionId(1)))
     val done = amount.answer(b.actor, MasterAtArms.decisionId(1),
       ChooseAmountAnswer(1)).finishPlanWindows
@@ -53,11 +54,20 @@ class MasterAtArmsSuite extends munit.FunSuite:
     assertEquals(said(MasterAtArms.forCatalog(catalog), done.events),
       Vector(rerolled("1 hollow sword")))
 
+  test("its reroll is a button naming the hollow swords, with no cost"):
+    val b = attacker
+    val asked = chosen(b, Vector(HollowSword, OneSword, OneSword),
+      Vector(Blank, Blank))
+    assertEquals(asked.options(b.actor), Vector(
+      DecisionOption.Button(RerollChoice.optionRef(card),
+        "Reroll any [hollow-sword] with Master at Arms"),
+      DecisionOption.Button(RerollChoice.keep, RerollChoice.keepLabel)))
+
   test("the how-many question shows the attack dice"):
     val b = attacker
     val amount = chosen(b, Vector(HollowSword, OneSword, HollowSword),
       Vector(TwoSwordsSkull), Vector(Blank, Blank))
-      .pick(b.actor, reroll, ref)
+      .pick(b.actor, reroll, rerollRef)
     assert(awaits(amount, b.actor, MasterAtArms.decisionId(1)))
     assertEquals(WalkerProcedureRegistry.rollFeedback(ActionRef.Campaign,
       catalog, ready(amount.state), b.actor, MasterAtArms.decisionId(1)),
@@ -67,7 +77,7 @@ class MasterAtArmsSuite extends munit.FunSuite:
     val b = attacker
     val done = chosen(b, Vector(HollowSword, OneSword, OneSword),
       Vector(OneSword), Vector(Blank, Blank))
-      .pick(b.actor, reroll, ref).finishPlanWindows
+      .pick(b.actor, reroll, rerollRef).finishPlanWindows
     assertEquals(done.result.attackFaces,
       Vector[AttackDieFace](OneSword, OneSword, OneSword))
 
@@ -92,7 +102,7 @@ class MasterAtArmsSuite extends munit.FunSuite:
       Vector(HollowSword, OneSword, OneSword), Vector(OneSword),
       Vector(Blank, Blank))
       .pick(b.actor, reroll, jinxRef)
-      .pick(b.actor, reroll, ref).finishPlanWindows
+      .pick(b.actor, reroll, rerollRef).finishPlanWindows
     assertEquals(done.result.attackFaces,
       Vector.fill[AttackDieFace](3)(OneSword))
 
@@ -102,7 +112,7 @@ class MasterAtArmsSuite extends munit.FunSuite:
       faceUp = 1)
     val withMaster = chosen(b, Vector(HollowSword, OneSword, OneSword),
       Vector(HollowSword), Vector(OneSword, OneSword, OneSword),
-      Vector(Blank, Blank)).pick(b.actor, reroll, ref)
+      Vector(Blank, Blank)).pick(b.actor, reroll, rerollRef)
     // Master at Arms is used: only Jinx and "Keep the roll" are left.
     assertEquals(withMaster.offered(b.actor), Vector(jinxRef,
       RerollChoice.keep))
@@ -114,7 +124,7 @@ class MasterAtArmsSuite extends munit.FunSuite:
     val b = withSecrets(withAdviser(attacker, jinx, Orientation.FaceUp),
       faceUp = 1)
     val asked = chosen(b, Vector.fill(3)(OneSword), Vector(Blank, Blank))
-    assertEquals(asked.withheld(b.actor, ref),
+    assertEquals(asked.withheld(b.actor, rerollRef),
       Some(OptionReason.Written(MasterAtArms.noHollowSword)))
 
   test("Jinx without a secret is shown unavailable beside it"):

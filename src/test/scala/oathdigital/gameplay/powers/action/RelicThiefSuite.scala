@@ -118,6 +118,6 @@ class RelicThiefSuite extends munit.FunSuite:
     parkedWithWalkerPowers.assertParked(parked.state,
       ActionRef.UsePower(RelicThief.id), reroll, p1)
     val rerolled = accepted(answer(rules0, parked.state, reroll,
-      DecisionOptionRef.Denizen(jinx)))
+      RerollChoice.optionRef(jinx)))
     // The rerolled dice show no shield, so the relic is taken.
     assertEquals(Look(ready(rerolled.state)).relics(p1), Vector(whistle))

@@ -31,6 +31,7 @@ private[frontend] object ParkedDecision:
   private[frontend] val recoverChoiceDecisionId = "recover.choice"
   private[frontend] val recoverRelicDecisionId = "recover.relic"
   private[frontend] val recoverModifiersDecisionId = "recover.modifiers"
+  private[frontend] val recoverRerollDecisionPrefix = "recover.reroll."
 
   /** The two forms the selection panel answers: toggles for a choose-many,
     * a dropdown for a choose-amount. The query IS the form now, so the
@@ -175,10 +176,13 @@ private[frontend] object ParkedDecision:
     else None
 
   /** A Recover park only Recover's panel may answer: every one but its
-    * modifier decision, which the board draws as any action's is. */
+    * modifier decision, which the board draws as any action's is, and its
+    * reroll choices (`RerollChoice.decisionId` of the Recover pool), which
+    * the generic panel answers as any roll's are. */
   private def recoverPanelOnly(decision: WalkerDecisionState): Boolean =
     decision.action == "recover" &&
-      decision.decisionId != recoverModifiersDecisionId
+      decision.decisionId != recoverModifiersDecisionId &&
+      !decision.decisionId.startsWith(recoverRerollDecisionPrefix)
 
   private def chooseOneQuery(decision: WalkerDecisionState)
       : Option[DecisionQueryState.ChooseOne] =

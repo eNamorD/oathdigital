@@ -793,6 +793,8 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
   gap: 0.3em; padding: 7px; border: 1px solid var(--line); border-radius: 6px;
   text-align: center; font-weight: 700; }
 .walker-choice .token-glyph { margin-right: 0.3em; vertical-align: -0.15em; }
+/* A token inside the label sits between words that already space it. */
+.walker-choice-label .token-glyph { margin-right: 0; }
 /* A cost's favor and secrets are their glyphs, each right after its count
    and one size with the words around it, burnt ones by their cracked shape. */
 .menu-option-cost .token-glyph, .option-badge .token-glyph,

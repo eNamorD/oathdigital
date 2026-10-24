@@ -207,7 +207,7 @@ class SilverCharmSuite extends munit.FunSuite:
       rerollingDice(0))
     assertEquals(parkedDecisionId(charmed), second)
     val jinxed = resolved(rules, charmed, second,
-      ChooseOneAnswer(DecisionOptionRef.Denizen(jinx)))
+      ChooseOneAnswer(RerollChoice.optionRef(jinx)))
     assertEquals(recoverOutcome(jinxed).faces,
       Vector[DieFace](OneShield, Blank, OneShield, OneShield))
     assertEquals(parkedDecisionId(jinxed), RecoverProcedure.relicDecisionId)
