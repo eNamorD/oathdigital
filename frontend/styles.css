@@ -785,7 +785,18 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .deck-row .deck-card { width: 107px; height: 150px; font-size: 3rem; }
 .deck-row .deck-card > .pile-count { font-size: 0.42em; }
 .player-boards { margin-top: 18px; }
-.shared-bank { margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+/* The shared bank stands beside the regions, framed as a region is. The map
+   pane is wider than it is tall, so the map fits by its height, and a column
+   costs nothing that a row under the regions did. */
+.world-layout { display: grid; grid-template-columns: minmax(0, 1fr)
+  var(--bank-w, 360px); gap: 12px; align-items: start; }
+.shared-bank { padding: 10px; border: 1px solid var(--line-dim);
+  border-radius: 9px; }
+.shared-bank > h3 { margin-top: 0; }
+/* A banner's option border hugs its words: a block line would draw it
+   across the whole column. */
+.shared-banner, .player-banner { width: fit-content; padding: 3px 8px;
+  border-radius: 6px; }
 .oathkeeper-status { margin: 0 0 6px; color: var(--brass-bright); font-weight: 700; }
 .favor-banks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px; margin-top: 12px; }
@@ -964,7 +975,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .map-surface { position: relative; overflow: hidden; }
 /* Pinned, never inherited: the map is additionally transform-scaled, so an
    inherited font-size change would compound with that invisibly. */
-.map-content { position: absolute; width: 1500px; padding: 20px;
+/* The regions keep 1500px, as a site's card width is a share of its
+   region; the shared bank's column and its gap are added beside them. */
+.map-content { position: absolute; width: calc(1500px + 12px + var(--bank-w));
+  padding: 20px; --bank-w: 360px;
   transform-origin: top left; font-size: 1rem; }
 /* The glance layer. Below 0.72 the map's own text falls under 11px on
    screen, so what a player scans the board for (region and site names,

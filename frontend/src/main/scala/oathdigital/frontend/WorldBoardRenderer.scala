@@ -232,9 +232,15 @@ private[frontend] object WorldBoardRenderer:
        section.appendChild(row)
      regions.appendChild(section)
    }
-   panel.appendChild(regions)
-   panel.appendChild(favorBanks(value, options))
-   panel.appendChild(sharedBank(value, options))
+   // The shared bank is a column beside the regions, not a row under them:
+   // the map pane is wider than it is tall, so the map fits by its height.
+   val layout = element("div", "world-layout")
+   val main = element("div", "world-main")
+   main.appendChild(regions)
+   main.appendChild(favorBanks(value, options))
+   layout.appendChild(main)
+   layout.appendChild(sharedBank(value, options))
+   panel.appendChild(layout)
    panel
 
  private[frontend] final case class RoundSegment(path: String, labelX: Double,

@@ -44,6 +44,19 @@ class PanelPlacementSuite extends munit.FunSuite:
       ".shared-bank .oathkeeper-status").map(_.textContent),
       Some("Oathkeeper of the People · Oathkeeper: Blue"))
 
+  /** Beside the regions rather than under them: the map pane is wider than
+    * it is tall, so a column costs nothing at fit and a row below costs the
+    * whole map's scale.
+    */
+  test("the shared bank stands beside the regions and their favor banks"):
+    val layout = Dom.firstMatch(world(projection()), ".world-layout")
+      .getOrElse(fail("no world layout"))
+    val columns = (0 until layout.children.length).map(layout.children(_))
+    assertEquals(columns.map(_.getAttribute("class")), Vector("world-main", "shared-bank"))
+    val main = columns.head
+    assertEquals((0 until main.children.length).map(main.children(_).getAttribute("class")),
+      Vector("regions", "favor-banks"))
+
   test("the usurper notice sits under the round tracker, at the projected round"):
     val round4 = projection(trackState =
       Some(tracks.copy(usurperLimited = true, limiterRound = 4)))
