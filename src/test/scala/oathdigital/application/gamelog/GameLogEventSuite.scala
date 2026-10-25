@@ -36,8 +36,11 @@ class GameLogEventSuite extends munit.FunSuite:
     val peaks = presentation.siteLabel(CatalogNames.site("Broken Peaks"))
     val moves = format(warbandsMoved, None)
       .filter(entry => text(entry).startsWith("Moved "))
-    assertEquals(texts(moves), Vector(s"Moved 2 warbands to $peaks",
-      s"Moved 1 warband from $peaks"))
+    assertEquals(texts(moves), Vector(
+      s"Moved 2 warbands from board to $peaks",
+      s"Moved 1 warband from $peaks to board"))
+    assert(!format(warbandsMoved, None).exists(entry =>
+      text(entry).startsWith("Chose ")), "the move line tells the direction")
     assert(moves.forall(_.kind == LogKind.Action), moves)
     assertEquals(moves.map(_.section.map(_.action)),
       Vector.fill(2)(Some("move-warbands")))

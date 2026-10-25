@@ -435,7 +435,7 @@ class GameLogNoteLinesSuite extends munit.FunSuite:
       assert(all(drew).endsWith(" from the world deck."), all(drew))
       assertEquals(shown(drew).kind, LogKind.Action)
       assert(all(drew + 1).startsWith("Played "), all)
-      assert(all(drew + 1).endsWith(" as an adviser"), all)
+      assert(all(drew + 1).endsWith(" as a facedown adviser"), all)
       assert(!all.drop(drew).exists(_.startsWith("Used ")), all)
       val named = shown(drew).spans.exists {
         case LogSpan.Card(id, _) => id == vision.value

@@ -138,13 +138,13 @@ class GameLogActionLineSuite extends munit.FunSuite:
     val all = lines(oracle("revealed-vision", PlayedAs.Faceup), None)
     assert(all.exists(line => line.startsWith("Revealed ") &&
       line.contains("Vision")), all)
-    assert(!all.exists(_.endsWith(" as an adviser")), all)
+    assert(!all.exists(_.endsWith(" adviser")), all)
     assertEquals(all.count(_.startsWith("Revealed ")), 1, all)
 
   test("Play Facedown Adviser: a card placed as an adviser or at the site"):
     val adviser = facedownAdviser("placed-adviser", Some(PlayedAs.Faceup))
     assert(lines(adviser, None).exists(line => line.startsWith("Played ") &&
-      line.endsWith(" as an adviser")), lines(adviser, None))
+      line.endsWith(" as a faceup adviser")), lines(adviser, None))
     val site = facedownAdviser("placed-site", Some(PlayedAs.AtSite))
     assert(lines(site, None).exists(line => "^Played .+ to .+$".r.matches(line)),
       lines(site, None))

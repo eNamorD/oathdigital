@@ -2,4 +2,4 @@
 0.1 turn 0 | [player:p1|p1]'s turn
 0.2 phase 0 | Act
 7.0 action 1 use-power:denizen.oracle@4 | [card:160|Oracle]: [player:p1|p1] drew a Vision from the world deck.
-12.0 action 1 use-power:denizen.oracle@4 | Played a Vision as an adviser
+12.0 action 1 use-power:denizen.oracle@4 | Played a Vision as a facedown adviser

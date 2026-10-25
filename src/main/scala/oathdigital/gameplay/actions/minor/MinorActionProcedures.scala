@@ -47,16 +47,16 @@ object MinorActionProcedures:
   def revealKeys: Vector[NoteKey] = revealNotes.declared
 
   private val moveNotes = NoteSet(ProcedureNotes.id(ActionRef.MoveWarbands))
-  /** "Moved 2 warbands to Broken Peaks". */
+  /** "Moved 2 warbands from board to Broken Peaks". */
   val movedToSite: NoteKey = moveNotes.key("moved-to-site", Vector(
     NotePart.Text("Moved "), NotePart.Arg(0), NotePart.Text(" "),
-    NotePart.Plural(0, "warband", "warbands"), NotePart.Text(" to "),
-    NotePart.Arg(1)))
-  /** "Moved 1 warband from Broken Peaks". */
+    NotePart.Plural(0, "warband", "warbands"),
+    NotePart.Text(" from board to "), NotePart.Arg(1)))
+  /** "Moved 1 warband from Broken Peaks to board". */
   val movedFromSite: NoteKey = moveNotes.key("moved-from-site", Vector(
     NotePart.Text("Moved "), NotePart.Arg(0), NotePart.Text(" "),
     NotePart.Plural(0, "warband", "warbands"), NotePart.Text(" from "),
-    NotePart.Arg(1)))
+    NotePart.Arg(1), NotePart.Text(" to board")))
   def moveKeys: Vector[NoteKey] = moveNotes.declared
 
   val buildPeek: Build = (_, ready, actor, args) =>

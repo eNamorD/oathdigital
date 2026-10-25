@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.actions.minor.MinorActionProcedures
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -258,10 +259,11 @@ private[gamelog] final class ProcedureLogs(starts: StartLines,
     // the relic, but the pick is a question the reader saw asked.
     case ActionRef.RevealOwnedRelic => ProcedureLog(tag = None,
       lines = ActionLineSource.Notes())
-    // The direction pick keeps its own "Chose ..." line, as the relic pick
-    // above does.
+    // The move line names both ends, so it tells the direction pick. Two
+    // keys word it, so no single key tells the decision.
     case ActionRef.MoveWarbands => ProcedureLog(tag = None,
-      lines = ActionLineSource.Notes())
+      lines = ActionLineSource.Notes(),
+      narrated = Vector(Told(MinorActionProcedures.directionDecisionId)))
     // A power that plays a card as if searched (Oracle) posts where the card
     // went, as a Search does, and tells the same card-play decisions.
     case ActionRef.UsePower(power) => ProcedureLog(tag = None,

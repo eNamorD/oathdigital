@@ -118,5 +118,5 @@ class WanderingFlameMoveSuite extends munit.FunSuite:
       use(holdingFlameWithSiteSecrets("Broken Peaks"), power,
       darkestSecretOption))
     assertEquals(NoteText.said(power, done.events), Vector(NoteText.Said(
-      NoteKey.Used, s"${actor.value} placed at ${brokenPeaks.value}.",
+      NoteKey.Used, s"${actor.value} moved to ${brokenPeaks.value}.",
       covers = false)))
