@@ -976,13 +976,17 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   margin: 0; padding: 6px 12px; border: 0; border-right: 1px solid #4a4032;
   border-radius: 0; font-size: .82rem; column-gap: 12px; align-items: start;
   grid-template-columns: minmax(8.5rem, 17rem) minmax(7.5rem, 1fr);
-  grid-template-rows: auto auto auto; }
+  grid-template-rows: auto; }
 .game-table .player-board > * { grid-column: 1; }
-.game-table .player-board > .board-cards { grid-column: 2; grid-row: 1 / span 3;
+.game-table .player-board > .board-cards { grid-column: 2; grid-row: 1;
   margin: 0; padding-bottom: 3px; flex-wrap: nowrap; overflow-x: auto;
   overflow-y: hidden; scrollbar-width: thin; }
 .game-table .player-board-active { outline: 1px dashed #c8b48b; outline-offset: -2px;
   background: #29251d; }
+/* The block that stands for the player when a decision picks one. The
+   padding is taken back by the margin, so the ring gets room around the text
+   without moving anything when it appears. */
+.player-summary { margin: -4px -6px; padding: 4px 6px; border-radius: 7px; }
 .player-board h3 { font-size: 1rem; margin: 0 0 4px; }
 .player-board p { margin: 5px 0; }
 .player-identity { display: flex; align-items: baseline; flex-wrap: wrap;
