@@ -44,17 +44,22 @@ private[frontend] object WorldBoardRenderer:
      if value.activeParticipantId.contains(player.playerId) then
        section.classList.add("player-board-active")
        section.setAttribute("aria-label", s"${player.displayName}, active player")
+     // Everything left of the cards stands for the player, so a decision
+     // that picks a player lights the whole block rather than the name
+     // alone. A control inside it (Supply, a title, the Vision) still
+     // answers for itself.
+     val playerSummary = element("div", "player-summary")
+     options.decorate(playerSummary,
+       Vector(BoardOptionViews.key("player", player.playerId)))
+     section.appendChild(playerSummary)
      // One line for who and what they hold: the pane is a strip across the
      // top of the table, so every line it spends is a line of card.
      val identity = element("h3", "player-identity")
-     val name = playerReference(value, player.playerId)
-     options.decorate(name,
-       Vector(BoardOptionViews.key("player", player.playerId)))
-     identity.appendChild(name)
+     identity.appendChild(playerReference(value, player.playerId))
      identity.appendChild(text("span", "player-role", player.role))
      if value.tracks.exists(_.firstPlayerId == player.playerId) then
        identity.appendChild(text("span", "player-first-badge", "First Player"))
-     section.appendChild(identity)
+     playerSummary.appendChild(identity)
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
      val resources = element("span", "resources")
      resources.appendChild(text("span", "resource", s"Warbands ${board.warbands}"))
@@ -106,7 +111,7 @@ private[frontend] object WorldBoardRenderer:
        spot.setAttribute("aria-label", "Empty revealed Vision spot")
        options.control(spot, visionKey, None)
      }).foreach(slots.appendChild)
-     if slots.childNodes.length > 0 then section.appendChild(slots)
+     if slots.childNodes.length > 0 then playerSummary.appendChild(slots)
 
      // One row, no headings: two labelled rows cost more height than the pane
      // has, and a relic's square box already says which card is which.

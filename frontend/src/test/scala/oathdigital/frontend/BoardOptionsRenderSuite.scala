@@ -94,11 +94,20 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     click(one(world(shown.options), ".site-pawns .pawn"))
     assertEquals(shown.picks, Vector(redPlayer))
 
-  test("the name in a player board's header picks the player"):
+  test("everything left of a player board's cards picks the player"):
     val shown = recording(available(redPlayer))
     val boards = WorldBoardRenderer.playerBoards(table, "red", shown.options)
-    click(one(boards, ".player-identity .player-ref"))
+    val summary = one(boards, ".player-summary")
+    assertEquals(summary.getAttribute("data-option-ref"), "player:red")
+    assert(summary.querySelector(".player-identity") != null)
+    click(one(summary, ".player-role"))
     assertEquals(shown.picks, Vector(redPlayer))
+
+  test("Supply inside a player option opens its rule and does not pick"):
+    val shown = recording(available(redPlayer))
+    val boards = WorldBoardRenderer.playerBoards(table, "red", shown.options)
+    click(one(boards, ".player-summary .supply-open"))
+    assertEquals(shown.picks, Vector.empty)
 
   test("a board's adviser and relic answer to their slots and their cards"):
     val bySlot = option("adviser-slot", "red:0")
@@ -158,7 +167,7 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     try
       one(root, ".site-pawns .pawn").dispatchEvent(new dom.MouseEvent(
         "mouseenter", js.Dynamic.literal().asInstanceOf[dom.MouseEventInit]))
-      val chip = one(boards, ".player-identity .player-ref")
+      val chip = one(boards, ".player-summary")
       assert(chip.classList.contains("board-option-hover"))
       one(root, ".site-pawns .pawn").dispatchEvent(new dom.MouseEvent(
         "mouseleave", js.Dynamic.literal().asInstanceOf[dom.MouseEventInit]))
