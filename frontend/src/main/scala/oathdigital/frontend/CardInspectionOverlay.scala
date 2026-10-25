@@ -66,6 +66,14 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     body.appendChild(panel)
     open(origin)
 
+  /** A board's Supply at Rest: the bank above the track, as the physical
+    * board prints it, and what the next Rest returns under it. */
+  def showSupply(panel: SupplyAtRest.Panel, origin: dom.html.Element): Unit =
+    showText(SupplyAtRest.title, Vector(panel.bank), origin)
+    val details = body.querySelector(".card-overlay-details")
+    details.appendChild(SupplyTracker.render(panel.track))
+    RulesTextRenderer.powers(panel.rest).foreach(details.appendChild)
+
   /** A power's printed text, and below it the viewer's consent preferences
     * when they rule it (ruling 16). */
   def showPower(title: String, lines: Vector[String],

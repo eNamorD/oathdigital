@@ -29,9 +29,6 @@ class PlayerBoardSuite extends munit.FunSuite:
           playerBoards = Vector(playerBoard), supplyMaximum = supplyMaximum),
       "red")
 
-  /** A Supply-at-Rest inspection the pane asked the overlay to open. */
-  private final case class Opened(title: String, lines: Vector[String])
-
   test("name, role and resources share one line, and the location is gone"):
     val node = render(board.standingAt("site:woods"), supplyMaximum = 7)
     val identity = firstMatch(node, ".player-identity")
@@ -237,6 +234,8 @@ class PlayerBoardSuite extends munit.FunSuite:
     var opened = Vector.empty[String]
     CardInspection.onOpen:
       case CardInspection.Request.Text(title, _, _) => opened = opened :+ title
+      case CardInspection.Request.Supply(_, _) =>
+        opened = opened :+ SupplyAtRest.title
       case CardInspection.Request.Card(card, _) => opened = opened :+ card.name
       case CardInspection.Request.Cards(title, _, _) => opened = opened :+ title
       case CardInspection.Request.Confirm(question, _, _) =>
@@ -269,10 +268,9 @@ class PlayerBoardSuite extends munit.FunSuite:
       Vector("Vision of Faith"))
 
   test("Supply is a button that opens Supply at Rest for that board"):
-    var opened = Vector.empty[Opened]
+    var opened = Vector.empty[SupplyAtRest.Panel]
     CardInspection.onOpen:
-      case CardInspection.Request.Text(title, lines, _) =>
-        opened :+= Opened(title, lines)
+      case CardInspection.Request.Supply(panel, _) => opened :+= panel
       case _ => ()
     // Red has 7 Supply against a track that holds 7.
     val sevenOfSeven = board.withSupply(7)
@@ -282,9 +280,27 @@ class PlayerBoardSuite extends munit.FunSuite:
     assertEquals(supply.textContent, "Supply 7/7")
     supply.click()
     CardInspection.clear()
-    assertEquals(opened.map(_.title), Vector("Supply at Rest"))
-    assert(opened.head.lines.head.startsWith("Warbands in bag: "),
-      opened.head.lines.head)
+    assertEquals(opened.map(_.track.supply), Vector(7))
+    assertEquals(opened.map(_.track.color), Vector(PlayerColor.Red))
+
+  test("the Supply note names the bank and the Supply the next Rest gains"):
+    val banked = board.copy(bankedWarbands = 5, restSupplyBase = 5)
+    val supply = firstMatch(render(banked, supplyMaximum = 7),
+      ".resources .supply-open").getOrElse(fail("no Supply button"))
+    assertEquals(supply.getAttribute("data-tip"),
+      "Warbands in bank: 5\nSupply gain at Rest: +5")
+
+  /** The viewer's own board is "your" board; any other is "their". */
+  test("the warbands note says where every warband is, one place a line"):
+    // Red has 6 warbands on their board, 3 on sites and 5 in their bank.
+    val spread = board.withWarbands(6)
+      .copy(siteWarbands = 3, bankedWarbands = 5)
+    val warbands = firstMatch(render(spread, supplyMaximum = 7),
+      ".resources .resource").getOrElse(fail("no warbands"))
+    assertEquals(warbands.getAttribute("data-tip"),
+      "Warbands on your board: 6\nWarbands on sites: 3\nWarbands in bank: 5")
+    assertEquals(WorldBoardRenderer.warbandsNote(spread, own = false).linesIterator
+      .next(), "Warbands on their board: 6")
 
   test("a held banner names what it holds: favor or secrets, not resources"):
     val banners = Vector(
