@@ -46,10 +46,10 @@ object PhaseMenu:
       val heading: String):
     case Wake extends Menu(Phase.Wake, TriggeredProcedureRef.WakeMenu,
       PhaseTransitionRef.EndWake, DecisionOptionRef.Button("end-wake"),
-      "End Wake", "Wake: take wealth, use a power or end Wake")
+      "End Wake", "Use a Wake power or end the phase")
     case Rest extends Menu(Phase.Rest, TriggeredProcedureRef.RestMenu,
       PhaseTransitionRef.FinishRest, DecisionOptionRef.Button("finish-rest"),
-      "Finish Rest", "Rest: use a power or finish Rest")
+      "Finish Rest", "Use a Rest power or finish your turn")
     case Act extends Menu(Phase.Act, TriggeredProcedureRef.ActMenu,
       PhaseTransitionRef.BeginRest, DecisionOptionRef.Button("end-act"),
       "End Act and Rest", "Act: take an action, use a power or rest")
@@ -88,7 +88,8 @@ object PhaseMenu:
   /** The menu's options, in order: Take Wealth's two resources in Wake, the
     * Act actions in Act, each phase power's source, then the ending. A
     * source that offers two powers of one phase lists a button for each,
-    * named for its power. */
+    * named for its power. A resource Take Wealth cannot take now is left
+    * out rather than shown with its reason. */
   def offers(menu: Menu, catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, phasePowers: PhasePowers, powers: WalkerPowers)
       : Vector[Offered] =
@@ -113,7 +114,8 @@ object PhaseMenu:
           s"Take Wealth: 1 ${resource.key}"),
         // Take Wealth is neither a major nor a minor action: it is what Wake
         // offers, so it belongs to no band of its own.
-        OptionGroup.Other))
+        OptionGroup.Other)).filter(offered =>
+          offered.option.available || offered.option.askable)
     val acting: Vector[Offered] =
       if menu != Menu.Act then Vector.empty
       else ActOffers.all.map(offer => offered(offer.procedure, offer.args,

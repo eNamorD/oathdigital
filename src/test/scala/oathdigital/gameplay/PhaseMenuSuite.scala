@@ -60,6 +60,13 @@ class PhaseMenuSuite extends munit.FunSuite:
   private def options(state: OathState): Vector[DecisionOption] =
     MenuPlay.options(state, catalog, walkerPowers, phasePowers)
 
+  private def heading(state: OathState): Option[String] =
+    MenuPlay.heading(state, catalog, walkerPowers, phasePowers)
+
+  /** Whether `options` lists either Take Wealth button. */
+  private def offersTakeWealth(options: Vector[DecisionOption]): Boolean =
+    options.exists(option => option.ref == favor || option.ref == secret)
+
   private def bandOf(option: DecisionOption): Option[OptionGroup] =
     option match
       case DecisionOption.Grouped(_, group) => Some(group)
@@ -71,14 +78,12 @@ class PhaseMenuSuite extends munit.FunSuite:
       (state, event) => state.flatMap(rules.evolve(_, event))))
 
   test("the Wake menu lists Take Wealth, the site's power, then End Wake, " +
-      "each with why it cannot start"):
+      "leaving out the wealth it cannot take"):
     // Ancient City's River moves a pawn only to another River, and none is
-    // in play, so the site is listed as a source with nothing to do.
+    // in play, so the site is listed as a source with nothing to do. With no
+    // secret at the site, there is no button to take one.
     assertEquals(options(waking.phaseMenuParked.state), Vector[DecisionOption](
       DecisionOption.Button(favor, "Take Wealth: 1 favor"),
-      DecisionOption.Unavailable(
-        DecisionOption.Button(secret, "Take Wealth: 1 secret"),
-        OptionReason.Written("No secret at your site")),
       DecisionOption.Unavailable(
         DecisionOption.Site(DecisionOptionRef.Site(ancientCity)),
         OptionReason.Written("Nothing to do now")),
@@ -99,23 +104,27 @@ class PhaseMenuSuite extends munit.FunSuite:
       taken.events)
     assertEquals(replayed(start, taken.events), taken.state)
 
-  test("an option shown unavailable is refused"):
+  test("the Wake menu asks for a Wake power or the end of the phase"):
+    assertEquals(heading(waking.phaseMenuParked.state),
+      Some("Use a Wake power or end the phase"))
+
+  test("the Rest menu asks for a Rest power or the end of the turn"):
+    assertEquals(heading(resting.phaseMenuParked.state),
+      Some("Use a Rest power or finish your turn"))
+
+  test("a Take Wealth option left out is refused"):
     assertEquals(MenuPlay.picked(rules, waking.phaseMenuParked.state, p1,
       secret).left.toOption, Some(Refusals.notOffered(PhaseMenu.decisionId)))
 
-  test("Take Wealth already used at this site says so"):
+  test("Take Wealth already used at this site is left out"):
     val used = spent(waking, TakeWealthLimit.useRef(ancientCity))
-    assertEquals(options(used.phaseMenuParked.state).head,
-      DecisionOption.Unavailable(
-        DecisionOption.Button(favor, "Take Wealth: 1 favor"),
-        OptionReason.Written("Already taken from this site this turn")))
+    val listed = options(used.phaseMenuParked.state)
+    assert(!offersTakeWealth(listed), listed)
 
-  test("an enemy pawn at the site says so"):
+  test("Take Wealth with an enemy pawn at the site is left out"):
     val shared = waking.pawn(p2, at = ancientCity)
-    assertEquals(options(shared.phaseMenuParked.state).head,
-      DecisionOption.Unavailable(
-        DecisionOption.Button(favor, "Take Wealth: 1 favor"),
-        OptionReason.Written("Another player's pawn is at your site")))
+    val listed = options(shared.phaseMenuParked.state)
+    assert(!offersTakeWealth(listed), listed)
 
   test("the Rest menu lists each REST power by its source, then Finish " +
       "Rest"):
@@ -172,7 +181,7 @@ class PhaseMenuSuite extends munit.FunSuite:
       "ending"):
     assertEquals(bandedOptions(waking.phaseMenuParked.state).map(bandOf),
       Vector[Option[OptionGroup]](Some(OptionGroup.Other),
-        Some(OptionGroup.Other), Some(OptionGroup.Power),
+        Some(OptionGroup.Power),
         Some(OptionGroup.Ending)))
 
   test("the Act menu bands each option as the rules print it"):

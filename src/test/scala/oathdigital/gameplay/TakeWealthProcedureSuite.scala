@@ -157,16 +157,16 @@ class TakeWealthProcedureSuite extends munit.FunSuite:
     }
 
   test("what the Wake menu offers is what the command accepts"):
-    // A site already taken from this turn, back in Wake to try it again.
+    // A site already taken from this turn, back in Wake to try it again. A
+    // resource the command would refuse is left out of the menu.
     val taken = Table.from(after(took(wake(favor = 2, secrets = 1))))
       .backInPhase(Phase.Wake).ready
     oneBoardPerTakeGate(taken).foreach { ready =>
       val offered = MenuPlay.options(Table.from(ready).phaseMenuParked.state,
         catalog, powers, PhasePowers.empty)
       WakeResource.all.foreach { resource =>
-        assertEquals(offered.find(_.ref == PhaseMenu.takeWealth(resource))
-          .map(_.available),
-          Some(take(ready, TakeWealthProcedure.selection(resource)).isRight),
+        assertEquals(offered.exists(_.ref == PhaseMenu.takeWealth(resource)),
+          take(ready, TakeWealthProcedure.selection(resource)).isRight,
           resource.key)
       }
     }
