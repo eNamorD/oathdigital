@@ -98,6 +98,14 @@ object MenuPlay:
       .collect { case one: DecisionQuery.ChooseOne => one.options }
       .getOrElse(Vector.empty)
 
+  /** The parked menu's heading, the line the panel shows above it. */
+  def heading(state: OathState, catalog: ExecutableCatalog,
+      walkerPowers: WalkerPowers, phasePowers: PhasePowers): Option[String] =
+    ParkedNode.of(state, catalog, walkerPowers, phasePowers).toOption.flatten
+      .collect { case ParkedNode.Decision(_, decide, _) => decide.query }
+      .collect { case one: DecisionQuery.ChooseOne => one.heading }
+      .flatten
+
   /** The parked menu's options as the panel receives them, each wrapped in
     * the band it is read in, with the production power catalogs. */
   def bandedOptions(state: OathState, catalog: ExecutableCatalog)
