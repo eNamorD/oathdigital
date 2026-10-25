@@ -12,13 +12,14 @@ import oathdigital.model.PlayerColor
   * the resource this figure counts, and one word may not name both.
   */
 private[frontend] object SupplyAtRest:
-  val title = "Supply at Rest"
+  val title = "Supply"
 
   private val citizen = "Citizens copy the Chancellor's Supply."
 
-  /** What an Exile's figure opens: the bank, the track, then the Rest. */
-  final case class Panel(bank: String, track: SupplyTracker.Track,
-      rest: String)
+  /** What an Exile's figure opens: the bank and, under it, where the rest
+    * of their warbands are; the track; then the Rest. */
+  final case class Panel(bank: String, elsewhere: String,
+      track: SupplyTracker.Track, rest: String)
 
   def isExile(role: String): Boolean = role.equalsIgnoreCase("exile")
 
@@ -31,13 +32,15 @@ private[frontend] object SupplyAtRest:
   /** A citizen's figure opens the one line that is their rule. */
   def citizenLines: Vector[String] = Vector(citizen)
 
+  /** `own` is the viewer's board, which is "your" board; any other is
+    * "their". */
   def panel(board: PlayerBoard, bands: Vector[SupplyBand], maximum: Int,
-      color: PlayerColor): Panel =
+      color: PlayerColor, own: Boolean): Panel =
     Panel(
-      s"Warbands in bank: ${board.bankedWarbands} " +
-        s"(${board.printedWarbands} printed, ${board.warbands} on board, " +
-        s"${board.siteWarbands} on sites).",
+      s"Warbands in bank: ${board.bankedWarbands}",
+      s"(${board.warbands} on ${if own then "your" else "their"} board, " +
+        s"${board.siteWarbands} on sites)",
       SupplyTracker.Track(bands, board.supply, board.bankedWarbands, maximum,
         color),
-      s"Next Rest: ${board.restSupplyBase} from the band, " +
-        s"plus unspent Supply, capped at $maximum.")
+      s"Supply gain at Rest: ${board.restSupplyBase} plus unspent Supply " +
+        s"(max $maximum)")

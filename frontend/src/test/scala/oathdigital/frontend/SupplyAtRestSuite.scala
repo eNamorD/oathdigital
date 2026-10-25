@@ -20,13 +20,18 @@ class SupplyAtRestSuite extends munit.FunSuite:
     assertEquals(SupplyAtRest.note("Citizen", board),
       "Warbands in bank: 5\nCitizens copy the Chancellor's Supply.")
 
-  test("an Exile's panel reads the bank, the track, and the Rest"):
-    assertEquals(SupplyAtRest.panel(board, bands, 7, PlayerColor.Red),
-      SupplyAtRest.Panel(
-        "Warbands in bank: 5 (14 printed, 6 on board, 3 on sites).",
+  test("an Exile's panel reads the bank, where the rest are, the track, and the Rest"):
+    assertEquals(SupplyAtRest.panel(board, bands, 7, PlayerColor.Red,
+      own = true), SupplyAtRest.Panel(
+        "Warbands in bank: 5",
+        "(6 on your board, 3 on sites)",
         SupplyTracker.Track(bands, supply = 5, banked = 5, maximum = 7,
           PlayerColor.Red),
-        "Next Rest: 5 from the band, plus unspent Supply, capped at 7."))
+        "Supply gain at Rest: 5 plus unspent Supply (max 7)"))
+
+  test("another player's panel says their board"):
+    assertEquals(SupplyAtRest.panel(board, bands, 7, PlayerColor.Red,
+      own = false).elsewhere, "(6 on their board, 3 on sites)")
 
   test("only an Exile reads the track"):
     assert(SupplyAtRest.isExile("Exile"))

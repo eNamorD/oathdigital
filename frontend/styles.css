@@ -747,10 +747,11 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .supply-open { margin: 0 -0.35em; padding: 0 0.35em; border-radius: 999px; }
 .pile-open:disabled { cursor: default; }
 /* The Supply track (SupplyTracker), as the physical board prints it: dark
-   spaces on a tan rail, the bands in Georgia over the warband. The current
-   band is the ringed space; the marker sits on its space's foot, so the band
-   printed there stays readable. The columns shrink together on a narrow
-   window rather than wrap, as a track that wraps no longer reads as one. */
+   spaces on a tan rail, the bands in Georgia over the warband banner. The
+   current band is the ringed space. The marker covers its space, as the
+   physical one does, and what is printed there sits on it in the space's
+   dark. The columns shrink together on a narrow window rather than wrap, as
+   a track that wraps no longer reads as one. */
 .supply-track { display: grid; grid-auto-flow: column;
   grid-auto-columns: minmax(0, 3.4em); gap: 0.3em; width: fit-content;
   max-width: 100%; box-sizing: border-box; margin: 0.4em 0 1.1em;
@@ -767,11 +768,12 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .supply-range-figures { font-size: 1.1em; font-weight: 700;
   white-space: nowrap; }
 .supply-range-to { margin: 0 0.15em; font-size: 0.6em; font-style: italic; }
-.supply-range .token-glyph { width: 1.15em; height: 1.15em;
-  color: var(--cream-bright); }
-.supply-marker { position: absolute; bottom: -0.45em; left: 50%;
-  width: 1.3em; height: 1.3em; margin-left: -0.65em; box-sizing: border-box;
-  border: 2px solid var(--base); border-radius: 50%; }
+.supply-range .token-glyph { width: 1.15em; height: 1.15em; color: inherit; }
+.supply-space > :not(.supply-marker) { position: relative; }
+.supply-marker { position: absolute; inset: 0; box-sizing: border-box;
+  border-radius: 50%; }
+.supply-space-marked { color: var(--base); }
+.supply-space-marked:has(> .supply-marker-black) { color: var(--cream-bright); }
 .supply-marker-purple { background: var(--player-purple); }
 .supply-marker-red { background: var(--player-red); }
 .supply-marker-blue { background: var(--player-blue); }
@@ -779,7 +781,7 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .supply-marker-white { background: #ffffff; }
 /* Black on the dark space needs the light rim the black pill uses. */
 .supply-marker-black { background: #111111;
-  border-color: var(--player-black-pill); }
+  border: 2px solid var(--player-black-pill); }
 .supply-marker-pink { background: var(--player-pink); }
 .supply-marker-brown { background: var(--player-brown); }
 /* A deck drawn as a card (the world deck, a region's discard): the top

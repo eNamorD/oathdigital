@@ -66,13 +66,18 @@ private[frontend] final class CardInspectionOverlay(root: dom.Element):
     body.appendChild(panel)
     open(origin)
 
-  /** A board's Supply at Rest: the bank above the track, as the physical
-    * board prints it, and what the next Rest returns under it. */
+  /** A board's Supply: the bank above the track, as the physical board
+    * prints it, with where the rest of the warbands are on the bank's next
+    * line, and what the next Rest returns under the track. */
   def showSupply(panel: SupplyAtRest.Panel, origin: dom.html.Element): Unit =
-    showText(SupplyAtRest.title, Vector(panel.bank), origin)
+    showText(SupplyAtRest.title, Vector.empty, origin)
     val details = body.querySelector(".card-overlay-details")
+    val bank = text("p", "rules-power", panel.bank)
+    bank.appendChild(dom.document.createElement("br"))
+    bank.appendChild(dom.document.createTextNode(panel.elsewhere))
+    details.appendChild(bank)
     details.appendChild(SupplyTracker.render(panel.track))
-    RulesTextRenderer.powers(panel.rest).foreach(details.appendChild)
+    details.appendChild(text("p", "rules-power", panel.rest))
 
   /** A power's printed text, and below it the viewer's consent preferences
     * when they rule it (ruling 16). */

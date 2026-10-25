@@ -267,7 +267,7 @@ class PlayerBoardSuite extends munit.FunSuite:
         .getOrElse(fail("no vision pill"))).click()),
       Vector("Vision of Faith"))
 
-  test("Supply is a button that opens Supply at Rest for that board"):
+  test("Supply is a button that opens that board's Supply"):
     var opened = Vector.empty[SupplyAtRest.Panel]
     CardInspection.onOpen:
       case CardInspection.Request.Supply(panel, _) => opened :+= panel
@@ -282,6 +282,7 @@ class PlayerBoardSuite extends munit.FunSuite:
     CardInspection.clear()
     assertEquals(opened.map(_.track.supply), Vector(7))
     assertEquals(opened.map(_.track.color), Vector(PlayerColor.Red))
+    assertEquals(opened.map(_.elsewhere), Vector("(0 on your board, 0 on sites)"))
 
   test("the Supply note names the bank and the Supply the next Rest gains"):
     val banked = board.copy(bankedWarbands = 5, restSupplyBase = 5)
