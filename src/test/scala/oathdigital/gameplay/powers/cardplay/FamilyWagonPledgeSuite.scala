@@ -70,7 +70,7 @@ class FamilyWagonPledgeSuite extends munit.FunSuite:
     // (procedures journal their own notes, slice 3). Exactly once, in the
     // resuming command.
     assertEquals(playLines(played.events), Vector.empty)
-    assertEquals(playLines(done.events), Vector("played-as-adviser"))
+    assertEquals(playLines(done.events), Vector("played-faceup-adviser"))
 
   test("with no Nomad beside Pledge, nothing is asked and every other " +
       "adviser is buried at once"):
@@ -78,7 +78,7 @@ class FamilyWagonPledgeSuite extends munit.FunSuite:
     assertEquals(Look(SearchFixture.after(played)).advisers(actor),
       Vector[CardId](wagon))
     assertEquals(wagonLines(played.events), Vector("buried"))
-    assertEquals(playLines(played.events), Vector("played-as-adviser"))
+    assertEquals(playLines(played.events), Vector("played-faceup-adviser"))
 
   test("the heading speaks to the holder, or names them as its holder"):
     assertEquals(SuitOnlyAdvisers.pledgeHeading("Family Wagon", Suit.Nomad,

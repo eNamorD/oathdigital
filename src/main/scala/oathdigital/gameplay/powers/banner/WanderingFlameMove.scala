@@ -19,7 +19,10 @@ case object WanderingFlameMove extends PaidAction(
     PowerId("banner.darkest-secret.wandering-flame.move"), Cost.free):
   val decisionId: String = "power.wandering-flame.site"
   private val notes = NoteSet(id)
-  val placed: NoteKey = PawnMoves.placedKey(notes, NoteKey.Used)
+  /** "{player} moved to {site}.": the pawn goes by a plain `Move`, so the
+    * line says moved, not travelled. */
+  val placed: NoteKey = notes.key(NoteKey.Used, Vector(NotePart.Arg(0),
+    NotePart.Text(" moved to "), NotePart.Arg(1), NotePart.Text(".")))
   override def noteKeys: Vector[NoteKey] = notes.declared
   override def buttonName: Option[String] =
     BannerFacePowers.printed(id).map(_._1)

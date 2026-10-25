@@ -230,7 +230,8 @@ class ProcedureNoteLinesSuite extends munit.FunSuite:
   test("every card-play line posts at Action, under whichever procedure"):
     Vector(CardPlayProcedure.discardedTo, CardPlayProcedure.discarded,
       CardPlayProcedure.playedAtSite, CardPlayProcedure.revealedVision,
-      CardPlayProcedure.playedAsAdviser).foreach(key =>
+      CardPlayProcedure.playedFaceupAdviser,
+      CardPlayProcedure.playedFacedownAdviser).foreach(key =>
         assertEquals(kindOf(ActionRef.PlayFacedownAdviser, key),
           LogKind.Action, key.name))
 

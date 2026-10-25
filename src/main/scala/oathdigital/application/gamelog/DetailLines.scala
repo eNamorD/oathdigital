@@ -169,7 +169,8 @@ private[gamelog] final class DetailLines(words: LogWords,
 
   /** The card Card Play's last placement answer played `way`, which its
     * action line already tells: "Discarded {card}" for the discard, and
-    * "Played {card} as an adviser" for a facedown adviser turned faceup. */
+    * "Played {card} as a faceup adviser" for a facedown adviser turned
+    * faceup. */
   private def placement(journal: LogJournal, run: Run, at: Int, way: PlayedAs)
       : Option[CardId] =
     journal.answers(run, at).reverse.collectFirst {

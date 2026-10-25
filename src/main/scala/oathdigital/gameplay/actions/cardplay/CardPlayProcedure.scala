@@ -88,10 +88,14 @@ object CardPlayProcedure:
     * revealed Vision slot, not an adviser's. */
   val revealedVision: NoteKey = notes.key("revealed-vision", Vector(
     NotePart.Text("Revealed "), NotePart.Arg(0)))
-  /** "Played Family Heirloom as an adviser". */
-  val playedAsAdviser: NoteKey = notes.key("played-as-adviser", Vector(
-    NotePart.Text("Played "), NotePart.Arg(0),
-    NotePart.Text(" as an adviser")))
+  /** "Played Family Heirloom as a faceup adviser". */
+  val playedFaceupAdviser: NoteKey = notes.key("played-faceup-adviser",
+    Vector(NotePart.Text("Played "), NotePart.Arg(0),
+      NotePart.Text(" as a faceup adviser")))
+  /** "Played Family Heirloom as a facedown adviser". */
+  val playedFacedownAdviser: NoteKey = notes.key("played-facedown-adviser",
+    Vector(NotePart.Text("Played "), NotePart.Arg(0),
+      NotePart.Text(" as a facedown adviser")))
   def noteKeys: Vector[NoteKey] = notes.declared
 
   /** Where the card went. The placement is the slot the player answered, so
@@ -109,7 +113,10 @@ object CardPlayProcedure:
       playedAtSite.sourceless(NoteArg.Card(card), NoteArg.Site(site)))
     case PlayedAs.Faceup if card.isInstanceOf[VisionId] =>
       Some(revealedVision.sourceless(NoteArg.Card(card)))
-    case _ => Some(playedAsAdviser.sourceless(NoteArg.Card(card)))
+    case PlayedAs.Faceup =>
+      Some(playedFaceupAdviser.sourceless(NoteArg.Card(card)))
+    case PlayedAs.Facedown =>
+      Some(playedFacedownAdviser.sourceless(NoteArg.Card(card)))
   }
 
   /** The regional pile `card` lies in, when it lies in one. */

@@ -59,7 +59,7 @@ class GameLogDetailSuite extends munit.FunSuite:
   test("a facedown adviser played faceup is told once, by the action line"):
     val all = lines(facedownAdviser("revealed-adviser", Some(PlayedAs.Faceup)))
     assert(all.exists(line => line.startsWith("Played ") &&
-      line.endsWith(" as an adviser")), all)
+      line.endsWith(" as a faceup adviser")), all)
     assert(!all.exists(_.startsWith("Revealed ")), all)
 
   test("the placement discard is told once, by the action line"):
