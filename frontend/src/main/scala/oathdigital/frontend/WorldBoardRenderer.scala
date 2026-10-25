@@ -83,7 +83,8 @@ private[frontend] object WorldBoardRenderer:
      supply.onclick = _ =>
        if SupplyAtRest.isExile(player.role) then
          CardInspection.openSupply(SupplyAtRest.panel(board,
-           value.supplyBands, value.supplyMaximum, player.color), supply)
+           value.supplyBands, value.supplyMaximum, player.color,
+           own = player.playerId == playerId), supply)
        else CardInspection.openText(SupplyAtRest.title,
          SupplyAtRest.citizenLines, supply)
      resources.appendChild(supply)

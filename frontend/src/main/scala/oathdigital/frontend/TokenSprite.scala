@@ -71,10 +71,12 @@ private[frontend] object TokenSprite:
       "M12 1 16 6v8H8V6zm0 3.4L10 7v5h4V7zM4.5 14h15v4h-15z" +
         "m1.8 1.4v1.2h11.4v-1.2zM10 18h4v5h-4zm1.4 1.2v2.6h1.2v-2.6z"),
     // Not a catalog token: the Supply track prints it under each band, as
-    // the physical board does. A keep, crenellated, on a wide foot.
+    // the physical board does. The warband's banner: a cloth hung from its
+    // top edge, flaring a little, its foot cut in an uneven swallowtail, and
+    // the ring of its device cut out of it.
     ("warband", "warband",
-      "M6 3h3v2h2V3h2v2h2V3h3v5l-2 2v8l3 2v2H3v-2l3-2v-8L4 8V3z" +
-        "M10.5 12h3v6h-3z")
+      "M6 2h12l1.6 19.5-7-5.5-7.2 5.5z" +
+        "M12 5.7a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8z")
   )
 
   val ids: Vector[String] = glyphs.map(_._1)

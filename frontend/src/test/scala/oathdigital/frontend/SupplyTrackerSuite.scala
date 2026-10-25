@@ -39,10 +39,13 @@ class SupplyTrackerSuite extends munit.FunSuite:
     assertEquals(spaces.size - 1 - at, 2)
     assertEquals(all(redTrack(supply = 2, banked = 5), ".supply-marker").size, 1)
 
-  test("the marker wears the board's colour"):
-    val marker = firstMatch(redTrack(supply = 5, banked = 5), ".supply-marker")
-      .getOrElse(fail("no marker"))
-    assert(marker.classList.contains("supply-marker-red"))
+  test("the marker wears the board's colour, under what its space prints"):
+    val spaces = all(redTrack(supply = 5, banked = 5), ".supply-space")
+    val marked = all(spaces(2), ":scope > *")
+    assertEquals(marked.map(_.getAttribute("class")),
+      Vector("supply-marker supply-marker-red", "supply-range"))
+    assertEquals(spaces.map(_.classList.contains("supply-space-marked")),
+      Vector(false, false, true, false, false, false, false, false))
 
   test("a full track puts the marker on the star; an empty one on the last space"):
     val full = all(redTrack(supply = 7, banked = 5), ".supply-space")

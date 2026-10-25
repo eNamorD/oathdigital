@@ -28,15 +28,18 @@ private[frontend] object SupplyTracker:
       val marked = supply == track.supply
       val space = element("li", "supply-space")
       if current then space.classList.add("supply-space-current")
+      if marked then space.classList.add("supply-space-marked")
       space.setAttribute("aria-label", (Vector(s"Supply $supply") ++
         band.map(value => s"${spokenRange(value)} warbands in bank") ++
         Option.when(current)("current band") ++
         Option.when(marked)("marker")).mkString(", "))
       // The space's name says all of it, so what it draws is not read twice.
-      (Option.when(supply == track.maximum)(text("span", "supply-star", "★")) ++
-        band.map(printedRange) ++
-        Option.when(marked)(element("span",
-          s"supply-marker supply-marker-${track.color.key}")))
+      // The marker covers the space as the physical one does; drawn first,
+      // so what is printed there stays on top of it.
+      (Option.when(marked)(element("span",
+          s"supply-marker supply-marker-${track.color.key}")) ++
+        Option.when(supply == track.maximum)(text("span", "supply-star", "★")) ++
+        band.map(printedRange))
         .foreach { part =>
           part.setAttribute("aria-hidden", "true")
           space.appendChild(part)
@@ -51,7 +54,7 @@ private[frontend] object SupplyTracker:
   private def spokenRange(band: SupplyBand): String =
     band.to.fold(s"${band.from} or more")(to => s"${band.from} to $to")
 
-  /** High to low, as printed: "9+", "8 to 4", over the warband glyph. */
+  /** High to low, as printed: "9+", "8 to 4", over the warband banner. */
   private def printedRange(band: SupplyBand): dom.Element =
     val label = element("span", "supply-range")
     val figures = element("span", "supply-range-figures")
