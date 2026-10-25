@@ -135,6 +135,8 @@ private[frontend] final class GameTableShell(mount: dom.Element,
     case CardInspection.Request.Card(card, origin) => inspector.show(card, origin)
     case CardInspection.Request.Text(title, lines, origin) =>
       inspector.showText(title, lines, origin)
+    case CardInspection.Request.Supply(panel, origin) =>
+      inspector.showSupply(panel, origin)
     case CardInspection.Request.Cards(title, cards, origin) =>
       inspector.showCards(title, cards, origin)
     case CardInspection.Request.Confirm(question, confirm, origin) =>

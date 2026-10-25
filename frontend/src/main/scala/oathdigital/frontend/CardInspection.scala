@@ -20,6 +20,9 @@ private[frontend] object CardInspection:
         extends Request
     final case class Text(title: String, lines: Vector[String],
         origin: dom.html.Element) extends Request
+    /** A board's Supply: the bank, the Supply track, then the Rest. */
+    final case class Supply(panel: SupplyAtRest.Panel,
+        origin: dom.html.Element) extends Request
     /** Cards in order, as a log line's card list opens them (N5). */
     final case class Cards(title: String, cards: Vector[CardDetails],
         origin: dom.html.Element) extends Request
@@ -53,6 +56,9 @@ private[frontend] object CardInspection:
   def openText(title: String, lines: Vector[String],
       origin: dom.html.Element): Unit =
     handler.foreach(_(Request.Text(title, lines, origin)))
+
+  def openSupply(panel: SupplyAtRest.Panel, origin: dom.html.Element): Unit =
+    handler.foreach(_(Request.Supply(panel, origin)))
 
   def openCards(title: String, cards: Vector[CardDetails],
       origin: dom.html.Element): Unit =

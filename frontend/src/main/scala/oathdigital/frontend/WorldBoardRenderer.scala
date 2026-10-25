@@ -62,7 +62,10 @@ private[frontend] object WorldBoardRenderer:
      playerSummary.appendChild(identity)
      value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
      val resources = element("span", "resources")
-     resources.appendChild(text("span", "resource", s"Warbands ${board.warbands}"))
+     val warbands = text("span", "resource", s"Warbands ${board.warbands}")
+     HoverTip.set(warbands, warbandsNote(board,
+       own = player.playerId == playerId))
+     resources.appendChild(warbands)
      val favor = counted("favor", board.favor.toString, s"Favor ${board.favor}")
      HoverTip.set(favor, "Favor")
      resources.appendChild(favor)
@@ -72,13 +75,17 @@ private[frontend] object WorldBoardRenderer:
        summary.mkString(". "))
      HoverTip.set(secrets, summary.mkString("\n"))
      resources.appendChild(secrets)
-     // Supply is the one figure with a rule behind it: the bag sets the
+     // Supply is the one figure with a rule behind it: the bank sets the
      // band, the band sets the Rest. The figure opens that rule.
      val supply = button(s"Supply ${board.supply}/${value.supplyMaximum}",
        "resource supply-open")
-     supply.onclick = _ => CardInspection.openText("Supply at Rest",
-       SupplyAtRest.lines(player.role, board, value.supplyBands,
-         value.supplyMaximum), supply)
+     HoverTip.set(supply, SupplyAtRest.note(player.role, board))
+     supply.onclick = _ =>
+       if SupplyAtRest.isExile(player.role) then
+         CardInspection.openSupply(SupplyAtRest.panel(board,
+           value.supplyBands, value.supplyMaximum, player.color), supply)
+       else CardInspection.openText(SupplyAtRest.title,
+         SupplyAtRest.citizenLines, supply)
      resources.appendChild(supply)
      identity.appendChild(resources)
 
@@ -134,6 +141,13 @@ private[frontend] object WorldBoardRenderer:
      panel.appendChild(section)
    }
    panel
+
+ /** Where a board's warbands are, one place a line. `own` is the viewer's
+   * board, which is "your" board; any other is "their". */
+ private[frontend] def warbandsNote(board: PlayerBoard, own: Boolean): String =
+   Vector(s"Warbands on ${if own then "your" else "their"} board: ${board.warbands}",
+     s"Warbands on sites: ${board.siteWarbands}",
+     s"Warbands in bank: ${board.bankedWarbands}").mkString("\n")
 
  /** The keys a card on a player board answers to: its slot, and the card
    * itself when the viewer may know which card it is.

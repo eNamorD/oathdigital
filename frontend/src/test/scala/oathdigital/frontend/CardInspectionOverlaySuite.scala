@@ -256,6 +256,20 @@ class CardInspectionOverlaySuite extends munit.FunSuite:
     assertEquals(root.querySelector(".card-overlay").getAttribute("aria-label"),
       "Oathkeeper of Supremacy")
 
+  test("Supply mode puts the bank above the track and the Rest below it"):
+    val MountedOverlay(root, overlay) = mountedOverlay()
+    overlay.showSupply(SupplyAtRest.Panel("Warbands in bank: 5.",
+      SupplyTracker.Track(Vector(SupplyBand(0, None, 4)), supply = 4,
+        banked = 5, maximum = 7, oathdigital.model.PlayerColor.Red),
+      "Next Rest: 4 from the band."), focusableOpener())
+    assertEquals(firstMatch(root, ".card-overlay-name").map(_.textContent),
+      Some(SupplyAtRest.title))
+    val details = root.querySelector(".card-overlay-details")
+    assertEquals(all(details, ":scope > *").map(_.getAttribute("class")).drop(1),
+      Vector("rules-power", "supply-track", "rules-power"))
+    assertEquals(all(root, ".rules-power").map(_.textContent), Vector(
+      "Warbands in bank: 5.", "Next Rest: 4 from the band."))
+
   test("text mode closes and returns focus like card mode"):
     val MountedOverlay(root, overlay) = mountedOverlay()
     val opener = focusableOpener()

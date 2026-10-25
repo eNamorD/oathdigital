@@ -11,8 +11,9 @@ import org.scalajs.dom
 class RulesTextRendererSuite extends munit.FunSuite:
   test("every catalog token has a glyph, an accessible name and a colour class"):
     // 17 is the catalog's icon-token count, the "seventeen" of the
-    // TokenSprite documentation.
-    assertEquals(TokenSprite.ids.size, 17)
+    // TokenSprite documentation; the warband the Supply track draws is the
+    // eighteenth.
+    assertEquals(TokenSprite.ids.size, 18)
     TokenSprite.ids.foreach { token =>
       val glyph = RulesTextRenderer.glyph(token)
       assertEquals(glyph.getAttribute("role"), "img")

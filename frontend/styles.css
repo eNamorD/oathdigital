@@ -93,8 +93,8 @@
 .token-attack-die { color: var(--die-attack); }
 .token-defense-die { color: var(--die-defense); }
 .token-round-die { color: var(--die-round); }
-.token-skull, .token-shield, .token-sword, .token-hollow-sword {
-  color: #d8cdb4; }
+.token-skull, .token-shield, .token-sword, .token-hollow-sword,
+.token-warband { color: #d8cdb4; }
 /* One rolled die: the symbols printed on that face, on a face-shaped chip.
    A blank face is an empty chip, which is what a blank face looks like. */
 .die-faces { display: inline-flex; flex-wrap: wrap; gap: 0.25em;
@@ -746,6 +746,42 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
    shape around it. */
 .supply-open { margin: 0 -0.35em; padding: 0 0.35em; border-radius: 999px; }
 .pile-open:disabled { cursor: default; }
+/* The Supply track (SupplyTracker), as the physical board prints it: dark
+   spaces on a tan rail, the bands in Georgia over the warband. The current
+   band is the ringed space; the marker sits on its space's foot, so the band
+   printed there stays readable. The columns shrink together on a narrow
+   window rather than wrap, as a track that wraps no longer reads as one. */
+.supply-track { display: grid; grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 3.4em); gap: 0.3em; width: fit-content;
+  max-width: 100%; box-sizing: border-box; margin: 0.4em 0 1.1em;
+  padding: 0.3em; list-style: none; border-radius: 999px;
+  background: var(--brass-line); }
+.supply-space { position: relative; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; aspect-ratio: 1;
+  border: 2px solid transparent; border-radius: 50%; background: var(--base);
+  color: var(--cream-bright); font-family: Georgia, serif; line-height: 1; }
+.supply-space-current { border-color: var(--cream-bright); }
+.supply-star { font-size: 1.3em; }
+.supply-range { display: flex; flex-direction: column; align-items: center;
+  gap: 0.15em; }
+.supply-range-figures { font-size: 1.1em; font-weight: 700;
+  white-space: nowrap; }
+.supply-range-to { margin: 0 0.15em; font-size: 0.6em; font-style: italic; }
+.supply-range .token-glyph { width: 1.15em; height: 1.15em;
+  color: var(--cream-bright); }
+.supply-marker { position: absolute; bottom: -0.45em; left: 50%;
+  width: 1.3em; height: 1.3em; margin-left: -0.65em; box-sizing: border-box;
+  border: 2px solid var(--base); border-radius: 50%; }
+.supply-marker-purple { background: var(--player-purple); }
+.supply-marker-red { background: var(--player-red); }
+.supply-marker-blue { background: var(--player-blue); }
+.supply-marker-yellow { background: var(--player-yellow); }
+.supply-marker-white { background: #ffffff; }
+/* Black on the dark space needs the light rim the black pill uses. */
+.supply-marker-black { background: #111111;
+  border-color: var(--player-black-pill); }
+.supply-marker-pink { background: var(--player-pink); }
+.supply-marker-brown { background: var(--player-brown); }
 /* A deck drawn as a card (the world deck, a region's discard): the top
    card's letter and the count on its face, a decision's cost badge under
    it, and the caption under that, outside the ring the decision draws. The
