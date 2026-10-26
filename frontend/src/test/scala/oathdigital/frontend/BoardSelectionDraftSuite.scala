@@ -79,11 +79,13 @@ class BoardSelectionDraftSuite extends munit.FunSuite:
       "site:c"), OptionView(warned, OptionState.Available,
         Some("Hunting Party needs the world deck")))
 
-  test("a choose-one's answers so far show locked"):
-    val played = DecisionOptionState("denizen", "wrestlers", "Wrestlers")
+  test("a choose-one's answers so far show played, numbered in play order"):
+    val first = DecisionOptionState("denizen", "wrestlers", "Wrestlers")
+    val second = DecisionOptionState("relic", "shield", "Shield")
     val views = BoardOptionViews.of(decision(one).copy(
-      answeredOptions = Vector(played)), one, None)
-    assertEquals(views("denizen:wrestlers").state, OptionState.Locked)
+      answeredOptions = Vector(first, second)), one, None)
+    assertEquals(views("denizen:wrestlers").state, OptionState.Played(1))
+    assertEquals(views("relic:shield").state, OptionState.Played(2))
 
   test("a draft of another decision marks nothing selected"):
     val other = draft(many, "site:a").copy(decisionId = "other")

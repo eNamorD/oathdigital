@@ -513,6 +513,19 @@ class WalkerOperationWireSuite extends munit.FunSuite:
     assertEquals(ujson.read(deferral)("payload")("step")("ops")(0)("kind").str,
       "defer")
 
+  test("a pick record's opening, with and without a label, and its closing " +
+      "round trip"):
+    Vector[CoreOperation](
+      OpenPick("campaign.defender-plan", DecisionOptionRef.Button("title"),
+        Some("Oathkeeper title: add 1 defense die")),
+      OpenPick("search.modifiers",
+        DecisionOptionRef.Denizen(CatalogNames.denizen("Wrestlers"))),
+      ClosePick()).foreach { op =>
+      val event = recordedOperation(op)
+      val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))
+      assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    }
+
   test("an as-if site round trips"):
     val event = recordedOperation(ActAsIf(CatalogNames.site("Deep Woods")))
     val encoded = accepted(GameEventWire.encodeEvent("walker", 0, event))

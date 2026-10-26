@@ -272,7 +272,8 @@ object ProcedureWalker:
     ctx.state.copy(game = ctx.state.game.copy(current =
       ctx.state.game.current.copy(walkerPending = None,
         rollPools = Map.empty, walkerDeferred = Map.empty,
-        walkerAsIfSite = None, walkerProcedure = None)))
+        walkerAsIfSite = None, walkerPicks = Vector.empty,
+        walkerProcedure = None)))
 
   private def contractViolation(message: String): Left[OathViolation, Nothing] =
     Left(OathViolation.InvalidEventOrder(s"walker contract violation: $message"))
@@ -525,7 +526,8 @@ object ProcedureWalker:
     * decision's builder declared an askable option (slice 15). */
   private def reach(decide: Decide, ctx: WalkCtx, path: Vector[String])
       : Either[OathViolation, Step] =
-    if ctx.visited((path, ctx.state)) then Right(Stopped(ctx))
+    if ctx.visited((path, WalkCtx.searchKey(ctx.state))) then
+      Right(Stopped(ctx))
     else WalkerSearch.reach(decide, verdict(decide, ctx, path)) match
       case Left(refused) =>
         if declaredAt(decide, ctx, path).nonEmpty ||
@@ -572,7 +574,7 @@ object ProcedureWalker:
     lazy val baseline = WalkerPowerGather.breaches(ctx.root, ctx.state,
       ctx.actor, ctx.powers, ctx.answered, ctx.procedure).toSet
     val searching = ctx.copy(events = Vector.empty, searching = true,
-      visited = ctx.visited + ((path, ctx.state)))
+      visited = ctx.visited + ((path, WalkCtx.searchKey(ctx.state))))
     def reached(answer: DecisionAnswer): Either[OathViolation, Unit] =
       val hypothetical = Answered(decide.decisionId, answer, decide.owner)
       WalkerPowerGather.breaches(ctx.root, ctx.state, ctx.actor,

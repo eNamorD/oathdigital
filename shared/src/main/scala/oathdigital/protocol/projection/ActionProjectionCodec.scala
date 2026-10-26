@@ -29,19 +29,31 @@ private[projection] object ActionProjectionCodec:
     "query" -> option(value.query)(encodeDecisionQuery),
     "rollOutcome" -> option(value.rollOutcome)(encodeRollOutcome),
     "answeredOptions" -> encoded(value.answeredOptions)(encodeOptionRow),
-    "presentation" -> value.presentation)
+    "presentation" -> value.presentation,
+    "status" -> encoded(value.status)(line => ujson.Obj(
+      "label" -> line.label, "value" -> line.value)))
   def decodeWalkerDecision(raw: ujson.Value, path: String): Result[WalkerDecisionProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("action", "decisionId", "query", "rollOutcome",
-      "answeredOptions", "presentation"), path)
+      "answeredOptions", "presentation", "status"), path)
     action <- string(value, "action", path); decision <- string(value, "decisionId", path)
     query <- optionalAbsent(value, "query", path)(decodeDecisionQuery)
     rollOutcome <- optionalAbsent(value, "rollOutcome", path)(decodeRollOutcome)
     answeredRaws <- array(value, "answeredOptions", path)
     answered <- traverse(answeredRaws, s"$path.answeredOptions")(decodeOptionRow)
     presentation <- default(value, "presentation", path, "panel")(string)
+    statusRaws <- array(value, "status", path)
+    status <- traverse(statusRaws, s"$path.status")(decodeStatusLine)
   yield WalkerDecisionProjection(action, decision, query, rollOutcome,
-    answered, presentation)
+    answered, presentation, status)
+
+  private def decodeStatusLine(raw: ujson.Value, path: String)
+      : Result[WalkerStatusProjection] = for
+    value <- obj(raw, path)
+    _ <- exact(value, Set("label", "value"), path)
+    label <- string(value, "label", path)
+    line <- string(value, "value", path)
+  yield WalkerStatusProjection(label, line)
 
   def encodeWalkerWaiting(value: WalkerWaitingProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "heading" -> stringOption(value.heading),

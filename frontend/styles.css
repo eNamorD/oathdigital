@@ -286,10 +286,10 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
   border-color: var(--brass); box-shadow: inset 0 0 0 1px var(--brass); }
 .board-option:hover, .board-option:focus-visible, .board-option-hover {
   border-color: var(--cream-bright); box-shadow: 0 0 0 3px rgba(210, 168, 94, 0.35); }
-.board-option-selected, .board-option-locked {
+.board-option-selected, .board-option-locked, .board-option-played {
   border-color: var(--selection); box-shadow: inset 0 0 0 2px var(--selection);
   background: var(--selection-fill); }
-.board-option-locked { cursor: default; }
+.board-option-locked, .board-option-played { cursor: default; }
 .board-option-unavailable { opacity: 0.45; cursor: not-allowed;
   box-shadow: none; }
 /* An option the viewer may ask consent for (consent design): amber, not
@@ -311,7 +311,8 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
    overflows them. Small marks (a name, a pawn, a banner) carry the ring
    alone. */
 .card-face.board-option-selected::before, .site.board-option-selected::before,
-.card-face.board-option-locked::before, .site.board-option-locked::before {
+.card-face.board-option-locked::before, .site.board-option-locked::before,
+.card-face.board-option-played::before, .site.board-option-played::before {
   position: absolute; top: 3px; left: 3px; z-index: 1;
   display: flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%;
@@ -320,6 +321,9 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .site.board-option-selected::before { content: "✓"; }
 .card-face.board-option-locked::before,
 .site.board-option-locked::before { content: "🔒"; }
+/* A played pick is numbered in play order, not locked: the player chose it. */
+.card-face.board-option-played::before,
+.site.board-option-played::before { content: attr(data-played-order); }
 /* A card and its inspect button share one box: a button may not hold a
    button. The button sits over the card's bottom-right corner, where no
    card content is drawn, on every card, banner and deck; the top-right

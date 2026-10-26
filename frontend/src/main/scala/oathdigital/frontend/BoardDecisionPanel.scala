@@ -4,7 +4,9 @@ import org.scalajs.dom
 
 /** The Action panel of a board decision (board decisions design, "Action
   * panel"). Top to bottom: the prompt, the summary line (a choose-one's
-  * only until it has a pick, which its confirm button names), a row per
+  * only until it has a pick, which its confirm button names), a repeated
+  * choose-one's played picks under a rule labelled "Played", numbered, with
+  * what each paid, the server's status facts, a row per
   * locked and picked option with its tally values (a choose-one's pick only
   * when it carries details the button does not), the tally totals, the options
   * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
@@ -68,11 +70,30 @@ private[frontend] object BoardDecisionPanel:
         if boardChoices then "Choose on the board."
         else "Nothing can be chosen."))(text("p", "board-decision-summary", _)))
 
-    // Decided already: a choose-many's locked options, a choose-one's answers
-    // so far. Then what this draft holds.
-    val locked = (query match
+    // A repeated choose-one's answers so far, under their own rule and
+    // numbered in play order, each with what it paid; then the facts the
+    // server shows beside the decision, such as a Campaign's forces and dice
+    // and what the picks paid in all.
+    val played = query match
       case _: DecisionQueryState.ChooseOne => decision.answeredOptions
-      case _ => Vector.empty) ++ shown.filter(_.state == "locked")
+      case _ => Vector.empty
+    if played.nonEmpty then
+      panel.appendChild(text("p", "board-decision-rule-labelled", "Played"))
+      val rows = element("ul", "board-decision-rows")
+      played.zipWithIndex.foreach((option, index) => rows.appendChild(row(
+        query, option, s"${index + 1}. ${label(option)}",
+        "board-decision-row-played")))
+      panel.appendChild(rows)
+    decision.status.foreach { fact =>
+      val line = element("p", "board-decision-total board-decision-status")
+      line.appendChild(text("span", "", fact.label))
+      line.appendChild(text("b", "", fact.value))
+      panel.appendChild(line)
+    }
+
+    // Decided already: a choose-many's locked options. Then what this draft
+    // holds.
+    val locked = shown.filter(_.state == "locked")
     // A choose-one's confirm button already names its pick, so the pick's
     // row shows only when it carries more than the name.
     val chosen = draft.fold(Vector.empty[DecisionOptionState])(_.picked)
@@ -82,9 +103,9 @@ private[frontend] object BoardDecisionPanel:
     if locked.nonEmpty || chosen.nonEmpty then
       val rows = element("ul", "board-decision-rows")
       locked.foreach(option => rows.appendChild(row(query, option,
-        label(option), locked = true)))
+        s"Locked: ${label(option)}", "board-decision-row-locked")))
       chosen.foreach(option => rows.appendChild(row(query, option,
-        label(option), locked = false)))
+        label(option), "")))
       panel.appendChild(rows)
 
     // A home several options share asks which one in the panel: the
@@ -200,19 +221,17 @@ private[frontend] object BoardDecisionPanel:
       blocked.foreach(reason =>
         panel.appendChild(text("p", "board-decision-reason", reason)))
 
-  /** One locked or picked option: its name, then its tally values and what
-    * the engine annotated on it, such as a battle plan's price.
+  /** One played, locked or picked option: its name as shown, then its tally
+    * values and what the engine annotated on it, such as a battle plan's
+    * price or what a played one paid. `kind` is the row's extra class.
     */
   private def row(query: DecisionQueryState, option: DecisionOptionState,
-      name: String, locked: Boolean): dom.Element =
+      name: String, kind: String): dom.Element =
     val key = BoardOptionViews.key(option)
     val home = BoardOptionViews.home(option)
-    val item = element("li", if locked then
-      "board-decision-row board-decision-row-locked"
-      else "board-decision-row")
+    val item = element("li", s"board-decision-row $kind".trim)
     item.setAttribute("data-option-ref", home)
-    item.appendChild(text("span", "",
-      if locked then s"Locked: $name" else name))
+    item.appendChild(text("span", "", name))
     val values = (query match
       case many: DecisionQueryState.ChooseMany => many.tallies.flatMap(tally =>
         tally.values.find(value => BoardOptionViews.key(value.kind, value.id) ==

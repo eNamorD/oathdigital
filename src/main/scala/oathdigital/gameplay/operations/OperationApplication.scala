@@ -81,7 +81,7 @@ private[gameplay] object OperationApplication:
         resources, leaves)
       cards <- CardMovementOperations.applyCardMoves(pieces, leaves)
       finished <- applyNonMoveLeaves(cards, leaves)
-    yield finished
+    yield TurnStateOperations.tallyPayments(finished, operation)
 
   private def reason(error: OperationError,
       operation: CoreOperation): OperationReason =
@@ -211,6 +211,10 @@ private[gameplay] object OperationApplication:
         result.map(TurnStateOperations.takeDeferred(_, key))
       case (result, ActAsIf(site)) =>
         result.map(TurnStateOperations.actAsIf(_, site))
+      case (result, OpenPick(decisionId, option, label)) =>
+        result.map(TurnStateOperations.openPick(_, decisionId, option, label))
+      case (result, ClosePick()) =>
+        result.map(TurnStateOperations.closePick)
       case (result, EnterPhase(phase)) =>
         result.flatMap(TurnStateOperations.enterPhase(_, phase))
       case (result, SetOathkeeper(holder)) =>

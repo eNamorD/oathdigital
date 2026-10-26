@@ -168,6 +168,7 @@ private[walker] object WalkerReplay:
             rollPools = Map.empty,
             walkerDeferred = Map.empty,
             walkerAsIfSite = None,
+            walkerPicks = Vector.empty,
             rollOutcomes = Map.empty)))
 
       case ActionBoundaryRan =>

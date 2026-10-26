@@ -105,14 +105,16 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
       required = true)
 
   /** After the pass's answer: the payment of the modifier it picked, then
-    * the questions that modifier asks once picked. */
+    * the questions that modifier asks once picked, recorded as one pick
+    * (`OpenPick`) so whatever they pay is what the pick paid. */
   private def payment(powers: WalkerPowers): Operation =
     Branch((ready, tree) => tree.answered.reverseIterator.collectFirst {
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) =>
         ref
-    }.flatMap(ModifierPicks.powerFor(powers.pool, modifierWindow, _))
-      .toVector.flatMap(power =>
-        paying(power) +: power.selectionQuestions(ready, actor)))
+    }.flatMap(ref => ModifierPicks.powerFor(powers.pool, modifierWindow, ref)
+      .map(ref -> _)).toVector.flatMap((ref, power) =>
+        (OpenPick(decisionId, ref) +: paying(power) +:
+          power.selectionQuestions(ready, actor)) :+ ClosePick()))
 
   private def price(shown: DecisionOption, operations: Vector[CoreOperation])
       : DecisionOption =

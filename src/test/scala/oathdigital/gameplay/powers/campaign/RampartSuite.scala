@@ -42,7 +42,8 @@ class RampartSuite extends munit.FunSuite:
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, edificeRef)
     assertEquals(picked.since(run), Vector[CoreOperation](
-      ModifyDicePool(defensePool, 2)))
+      OpenPick(CampaignIds.defenderPlan, edificeRef),
+      ModifyDicePool(defensePool, 2), ClosePick()))
 
   test("Towering Rampart at a site that is neither targeted nor the ruler's " +
       "pawn's is not offered"):
@@ -58,14 +59,16 @@ class RampartSuite extends munit.FunSuite:
     val run = commit(rules(losingDice), b, 4)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, edificeRef)
     assertEquals(picked.since(run), Vector[CoreOperation](
-      ModifyDicePool(defensePool, 2)))
+      OpenPick(CampaignIds.defenderPlan, edificeRef),
+      ModifyDicePool(defensePool, 2), ClosePick()))
 
   test("Cracked Rampart adds one defense die at a targeted site"):
     val b = targeted(EdificeSide.Ruined)
     val run = commit(rules(losingDice), b, 4)
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, edificeRef)
     assertEquals(picked.since(run), Vector[CoreOperation](
-      ModifyDicePool(defensePool, 1)))
+      OpenPick(CampaignIds.defenderPlan, edificeRef),
+      ModifyDicePool(defensePool, 1), ClosePick()))
 
   test("Cracked Rampart is not offered where the site is not targeted, " +
       "whatever the pawn does"):

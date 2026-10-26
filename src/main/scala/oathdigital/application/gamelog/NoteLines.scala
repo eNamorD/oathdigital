@@ -194,6 +194,7 @@ private[gamelog] final class NoteLines(words: LogWords,
         !ops.forall {
           case RecordPowerUse(_) => true
           case QueueProcedure(_, _) => true
+          case OpenPick(_, _, _) | ClosePick() => true
           case Move(Piece.Favor(_) | Piece.Secrets(_),
               PositionedLocation(Location.PlayArea(payer), _, _),
               PositionedLocation(Location.OnCard(_) | Location.SharedBank, _, _),

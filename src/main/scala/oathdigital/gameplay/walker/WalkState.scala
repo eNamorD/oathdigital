@@ -26,12 +26,23 @@ private[walker] final case class WalkCtx(
       * pruning"): it stops at hidden information and at a decision some
       * answer leads on from, and its events are thrown away. */
     searching: Boolean = false,
-    /** The decisions this search stands at, with the state at each. */
+    /** The decisions this search stands at, with the state at each, as
+      * `WalkCtx.searchKey` reads it. */
     visited: Set[(Vector[String], ReadyGame)] = Set.empty,
     /** Set while the walk runs a trigger's follow-up, whose batches start
       * no follow-up of their own (`ExecutedTriggers`). */
     following: Boolean = false
 )
+
+private[walker] object WalkCtx:
+  /** The state a search compares to tell whether it has stood at a decision
+    * before: the state less its pick records (`walkerPicks`). The records
+    * tally what picks paid, for display, and never change what can happen,
+    * so a free pick leaves the search where it was, as it did before picks
+    * were recorded. */
+  def searchKey(state: ReadyGame): ReadyGame =
+    if state.game.current.walkerPicks.isEmpty then state
+    else state.updateCurrent(_.copy(walkerPicks = Vector.empty))
 
 private[walker] sealed trait Step extends Product with Serializable
 /** The walked region completed; `ctx` carries the result state/events. */

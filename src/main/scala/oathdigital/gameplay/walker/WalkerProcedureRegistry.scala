@@ -112,6 +112,11 @@ object WalkerProcedureRegistry:
         */
       rollFeedback: (ExecutableCatalog, ReadyGame, PlayerId, String) => Option[WalkerRollFeedback] =
         (_, _, _, _) => None,
+      /** The facts to show beside a parked decision of this procedure, by
+        * that decision's id: a battle-plan window's forces and dice. None by
+        * default. */
+      status: (ExecutableCatalog, ReadyGame, PlayerId, String) => Vector[WalkerStatusLine] =
+        (_, _, _, _) => Vector.empty,
       /** Replaces the playable-option filter in the projector: an entry that
         * prices its options shows every option, each priced or explained.
         * Travel's destinations. */
@@ -241,7 +246,8 @@ object WalkerProcedureRegistry:
       modifierWindow = Some(PowerWindow.CampaignModifierSelection),
       build = CampaignProcedure.build,
       rebuild = CampaignProcedure.rebuild,
-      rollFeedback = CampaignProcedure.rollFeedback),
+      rollFeedback = CampaignProcedure.rollFeedback,
+      status = CampaignProcedure.status),
 
     /** The legacy minor actions (walker-driven game loop design, slice 3).
       * They are actions, so the boundary follows each, but like the legacy
@@ -464,6 +470,15 @@ object WalkerProcedureRegistry:
     registrations.get(procedure).flatMap(_.rollFeedback(catalog, ready, actor,
       decisionId)).orElse(RerollChoice.poolOf(decisionId)
         .map(WalkerRollFeedback(_)))
+
+  /** The facts `procedure` shows beside its parked `decisionId`; empty when
+    * it declares none or is not registered. */
+  def status(procedure: ProcedureRef, catalog: ExecutableCatalog,
+      ready: ReadyGame, actor: PlayerId, decisionId: String,
+      registrations: Map[ProcedureRef, Entry] = entries)
+      : Vector[WalkerStatusLine] =
+    registrations.get(procedure).fold(Vector.empty)(_.status(catalog, ready,
+      actor, decisionId))
 
   /** `procedure`'s modifier-selection [[oathdigital.model.PowerWindow]], or `None` when it
     * offers no player-selected powers at all -- see `Entry`'s doc.

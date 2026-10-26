@@ -2,7 +2,8 @@ package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.dice.RollStep
-import oathdigital.gameplay.walker.{ModifierChoice, WalkerRollFeedback}
+import oathdigital.gameplay.walker.{ModifierChoice, WalkerRollFeedback,
+  WalkerStatusLine}
 import oathdigital.model._
 
 /** Campaign on the walker, in the rulebook's order: choose the kind and the
@@ -157,6 +158,28 @@ object CampaignProcedure:
       case CampaignIds.placement | CampaignIds.relocation =>
         Some(WalkerRollFeedback(CampaignIds.defensePool))
       case _ => None
+
+  /** While a side chooses its battle plans, both forces and both pools as
+    * they stand, so each plan's effect shows as it is played. A pool not yet
+    * gathered counts no dice. */
+  def status(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
+      decisionId: String): Vector[WalkerStatusLine] =
+    if decisionId != CampaignIds.attackerPlan &&
+        decisionId != CampaignIds.defenderPlan then Vector.empty
+    else
+      val pending = ready.game.current.walkerPending
+        .getOrElse(PendingTree(Vector.empty, Vector.empty))
+      def dice(pool: PoolKey): String = ready.game.current.rollPools.get(pool)
+        .fold(0)(_.count).toString
+      def warbands(count: Int): String =
+        s"$count warband${if count == 1 then "" else "s"}"
+      CampaignSetup.setup(ready, actor, pending).toVector.flatMap(setup =>
+        Vector(
+          WalkerStatusLine("Attacking force", warbands(setup.force)),
+          WalkerStatusLine("Defending force", warbands(CampaignBattle
+            .targetRefs(setup).map(CampaignBattle.forceOf(ready, _)).sum)),
+          WalkerStatusLine("Attack dice", dice(CampaignIds.attackPool)),
+          WalkerStatusLine("Defense dice", dice(CampaignIds.defensePool))))
 
   /** Omitted when no force survives the skulls. */
   private def sacrificeStep(actor: PlayerId): Operation =

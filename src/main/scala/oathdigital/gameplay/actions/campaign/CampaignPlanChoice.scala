@@ -97,10 +97,19 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
         case None => Vector.empty
         case Some(ref) => offers.find(offered =>
           CampaignPlans.refOf(offered.offer.source) == ref) match {
+          // The application is recorded as one pick (`OpenPick`), so what
+          // it pays, however a power changed the price, is what the plan
+          // paid. A button plan, the title's, keeps its words.
           case Some(offered) => Vector[Operation](
             CampaignNotes.leaf(CampaignNotes.activationNote(
               offered.offer.source, user, actor)),
-            applicationOf(setup, offered))
+            OpenPick(decisionId, ref, CampaignPlans.optionOf(offered) match
+              case DecisionOption.Badged(DecisionOption.Button(_, label), _) =>
+                Some(label)
+              case DecisionOption.Button(_, label) => Some(label)
+              case _ => None),
+            applicationOf(setup, offered),
+            ClosePick())
           case None => Vector(BuildOps((_, _) => Left(
             OathViolation.InvalidEventOrder(
               "a chosen Campaign battle plan is no longer available"))))

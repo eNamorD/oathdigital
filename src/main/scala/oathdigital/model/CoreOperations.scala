@@ -701,6 +701,22 @@ final case class TakeDeferred(key: DeferralKey) extends PrimitiveOperation
   */
 final case class ActAsIf(site: SiteId) extends PrimitiveOperation
 
+/** Opens the record of a pick a pick-and-pay menu took, in
+  * `CurrentGameState.walkerPicks`: every `PayCost` and `Sacrifice` applied
+  * until [[ClosePick]] adds to it, so the record holds what the pick really
+  * paid, after every power's change to its price. `label` names a button
+  * pick.
+  * The journal records it, so a reloaded game holds the same record. It
+  * writes no Game Log line.
+  */
+final case class OpenPick(decisionId: String, option: DecisionOptionRef,
+    label: Option[String] = None) extends PrimitiveOperation
+
+/** Closes the open [[OpenPick]] record, so later payments are not added to
+  * it. Closing with none open changes nothing. It writes no Game Log line.
+  */
+final case class ClosePick() extends PrimitiveOperation
+
 /** Semantic window for a card played faceup, to a site or as a faceup
   * adviser. Powers supply its children; no hook is a delta.
   */

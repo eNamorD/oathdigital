@@ -154,6 +154,16 @@ class BoardOptionsRenderSuite extends munit.FunSuite:
     click(face)
     assertEquals(shown.picks, Vector.empty)
 
+  test("a played option is numbered in play order and takes no pick"):
+    val shown = recording(OptionView(foxCard, OptionState.Played(2), None))
+    val face = one(world(shown.options), ".site button.card-face")
+    assert(face.classList.contains("board-option-played"))
+    assert(!face.classList.contains("board-option-locked"))
+    assertEquals(face.getAttribute("data-played-order"), "2")
+    assertEquals(face.getAttribute("aria-disabled"), "true")
+    click(face)
+    assertEquals(shown.picks, Vector.empty)
+
   test("a card that is no option gets no inspect button"):
     val shown = recording(available(woodsSite))
     assertEquals(all(world(shown.options), ".board-option-inspect"), Vector.empty)

@@ -303,6 +303,16 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assert(
       RecordedOps.all(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
 
+  test("the title's plan is recorded with the words it was offered under, " +
+      "since no card names it"):
+    val b = rivalRulesOriginAndHoldsOathkeeper(board(warbands = 5, supply = 7))
+    val picked = accepted(answer(atPlans(b).state, b.rival,
+      CampaignIds.defenderPlan, planPick(DecisionOptionRef.Button("title"))))
+    assertEquals(ready(picked.state).game.current.walkerPicks,
+      Vector(PlayedPick(CampaignIds.defenderPlan,
+        DecisionOptionRef.Button("title"),
+        Some("Oathkeeper title: add 1 defense die"), open = false)))
+
   test("a bandit defender applies its cost-free plans by itself"):
     val watchdog = CatalogNames.denizen("Watchdog")
     val base = board(warbands = 5, supply = 7)

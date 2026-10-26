@@ -111,6 +111,11 @@ private[frontend] final class BoardOptions(views: Map[String, OptionView],
       case OptionState.Locked =>
         target.setAttribute("aria-pressed", "true")
         target.setAttribute("aria-disabled", "true")
+      // The badge prints the order it was played in.
+      case OptionState.Played(order) =>
+        target.setAttribute("aria-pressed", "true")
+        target.setAttribute("aria-disabled", "true")
+        target.setAttribute("data-played-order", order.toString)
       case OptionState.Unavailable =>
         target.setAttribute("aria-disabled", "true")
 

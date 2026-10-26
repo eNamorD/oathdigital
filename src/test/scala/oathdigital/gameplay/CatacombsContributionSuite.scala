@@ -54,13 +54,15 @@ class CatacombsContributionSuite extends munit.FunSuite:
     val transition = started(fixture, Vector(catacombsId))
     val acting = steps(transition.events).filter(RecordedOps.of(_).nonEmpty)
 
-    // The pick's payment, onto the card.
-    assertEquals(RecordedOps.of(acting.head), Vector[CoreOperation](
+    // The pick's payment, onto the card, inside the pick's record.
+    assertEquals(acting.take(3).flatMap(RecordedOps.of), Vector[CoreOperation](
+      OpenPick("recover.modifiers", DecisionOptionRef.Denizen(catacombsCard)),
       PayCost(fixture.actor, Location.OnCard(catacombsCard),
-        Cost(secret = 1), matchingBank = catalog.suitOf(catacombsCard))))
+        Cost(secret = 1), matchingBank = catalog.suitOf(catacombsCard)),
+      ClosePick()))
     // The transform prepended ONE node to the Recover's children, so the
     // placement is the Recover's first step, naming Catacombs.
-    val placed = acting(1)
+    val placed = acting(3)
     assertEquals(placed.nodeId, "1.0")
     assertEquals(placed.contributions, Vector(catacombsId))
     assertEquals(RecordedOps.of(placed), Vector[CoreOperation](
