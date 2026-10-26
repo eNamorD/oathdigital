@@ -42,6 +42,22 @@ Left behind by earlier phases:
   proportions are deliberate (DESIGN.md), so the fix is a visible scroll
   cue or a smaller decision header rather than new proportions. Observed in
   the browser during the clean-up run of 2026-10-23.
+- [ ] **Bring the holding files in step with the status.** Holding and
+  `PowerImplementationStatus` (snapshot
+  `src/test/resources/powers/unimplemented.txt`) disagree, so card counts
+  read from either are off:
+  - All 11 sites left in `catalog/holding/HoldingSites.scala` play correctly,
+    yet the status reports their powers unimplemented. The six Homelands
+    (Deep Woods, Golden Valley, Great Slum, Painted Towers, Standing Stones,
+    Steppe) run through card play's `rule.homeland-discard`
+    (`CardPlayRules.homeland`), not through their `site.*.homeland-*`
+    handlers. The five Plains (Buried Giant, Dunes, Salt Flats, Shrouded
+    Woods, Solitary Pillar) print "This site has no power". Make the status
+    count both, and move the 11 out of holding.
+  - Ancient Bloodline (denizen 165) is implemented, and the status agrees,
+    but the card still sits in `HoldingNomadDenizens.scala`. Move it out.
+  - A test that fails when every power of a holding card is implemented
+    would keep the two in step.
 - [ ] **Split `LogScripts.scala` before it grows.** The log-script support
   file is at 799 of the 800 lines `BackendArchitectureSuite` allows a test
   file, so the next script added there fails the build. Split it along the
@@ -140,6 +156,14 @@ without one. Deferred findings and requested UI changes are in the
   the test `index.html` fixture shadowing the generated one, the hardcoded
   `oathdigital:root` assertion, and no Docker `HEALTHCHECK`. Also document
   host bind mounts at `/var/lib/oathdigital` in the configuration guide.
+- [ ] **Several seats in one browser.** Opening a second seat's link for the
+  same game in one browser profile silently replaces the first seat, because
+  `/s/{seat-code}` sets one cookie name scoped to `/games/{game-id}` and
+  redirects there (`TrustedSeatRoutes`). Every release's notes carry this as
+  a known caveat. One fix keeps the seat in the URL instead of redirecting to
+  the shared game path, for example a per-seat path with its own cookie
+  scope. Weigh the seat code staying in the address bar and history, which
+  the redirect avoids, and update the network guide and quick start.
 - [ ] **A lighter way to test separate-machine play.** The manual
   [acceptance record](operations/alpha-acceptance.md) takes two physical
   machines and a lot of hand-recorded evidence, so `0.1.0-alpha.3` shipped
