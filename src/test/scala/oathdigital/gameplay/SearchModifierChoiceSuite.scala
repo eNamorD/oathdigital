@@ -51,7 +51,7 @@ class SearchModifierChoiceSuite extends munit.FunSuite:
     val begun = started(withNews(supply = 5, favor = 2))
     assertEquals(parked(begun.state).decisionId, search)
     assertEquals(options(begun), Vector(
-      DecisionOption.Button(ModifierPicks.start, "Start Search"),
+      DecisionOption.Button(ModifierPicks.start, "Start Search with no modifiers"),
       DecisionOption.Priced(newsOption, OptionPrice(favor = 2))))
 
   test("with no modifier to pick, a Search starts on its source"):
@@ -62,7 +62,7 @@ class SearchModifierChoiceSuite extends munit.FunSuite:
   test("Start says why the Search cannot go on, until a pick makes it free"):
     val begun = started(withNews(supply = 0, favor = 2))
     assertEquals(options(begun).head, DecisionOption.Unavailable(
-      DecisionOption.Button(ModifierPicks.start, "Start Search"),
+      DecisionOption.Button(ModifierPicks.start, "Start Search with no modifiers"),
       OptionReason.Written("Needs 2 Supply; you have 0")))
     val picked = accepted(rules.resolveWalker(begun.state, p1, search,
       ModifierPlay.pick(NewsFromAfar.id)))
@@ -88,7 +88,7 @@ class SearchModifierChoiceSuite extends munit.FunSuite:
       ActionRef.PlayFacedownAdviser, p1))
     assertEquals(parked(begun.state).decisionId, search)
     assertEquals(options(begun).head,
-      DecisionOption.Button(ModifierPicks.start, "Play facedown adviser"))
+      DecisionOption.Button(ModifierPicks.start, "Play facedown adviser with no modifiers"))
     val picked = accepted(ModifierPlay.started(rules, Ready(ready),
       ActionRef.PlayFacedownAdviser, p1, PowerWindow.SearchModifierSelection,
       Vector(WildCry.id)))

@@ -669,4 +669,4 @@ class CampaignProcedureSuite extends munit.FunSuite:
     assertEquals(
       EmptyWindowModifier.parkedWithFirstOption(started.state, powers),
       ("campaign.modifiers", Some(DecisionOption.Button(ModifierPicks.start,
-        "Start Campaign"))))
+        "Start Campaign with no modifiers"))))

@@ -605,7 +605,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(
       EmptyWindowModifier.parkedWithFirstOption(started.state, powers),
       ("forge.modifiers", Some(DecisionOption.Button(ModifierPicks.start,
-        "Start Forge"))))
+        "Start Forge with no modifiers"))))
 
 object ForgeProcedureSuite:
   /** The board every test starts from, plus the facts a legal answer is

@@ -31,7 +31,7 @@ class TravelModifierChoiceSuite extends munit.FunSuite:
     case other => fail(s"expected a choose-one, got $other")
 
   private val startTravel: DecisionOption =
-    DecisionOption.Button(ModifierPicks.start, "Start Travel")
+    DecisionOption.Button(ModifierPicks.start, "Start Travel with no modifiers")
 
   test("a Travel starts on the modifier decision when a modifier can be " +
       "picked"):

@@ -27,7 +27,7 @@ class MusterModifierChoiceSuite extends munit.FunSuite:
   private val modifierDecisionId =
     ModifierPicks.decisionId(PowerWindow.MusterModifierSelection)
   private val startMuster: DecisionOption =
-    DecisionOption.Button(ModifierPicks.start, "Start Muster")
+    DecisionOption.Button(ModifierPicks.start, "Start Muster with no modifiers")
 
   /** p1 at Ancient City beside Errand Boy, with 4 favor and `supply`
     * Supply, holding Animal Playmates faceup when `withPlaymates`. */

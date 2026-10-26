@@ -56,7 +56,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
       case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
-        DecisionOption.Button(ModifierPicks.start, "Start Travel"),
+        DecisionOption.Button(ModifierPicks.start, "Start Travel with no modifiers"),
         OptionReason.Written("Needs 1 Supply; you have 0"))))
     val picked = accepted(rules.resolveWalker(started.state, actor,
       travelModifiers, ModifierPlay.pick(Tents.id)))
@@ -101,7 +101,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
       case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
-        DecisionOption.Button(ModifierPicks.start, "Start Muster"),
+        DecisionOption.Button(ModifierPicks.start, "Start Muster with no modifiers"),
         OptionReason.Written("Needs 1 Supply; you have 0"))))
     val picked = accepted(rules.resolveWalker(started.state, p1,
       musterModifiers, ModifierPlay.pick(AnimalPlaymates.id)))
@@ -139,7 +139,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
       case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
-        DecisionOption.Button(ModifierPicks.start, "Start Trade"),
+        DecisionOption.Button(ModifierPicks.start, "Start Trade with no modifiers"),
         OptionReason.Written("Needs 1 Supply; you have 0"))))
     val picked = accepted(rules.resolveWalker(started.state, p1,
       tradeModifiers, ModifierPlay.pick(Birdsong.id)))
@@ -173,7 +173,7 @@ class ModifierMenuOptionsSuite extends munit.FunSuite:
       case one: DecisionQuery.ChooseOne => one.options.headOption
       case _ => None,
       Some(DecisionOption.Unavailable(
-        DecisionOption.Button(ModifierPicks.start, "Start Search"),
+        DecisionOption.Button(ModifierPicks.start, "Start Search with no modifiers"),
         OptionReason.Written("Needs 2 Supply; you have 0"))))
     val picked = accepted(rules.resolveWalker(started.state, p1, search,
       ModifierPlay.pick(NewsFromAfar.id)))

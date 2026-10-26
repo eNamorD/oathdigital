@@ -10,7 +10,8 @@ import oathdigital.model._
   * walk's first decision, a `Repeat` of these passes that ends on "Start".
   * The modifier counterpart of the battle-plan window's pass.
   *
-  * A pass lists "Start" first, then every player-selected power that may be
+  * A pass lists "Start" first, worded with how many modifiers are picked
+  * (`startWith`), then every player-selected power that may be
   * picked at the window and whose card the actor may use, less those
   * already picked. Each is judged by its own `offerReason`, then by a dry
   * run of its payment, then by whether it applies now. A pick pays at once,
@@ -46,7 +47,7 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
     if !asks && !pass.resuming then Vector.empty
     else Vector(
       Decide(decisionId, actor, DecisionQuery.ChooseOne(
-        start(pass) +: listed, heading = Some(ModifierChoice.heading))),
+        start(pass, picked.size) +: listed, heading = Some(ModifierChoice.heading))),
       payment(pass.powers))
 
   private def candidates(pass: ModifierChoice.Pass)
@@ -142,8 +143,9 @@ final class ModifierChoice(val actor: PlayerId, modifierWindow: PowerWindow,
   private def needs(required: Int, what: String, available: Int): String =
     s"Needs $required $what; you have $available"
 
-  private def start(pass: ModifierChoice.Pass): DecisionOption =
-    val button = DecisionOption.Button(ModifierPicks.start, startLabel)
+  private def start(pass: ModifierChoice.Pass, picks: Int): DecisionOption =
+    val button = DecisionOption.Button(ModifierPicks.start,
+      ModifierChoice.startWith(startLabel, picks))
     refusal(pass).fold[DecisionOption](button)(unavailable(button, _))
 
   /** Why no answer to the action's first decision completes under the
@@ -191,6 +193,14 @@ object ModifierChoice:
   val cannotStart: String = "Cannot start now"
   val unusable: String = "Cannot be used now"
   val unpayable: String = "Cannot be paid for now"
+
+  /** "Start Muster with no modifiers", or "with 2 modifiers": "Start" says
+    * how many picks the action starts with, so it is not pressed by mistake
+    * for a start with the card the player meant to pick. */
+  def startWith(startLabel: String, picks: Int): String = picks match
+    case 0 => s"$startLabel with no modifiers"
+    case 1 => s"$startLabel with 1 modifier"
+    case _ => s"$startLabel with $picks modifiers"
 
   /** The modifier decision for `window`, as the first node of an action's
     * tree: passes until "Start". `rest` is what the tree runs after it,

@@ -188,6 +188,22 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     toggle.click()
     assertEquals(ui.drafts.board.map(_.keys), Some(Vector("relic:cup")))
 
+  private val modifiers = DecisionQueryState.ChooseOne(Vector(
+    DecisionOptionState("button", "start", "Start Muster with no modifiers"),
+    DecisionOptionState("relic", "cup", "Cup")),
+    Some("Choose modifiers, or start"))
+  private val musterModifiers = decision.copy(decisionId = "muster.modifiers")
+
+  test("a modifier is picked by its click alone, with no Confirm"):
+    val ui = new RecordingControls()
+    val panel = pane(ui, modifiers, musterModifiers)
+    assertEquals(all(panel, ".board-decision-confirm"), Vector.empty)
+    assertEquals(all(panel, ".board-decision-rule-labelled"), Vector.empty)
+    as[dom.html.Button](one(panel, ".board-decision-loose-option")).click()
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker("muster.modifiers",
+      DecisionAnswerWire.ChooseOneWire("relic", "cup"))))
+    assertEquals(ui.drafts.board, None)
+
   private val placement = DecisionQueryState.ChooseOne(
     Vector(adviserPlayAtRedSlot3("faceup"), adviserPlayAtRedSlot3("facedown")), Some("Play Wayward Spirit"))
   private val placing = WalkerDecisionState("search",
