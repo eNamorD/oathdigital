@@ -33,6 +33,7 @@ private[frontend] object WalkerSelectionPanels:
     // modifier question is about the dice already rolled.
     WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
+    WalkerPanelSupport.statusFacts(decision.status, panel)
     panel.appendChild(text("p", "walker-many-instruction",
       if query.minOptions == query.maxOptions then s"Choose ${query.minOptions}."
       else if query.minOptions == 0 && query.maxOptions >=
@@ -78,6 +79,7 @@ private[frontend] object WalkerSelectionPanels:
     WalkerPanelSupport.rollFeedback(decision, panel)
     val heading = WalkerPanelSupport.decisionHeading(query)
     panel.appendChild(text("h2", "", heading))
+    WalkerPanelSupport.statusFacts(decision.status, panel)
     panel.appendChild(text("p", "walker-amount-instruction",
       if query.minAmount == query.maxAmount then s"Enter ${query.minAmount}."
       else s"Enter ${query.minAmount} to ${query.maxAmount}."))

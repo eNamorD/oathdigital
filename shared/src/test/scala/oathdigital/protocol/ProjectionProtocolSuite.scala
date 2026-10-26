@@ -393,6 +393,12 @@ class ProjectionProtocolSuite extends munit.FunSuite:
       Some(WalkerWaitingProjection("blue", heading = None)))
     assertRoundTrips(rolling)
 
+  test("walkerWaiting round-trips the facts shown beside the question"):
+    val following = projection.copy(walkerWaiting = Some(
+      WalkerWaitingProjection("blue", Some("Sacrifice"),
+        status = Vector(WalkerStatusProjection("Attack total", "3")))))
+    assertRoundTrips(following)
+
   test("warbands of every player colour round-trip"):
     PlayerColor.all.foreach { color =>
       val carrying = projection.copy(world = projection.world.map(region =>

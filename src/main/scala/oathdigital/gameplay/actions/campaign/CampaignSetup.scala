@@ -290,10 +290,19 @@ object CampaignSetup:
   /** The complete setup, once the force is answered. */
   def setup(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
       : Option[CampaignSetup] = for
+    targeted <- targeted(ready, actor, pending)
+    force <- CampaignAnswers.force(pending)
+  yield targeted.copy(force = force)
+
+  /** The setup as far as the targets, with no force yet: what the force
+    * question is asked against. Before the targets are answered it holds
+    * only the mandatory one. */
+  def targeted(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
+      : Option[CampaignSetup] = for
     (kind, defender) <- declaredAt(ready, actor, pending)
     origin <- originOf(ready, actor)
-    force <- CampaignAnswers.force(pending)
   yield
+    val force = 0
     val picked = CampaignAnswers.targets(pending)
     kind match
       case CampaignKind.Conquest =>

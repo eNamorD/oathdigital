@@ -44,6 +44,11 @@ private[frontend] object ActionDecisionRenderer:
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
    panel.appendChild(status(value, presentation))
+   // What the awaited player sees beside the question, so the table can
+   // follow along: a Campaign's forces, dice and totals.
+   value.walkerWaiting.filter(waiting =>
+       presentation.waitingForPlayerId.contains(waiting.playerId))
+     .foreach(waiting => WalkerPanelSupport.statusFacts(waiting.status, panel))
    // Before the winner banner and every phase's controls: the steps to take
    // back or restore belong to whatever the pane shows below them.
    StepControls.render(value, canControl, submitCommand).foreach(panel.appendChild)

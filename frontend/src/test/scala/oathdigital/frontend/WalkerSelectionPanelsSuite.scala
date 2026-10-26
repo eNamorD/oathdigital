@@ -1,8 +1,8 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.projection.DieFace
+import oathdigital.protocol.projection.{DieFace, WalkerStatusProjection}
 
-import oathdigital.frontend.Dom.{one, press}
+import oathdigital.frontend.Dom.{all, one, press}
 import oathdigital.protocol.{DecisionAnswerWire, DecisionOptionWire,
   GameIntent => Intent}
 import oathdigital.testkit.Unwrap.as
@@ -18,9 +18,11 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     maxAmount = 5, suggested = None, confirmLabel = "Take banner",
     heading = Some("Place more than 2 favor"))
   private def decision(id: String, query: DecisionQueryState,
-      rollOutcome: Option[WalkerRollOutcomeState] = None): WalkerDecisionState =
+      rollOutcome: Option[WalkerRollOutcomeState] = None,
+      status: Vector[WalkerStatusProjection] = Vector.empty)
+      : WalkerDecisionState =
     WalkerDecisionState("challenge", id, query = Some(query),
-      rollOutcome = rollOutcome)
+      rollOutcome = rollOutcome, status = status)
 
   private def opened(id: String, query: DecisionQueryState)
       : Option[WalkerSelectionDraft] =
@@ -214,6 +216,23 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite:
     assertEquals(order.take(3),
       Vector("walker-roll-faces", "walker-roll-totals", ""))
     assert(!panel.textContent.contains("two swords and a skull"))
+
+  test("the sacrifice panel shows the battle's facts under its prompt"):
+    val sacrifice = DecisionQueryState.ChooseAmount(minAmount = 0,
+      maxAmount = 2, suggested = None, confirmLabel = "Sacrifice",
+      heading = Some("Sacrifice up to 2 warbands for one attack each"))
+    val panel = dom.document.createElement("div")
+    WalkerSelectionPanels.render(Surface.Selection(decision(
+      "campaign.sacrifice", sacrifice, status = Vector(
+        WalkerStatusProjection("Attacking force", "1 of 2 warbands"),
+        WalkerStatusProjection("Defense dice", "2"))), sacrifice),
+      opened("campaign.sacrifice", sacrifice), canControl = true, panel,
+      new RecordingControls())
+    assertEquals(all(panel, ".walker-status-line").map(_.textContent),
+      Vector("Attacking force1 of 2 warbands", "Defense dice2"))
+    val order = panel.children.toVector.map(child =>
+      Option(child.getAttribute("class")).getOrElse(""))
+    assertEquals(order.take(2), Vector("", "walker-status"))
 
   test("a choose-many beside a roll draws dice, then totals, then the " +
       "heading"):

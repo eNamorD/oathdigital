@@ -21,6 +21,7 @@ private[frontend] object DistributePanelRenderer:
     // comes first, as on every panel a roll belongs beside.
     WalkerPanelSupport.rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", WalkerPanelSupport.decisionHeading(query)))
+    WalkerPanelSupport.statusFacts(decision.status, panel)
     distribute.filter(_.decisionId == decision.decisionId)
         .foreach { draft =>
       val rows = element("div", "distribute-slots")
