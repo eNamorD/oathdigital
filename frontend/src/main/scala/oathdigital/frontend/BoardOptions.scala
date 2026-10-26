@@ -128,15 +128,29 @@ private[frontend] object BoardOptions:
   val none: BoardOptions = new BoardOptions(Map.empty, _ => ())
 
   /** What a pick on the table or in the panel does: stage the board draft
-    * after the click, in the session's current context. Without a context
-    * (a seat change's interim frame) or without control it does nothing.
+    * after the click, in the session's current context, or, on a decision
+    * that picks at once, send the pick. Without a context (a seat change's
+    * interim frame) or without control it does nothing.
     */
   def stager(surface: ParkedDecision.Surface.BoardDecision,
       drafts: SessionDrafts, canControl: Boolean,
       controls: TableControls): DecisionOptionState => Unit =
     option => if canControl then drafts.context.foreach(context =>
-      controls.stage(Draft.Board(Some(BoardSelectionDraft.click(drafts.board,
-        context, surface.decision.decisionId, surface.query, option)))))
+      if picksAtOnce(surface) then controls.submitCommand(
+        WalkerPanelSupport.resolveChooseOneCommand(surface.decision, option))
+      else controls.stage(Draft.Board(Some(BoardSelectionDraft.click(
+        drafts.board, context, surface.decision.decisionId, surface.query,
+        option)))))
+
+  /** Whether a click on an option answers the decision with it, with no
+    * Confirm: an action's modifier decision, whose ids the engine's
+    * `ModifierPicks.decisionId` spells "search.modifiers" and so on. A pick
+    * there is one of several, each paid at once, and Undo takes it back, so
+    * a second click to confirm it would only slow the player down.
+    */
+  def picksAtOnce(surface: ParkedDecision.Surface.BoardDecision): Boolean =
+    surface.query.isInstanceOf[DecisionQueryState.ChooseOne] &&
+      surface.decision.decisionId.endsWith(".modifiers")
 
   def of(surface: ParkedDecision.Surface.BoardDecision, drafts: SessionDrafts,
       canControl: Boolean, controls: TableControls,

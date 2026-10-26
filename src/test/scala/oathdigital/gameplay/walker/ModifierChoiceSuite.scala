@@ -102,7 +102,10 @@ class ModifierChoiceSuite extends munit.FunSuite:
 
   private def card(id: DenizenId): DecisionOption =
     DecisionOption.Denizen(DecisionOptionRef.Denizen(id))
-  private val start = DecisionOption.Button(ModifierPicks.start, "Start")
+  private val startWithNoModifiers =
+    DecisionOption.Button(ModifierPicks.start, "Start with no modifiers")
+  private val startWithOneModifier =
+    DecisionOption.Button(ModifierPicks.start, "Start with 1 modifier")
   private def unavailable(option: DecisionOption, reason: String) =
     DecisionOption.Unavailable(option, OptionReason.Written(reason))
 
@@ -118,8 +121,13 @@ class ModifierChoiceSuite extends munit.FunSuite:
     val at = begin(table(), on, walked)
     assertEquals(decide(at, on, walked).decisionId, decisionId)
     assertEquals(decide(at, on, walked).query, DecisionQuery.ChooseOne(
-      Vector(start, card(alpha), card(beta)),
+      Vector(startWithNoModifiers, card(alpha), card(beta)),
       heading = Some(ModifierChoice.heading)))
+
+  test("Start says how many modifiers the action starts with"):
+    assertEquals(Vector(0, 1, 2).map(ModifierChoice.startWith("Start Muster",
+      _)), Vector("Start Muster with no modifiers",
+      "Start Muster with 1 modifier", "Start Muster with 2 modifiers"))
 
   test("a modifier is priced from its payment, or unavailable with the " +
       "shortfall"):
@@ -127,7 +135,7 @@ class ModifierChoiceSuite extends munit.FunSuite:
     val walked = powers(Stand("a", alpha, Cost(favor = 2)),
       Stand("b", beta, Cost(favor = 4)))
     assertEquals(options(begin(table(favor = 3), on, walked), on, walked),
-      Vector(start,
+      Vector(startWithNoModifiers,
         DecisionOption.Priced(card(alpha), OptionPrice(favor = 2)),
         unavailable(card(beta), "Needs 4 favor; you have 3")))
 
@@ -149,7 +157,7 @@ class ModifierChoiceSuite extends munit.FunSuite:
         case PayCost(_, Location.OnCard(paid), _, _, _, _) => paid == alpha
         case _ => false
       })
-    assertEquals(options(second, on, walked), Vector(start,
+    assertEquals(options(second, on, walked), Vector(startWithOneModifier,
       unavailable(card(beta), "Needs 2 favor; you have 1")))
 
   test("a modifier's own reason makes it unavailable, or warns, from the " +
@@ -164,7 +172,7 @@ class ModifierChoiceSuite extends munit.FunSuite:
         OfferReason.Warned("Wasted with Wrestlers"))))
     val picked = answer(begin(table(), on, walked), on, walked, decisionId,
       DecisionOptionRef.Denizen(alpha))
-    assertEquals(options(picked, on, walked), Vector(start,
+    assertEquals(options(picked, on, walked), Vector(startWithOneModifier,
       unavailable(card(beta), "Not with Wrestlers"),
       DecisionOption.Warned(card(gamma),
         OptionReason.Written("Wasted with Wrestlers"))))
@@ -182,7 +190,7 @@ class ModifierChoiceSuite extends munit.FunSuite:
     val walked = powers(restricting, Stand("b", beta))
     val picked = answer(begin(table(), on, walked), on, walked, decisionId,
       DecisionOptionRef.Denizen(alpha))
-    assertEquals(options(picked, on, walked), Vector(start,
+    assertEquals(options(picked, on, walked), Vector(startWithOneModifier,
       DecisionOption.Unavailable(card(beta), OptionReason.Noted(
         restricting.id, LogNote(Some(PowerSourceRef.Card(alpha)), "barred",
           Vector.empty)))))
@@ -196,10 +204,10 @@ class ModifierChoiceSuite extends munit.FunSuite:
     val walked = powers(waiver, Stand("b", beta))
     val first = begin(table(supply = 0), on, walked)
     assertEquals(options(first, on, walked).head,
-      unavailable(start, ModifierChoice.cannotStart))
+      unavailable(startWithNoModifiers, ModifierChoice.cannotStart))
     val picked = answer(first, on, walked, decisionId,
       DecisionOptionRef.Denizen(alpha))
-    assertEquals(options(picked, on, walked).head, start)
+    assertEquals(options(picked, on, walked).head, startWithOneModifier)
     val begun = answer(picked, on, walked, decisionId, ModifierPicks.start)
     assertEquals(decide(begun, on, walked).decisionId, "stand.go")
     val done = accepted(ProcedureWalker.resolve(begun.ready, on,

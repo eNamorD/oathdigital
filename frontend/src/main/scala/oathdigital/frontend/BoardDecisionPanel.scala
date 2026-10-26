@@ -8,7 +8,8 @@ import org.scalajs.dom
   * locked and picked option with its tally values (a choose-one's pick only
   * when it carries details the button does not), the tally totals, the options
   * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
-  * then a rule labelled "Decision" over Clear and the confirm button. The table draws
+  * then a rule labelled "Decision" over Clear and the confirm button, which a
+  * decision that picks at once leaves out. The table draws
   * the options themselves, through `BoardOptions`. A choose-one with no
   * option on the table to choose or ask about is a Continue screen: it says
   * nothing can be chosen and shows only its Decide buttons.
@@ -170,7 +171,8 @@ private[frontend] object BoardDecisionPanel:
         WalkerPanelSupport.withholds(decide, option)
       }
 
-    if boardChoices then
+    // A decision that picks at once has no draft to clear or confirm.
+    if boardChoices && !BoardOptions.picksAtOnce(surface) then
       panel.appendChild(text("p", "board-decision-rule-labelled", "Decision"))
       if picks.nonEmpty || draft.exists(_.home.nonEmpty) then
         val clear = button("Clear", "board-decision-clear")

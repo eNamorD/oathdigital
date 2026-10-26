@@ -24,7 +24,7 @@ class TradeModifierChoiceSuite extends munit.FunSuite:
   private val modifierDecisionId =
     ModifierPicks.decisionId(PowerWindow.TradeModifierSelection)
   private val startTrade: DecisionOption =
-    DecisionOption.Button(ModifierPicks.start, "Start Trade")
+    DecisionOption.Button(ModifierPicks.start, "Start Trade with no modifiers")
 
   /** p1 at Ancient City beside Errand Boy, with 4 favor, 2 faceup secrets
     * and `supply` Supply, holding Birdsong faceup when `withBirdsong`. */

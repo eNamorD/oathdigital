@@ -318,6 +318,6 @@ class ChallengeProcedureSuite extends munit.FunSuite:
     assertEquals(
       EmptyWindowModifier.parkedWithFirstOption(started.state, powers),
       ("challenge.modifiers", Some(DecisionOption.Button(ModifierPicks.start,
-        "Start Challenge"))))
+        "Start Challenge with no modifiers"))))
     // Nothing is spent until the Challenge starts.
     assertEquals(Look(started.state).supply(p1), 7)
