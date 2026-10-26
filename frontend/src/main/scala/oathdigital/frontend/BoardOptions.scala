@@ -144,13 +144,18 @@ private[frontend] object BoardOptions:
 
   /** Whether a click on an option answers the decision with it, with no
     * Confirm: an action's modifier decision, whose ids the engine's
-    * `ModifierPicks.decisionId` spells "search.modifiers" and so on. A pick
+    * `ModifierPicks.decisionId` spells "search.modifiers" and so on, and a
+    * Campaign side's battle-plan decision, spelled as `CampaignIds`. A pick
     * there is one of several, each paid at once, and Undo takes it back, so
     * a second click to confirm it would only slow the player down.
     */
   def picksAtOnce(surface: ParkedDecision.Surface.BoardDecision): Boolean =
+    val id = surface.decision.decisionId
     surface.query.isInstanceOf[DecisionQueryState.ChooseOne] &&
-      surface.decision.decisionId.endsWith(".modifiers")
+      (id.endsWith(".modifiers") || battlePlanDecisionIds.contains(id))
+
+  private val battlePlanDecisionIds =
+    Set("campaign.attacker-plan", "campaign.defender-plan")
 
   def of(surface: ParkedDecision.Surface.BoardDecision, drafts: SessionDrafts,
       canControl: Boolean, controls: TableControls,

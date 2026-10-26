@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.{CampaignIds,
-  CampaignPlanApplication, CampaignProcedure}
+  CampaignPlanApplication, CampaignPlanChoice, CampaignProcedure}
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   Transform}
@@ -99,8 +99,13 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
 
   private def denizen(card: DenizenId): DecisionOptionRef =
     DecisionOptionRef.Denizen(card)
-  private val finishOption =
-    DecisionOption.Button(CampaignIds.finish, "Finish battle plans")
+  private val finishWithNoPlans =
+    DecisionOption.Button(CampaignIds.finish, "Finish with no battle plans")
+
+  test("Finish says how many battle plans the side fights with"):
+    assertEquals(Vector(0, 1, 2).map(CampaignPlanChoice.finishWith), Vector(
+      "Finish with no battle plans", "Finish with 1 battle plan",
+      "Finish with 2 battle plans"))
 
   // ---- costs --------------------------------------------------------------
 
@@ -127,7 +132,7 @@ class CampaignPlanWindowSuite extends munit.FunSuite:
       DecisionOption.Priced(DecisionOption.Badged(DecisionOption.Denizen(
         DecisionOptionRef.Denizen(outriders)), "Attack Plan"),
         OptionPrice(favor = 1)),
-      finishOption))
+      finishWithNoPlans))
     val picked = pick(g, forced, b.actor, CampaignIds.attackerPlan,
       denizen(outriders))
     assertEquals(Look(picked.state).tokensOn(outriders), Tokens(2, 0))
