@@ -9,10 +9,9 @@ specs.
 
 ## Now
 
-**Phase - Cleanup tasks** holds what finished phases left behind, bugs and
-small UI fixes from the 2026-10-01 playtest. Catalog batch 7 (Campaign
-dice) landed on 2026-10-10; what it left behind is under Cleanup tasks.
-Catalog batch 8 landed on 2026-10-18: its
+**Phase - Cleanup tasks** holds what finished phases left behind. Catalog
+batch 7 (Campaign dice) landed on 2026-10-10; what it left behind is under
+Cleanup tasks. Catalog batch 8 landed on 2026-10-18: its
 [design](superpowers/specs/2026-10-12-catalog-batch-8-design.md) records
 every slice and item.
 
@@ -22,18 +21,6 @@ Work toward a playable all-Exile alpha before expanding into the Chronicle,
 campaign-continuity and Empire rules.
 
 ### Phase - Cleanup tasks
-
-From the playtest of 2026-10-01:
-
-- [ ] **Find out why an off-LAN player's new connections time out.** An
-  incognito window failed for the host and for an off-LAN player, while
-  their normal windows worked. On the host, private mode is not the cause: a
-  normal-window reload with the cache disabled fails too, because the router
-  does not reliably loop back to its public address (quick start, step 6), and
-  open tabs kept working only by reusing their connection. An off-LAN player
-  does not loop back. Have them reload with the cache disabled and open
-  `/health/ready` in a private window, then check the port forward and the
-  host firewall.
 
 Left behind by earlier phases:
 
