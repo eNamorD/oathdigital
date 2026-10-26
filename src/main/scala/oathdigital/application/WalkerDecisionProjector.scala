@@ -15,7 +15,7 @@ import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionSectionProjection, DecisionSlotProjection, DecisionSummaryProjection,
   DecisionTallyProjection, DecisionTallyValueProjection,
   WalkerDecisionProjection, WalkerRollOutcomeProjection,
-  WalkerWaitingProjection}
+  WalkerStatusProjection, WalkerWaitingProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
   * + `walkerProcedure`, Task 6) into the small owner-private
@@ -178,7 +178,8 @@ private[application] final class WalkerDecisionProjector(
                 decide.decisionId),
               answeredOptions = answeredOptions(ready, viewer, pending,
                 decide.decisionId),
-              presentation = decide.presentation.key))
+              presentation = decide.presentation.key,
+              status = status(procedure, ready, awaited, decide.decisionId)))
         }
 
   /** The decision's query as this viewer is offered it. For a procedure that
@@ -651,17 +652,41 @@ private[application] final class WalkerDecisionProjector(
       case None => presentation.hiddenCard(presentation.cardKind(id))
 
   /** Every answer already recorded at `decisionId`, in answer order, described
-    * the way the decision's own options are. See `answeredOptions`' doc on the
-    * projection for why a button is dropped rather than labelled.
+    * the way the decision's own options are. A pick-and-pay menu's picks are
+    * read from their records (`walkerPicks`), each with what it paid, and a
+    * button pick with the words it was offered under. Any other answer is
+    * read from the tree; see `answeredOptions`' doc on the projection for why
+    * a button is dropped there rather than labelled.
     */
   private def answeredOptions(ready: ReadyGame, viewer: Option[PlayerId],
       pending: PendingTree, decisionId: String)
       : Vector[DecisionOptionProjection] =
     val index = ready.game.cardIndex.toOption
-    pending.answered.collect {
+    val picks = played(ready, decisionId)
+    if picks.nonEmpty then picks.flatMap(pick => ((pick.option, pick.label)
+      match
+        case (button: DecisionOptionRef.Button, Some(label)) =>
+          Some(DecisionOption.Button(button, label))
+        case (ref, _) => DecisionOption.forRef(ref))
+      .flatMap(optionProjection(ready, viewer, index, _,
+        PriceDetails.paid(pick.paid))))
+    else pending.answered.collect {
       case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
     }.flatMap(DecisionOption.forRef)
       .flatMap(optionProjection(ready, viewer, index, _))
+
+  private def played(ready: ReadyGame, decisionId: String): Vector[PlayedPick] =
+    ready.game.current.walkerPicks.filter(_.decisionId == decisionId)
+
+  /** What the procedure shows beside `decisionId`, then, once a
+    * pick-and-pay menu has taken a pick, what its picks paid in all. */
+  private def status(procedure: ProcedureRef, ready: ReadyGame,
+      actor: PlayerId, decisionId: String): Vector[WalkerStatusProjection] =
+    val picks = played(ready, decisionId)
+    WalkerProcedureRegistry.status(procedure, catalog, ready, actor,
+        decisionId).map(line => WalkerStatusProjection(line.label, line.value)) ++
+      Option.when(picks.nonEmpty)(WalkerStatusProjection("Paid so far",
+        PriceDetails.paidInAll(picks.map(_.paid))))
 
   private def orientationOf(state: Option[CardState]): Option[Orientation] =
     GamePresentationProjector.orientationOf(state)

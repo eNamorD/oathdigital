@@ -149,6 +149,17 @@ enum VictoryKind(val key: String):
 final case class GameResult(winner: PlayerId,
     kind: VictoryKind = VictoryKind.Usurper)
 
+/** One pick a pick-and-pay menu took in the current walk: a battle plan or a
+  * modifier (`OpenPick`), and what it has paid so far, priced as its option
+  * was. `label` names a button pick, whose words the menu authored and which
+  * no state can give back once the menu stops listing it; a card names
+  * itself. `open` while its payment runs, so each `PayCost` and `Sacrifice`
+  * applied adds to it, until `ClosePick`.
+  */
+final case class PlayedPick(decisionId: String, option: DecisionOptionRef,
+    label: Option[String], paid: OptionPrice = OptionPrice(),
+    open: Boolean = true)
+
 final case class CurrentGameState(
     players: Vector[PlayerState],
     map: MapState,
@@ -213,7 +224,12 @@ final case class CurrentGameState(
     // `ActAsIf`: replay rebuilds it from the recorded `ActAsIf`, and the
     // walker and `WalkerCompleted` clear it with the dice pools. Never
     // projected.
-    walkerAsIfSite: Option[SiteId] = None
+    walkerAsIfSite: Option[SiteId] = None,
+    // The picks the walk's pick-and-pay menus took, in pick order, with what
+    // each paid (`PlayedPick`). Walker scratch: replay rebuilds it from the
+    // recorded `OpenPick`, payments and `ClosePick`, and the walker and
+    // `WalkerCompleted` clear it with the dice pools.
+    walkerPicks: Vector[PlayedPick] = Vector.empty
 ):
   /** The player the current walk belongs to (catalog batch 8, slice 14):
     * the actor of the queue entry it was started from, else the turn's

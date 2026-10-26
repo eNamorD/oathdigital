@@ -201,6 +201,13 @@ class ProjectionProtocolSuite extends munit.FunSuite:
         answeredOptions = Vector(played))))
     assertRoundTrips(repeated)
 
+  test("a walker decision round-trips the facts shown beside it"):
+    val shown = projection.copy(walkerDecision = Some(
+      WalkerDecisionProjection("campaign", "campaign.defender-plan",
+        status = Vector(WalkerStatusProjection("Attack dice", "9"),
+          WalkerStatusProjection("Paid so far", "1 favor")))))
+    assertRoundTrips(shown)
+
   test("a choose-one option round-trips its details and defaults them to none"):
     val annotated = DecisionQueryProjection.ChooseOne(Vector(
       DecisionOptionProjection("denizen", "d1", "Old Oak", None,

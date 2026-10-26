@@ -7,6 +7,7 @@ import oathdigital.frontend.TestSites.quietSite
 import oathdigital.model.PlayerColor
 import oathdigital.protocol.{DecisionAnswerWire, GameIntent => Intent,
   WalkerStartArgWire}
+import oathdigital.protocol.projection.WalkerStatusProjection
 import oathdigital.testkit.Unwrap.as
 import ParkedDecision.{Routed, Surface}
 import org.scalajs.dom
@@ -201,6 +202,30 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("muster.modifiers",
       DecisionAnswerWire.ChooseOneWire("relic", "cup"))))
     assertEquals(ui.drafts.board, None)
+
+  test("the plans played are numbered under their own rule, each with what " +
+      "it paid, then the facts beside the decision"):
+    val plans = DecisionQueryState.ChooseOne(Vector(
+      DecisionOptionState("relic", "cup", "Cup"),
+      DecisionOptionState("button", "finish", "Finish with 2 battle plans")),
+      Some("Defender: choose a battle plan, or finish"))
+    val parked = decision.copy(decisionId = "campaign.defender-plan",
+      answeredOptions = Vector(
+        DecisionOptionState("button", "title",
+          "Oathkeeper title: add 1 defense die", details = Vector("Free")),
+        DecisionOptionState("denizen", "shield", "Shield Wall",
+          details = Vector("1 favor"))),
+      status = Vector(WalkerStatusProjection("Defense dice", "2"),
+        WalkerStatusProjection("Paid so far", "1 favor")))
+    val panel = pane(new RecordingControls(), plans, parked)
+    assertEquals(all(panel, ".board-decision-rule-labelled").map(_.textContent),
+      Vector("Played"))
+    assertEquals(all(panel, ".board-decision-row-played").map(_.textContent),
+      Vector("1. Oathkeeper title: add 1 defense dieFree",
+        "2. Shield Wall1 favor"))
+    assertEquals(all(panel, ".board-decision-row-locked"), Vector.empty)
+    assertEquals(all(panel, ".board-decision-status").map(_.textContent),
+      Vector("Defense dice2", "Paid so far1 favor"))
 
   test("a battle plan is picked by its click alone, with no Confirm"):
     val ui = new RecordingControls()

@@ -128,6 +128,42 @@ private[operations] object TurnStateOperations:
   def actAsIf(ready: ReadyGame, site: SiteId): ReadyGame =
     ready.updateCurrent(_.copy(walkerAsIfSite = Some(site)))
 
+  /** Opens the record of a pick, closing any still open, so payments from
+    * here on are added to it. */
+  def openPick(ready: ReadyGame, decisionId: String,
+      option: DecisionOptionRef, label: Option[String]): ReadyGame =
+    closePick(ready).updateCurrent(current => current.copy(walkerPicks =
+      current.walkerPicks :+ PlayedPick(decisionId, option, label)))
+
+  /** Closes the open pick record, if any. */
+  def closePick(ready: ReadyGame): ReadyGame =
+    ready.updateCurrent(current => current.copy(walkerPicks =
+      current.walkerPicks.map(_.copy(open = false))))
+
+  /** Adds every `PayCost` and `Sacrifice` inside `operation` to the open
+    * pick record. With none open, or nothing paid, the state is unchanged.
+    * Each is read where it stands in the tree, before it flattens to its
+    * moves. */
+  def tallyPayments(ready: ReadyGame, operation: CoreOperation): ReadyGame =
+    def payments(node: Operation): Vector[OptionPrice] = node match
+      case PayCost(_, _, cost, _, _, _) => Vector(OptionPrice(cost.favor,
+        cost.secret, cost.favorBurnt, cost.secretBurnt))
+      case Sacrifice(_, warbands, _) =>
+        Vector(OptionPrice(warbands = warbands.amount))
+      case _: LeafOperation => Vector.empty
+      case _ => node.children.flatMap(payments)
+    val paid = payments(operation)
+    val picks = ready.game.current.walkerPicks
+    if paid.isEmpty || !picks.lastOption.exists(_.open) then ready
+    else ready.updateCurrent(_.copy(walkerPicks = picks.init :+
+      picks.last.copy(paid = paid.foldLeft(picks.last.paid)(added))))
+
+  private def added(total: OptionPrice, more: OptionPrice): OptionPrice =
+    OptionPrice(total.favor + more.favor, total.secrets + more.secrets,
+      total.favorBurnt + more.favorBurnt,
+      total.secretsBurnt + more.secretsBurnt,
+      total.warbands + more.warbands)
+
   /** A write, not an advance: which phase may follow which belongs to the
     * procedure that declared the operation, and is deliberately not restated
     * here. The one thing this does reject is a transition to the phase the

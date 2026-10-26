@@ -257,8 +257,17 @@ final case class WalkerDecisionProjection(
       * with a place on the table there, `"panel"` keeps it in the Action
       * panel. A payload without the field was answered in the panel.
       */
-    presentation: String = "panel"
+    presentation: String = "panel",
+    /** Facts shown beside the decision, each a label and its value, worded
+      * by the server: a battle-plan window's forces and dice, and what the
+      * picks of a pick-and-pay menu have paid so far.
+      */
+    status: Vector[WalkerStatusProjection] = Vector.empty
 )
+
+/** One fact beside a parked decision: "Attack dice" and "9". */
+final case class WalkerStatusProjection(label: String, value: String)
+
 /** The roll a parked decision wants shown beside it.
   *
   * `pool` names which roll it is (`"recover"`, `"campaign.attack"`), so the

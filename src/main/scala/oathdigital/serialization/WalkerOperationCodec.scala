@@ -41,7 +41,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
   private type TurnOperation = AdvanceVisionsDrawn.type | BeginTurn | EnterPhase |
     SetOathkeeper | SetOathkeeperGoal | RecordPowerUse | RecordCampaignResult |
     ModifyDicePool | Roll | ModifyRollOutcome | Reroll | SetDieFaces |
-    QueueProcedure | Defer | TakeDeferred | ActAsIf
+    QueueProcedure | Defer | TakeDeferred | ActAsIf | OpenPick | ClosePick
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match
@@ -257,6 +257,11 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
         "key" -> key.value)
       case ActAsIf(site) => ujson.Obj("kind" -> "act-as-if",
         "siteId" -> site.value)
+      case OpenPick(decisionId, option, label) => ujson.Obj(
+        "kind" -> "open-pick", "decisionId" -> decisionId,
+        "option" -> DecisionAnswerCodec.encodeRef(option),
+        "label" -> label.fold[ujson.Value](ujson.Null)(ujson.Str(_)))
+      case ClosePick() => ujson.Obj("kind" -> "close-pick")
 
   private def encodePowerTiming(timing: PowerTiming): String = timing match
     case PowerTiming.Wake => "wake"
@@ -546,3 +551,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec
     case "take-deferred" =>
       Right(TakeDeferred(DeferralKey(value("key").str)))
     case "act-as-if" => Right(ActAsIf(SiteId(value("siteId").str)))
+    case "open-pick" => DecisionAnswerCodec.decodeRef(value("option"),
+      s"$path.option").map(OpenPick(value("decisionId").str, _,
+        value("label").strOpt))
+    case "close-pick" => Right(ClosePick())

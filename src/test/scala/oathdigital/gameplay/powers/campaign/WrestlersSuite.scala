@@ -27,9 +27,17 @@ class WrestlersSuite extends munit.FunSuite:
     assertEquals(Look(picked.state).forces(b.origin),
       SiteForces.Occupied(ForceKind.Exile(b.player(b.rival).lineage), 1))
     assertEquals(picked.since(run).map(_.getClass.getSimpleName),
-      Vector("Sacrifice", "ModifyDicePool"))
+      Vector("OpenPick", "Sacrifice", "ModifyDicePool", "ClosePick"))
     assert(
       picked.since(run).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+
+  test("the pick's record holds the warband it sacrificed"):
+    val b = conquest
+    val picked = commit(rules(losingDice), b, 4)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+    assertEquals(oathdigital.testkit.Outcomes.ready(picked.state).game.current
+      .walkerPicks, Vector(PlayedPick(CampaignIds.defenderPlan, ref, None,
+        OptionPrice(warbands = 1), open = false)))
 
   test("the sacrificed warband lowers the recorded force by one"):
     val b = conquest

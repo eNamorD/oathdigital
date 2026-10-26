@@ -302,13 +302,16 @@ class GameApplicationServiceRecoverSuite extends munit.FunSuite:
       case Left(error) =>
         fail(s"picking Catacombs must persist, got $error")
 
-    // The pick's payment onto the card, then Catacombs' relic move off the
-    // top of the relic deck, verbatim, survived encoding.
+    // The pick's payment onto the card inside the pick's record, then
+    // Catacombs' relic move off the top of the relic deck, verbatim,
+    // survived encoding.
     assertEquals(started.events.collect {
       case step: WalkerStepRecorded => step
-    }.flatMap(RecordedOps.of(_)).take(2), Vector[CoreOperation](
+    }.flatMap(RecordedOps.of(_)).take(4), Vector[CoreOperation](
+      OpenPick("recover.modifiers", DecisionOptionRef.Denizen(catacombs)),
       PayCost(actor, Location.OnCard(catacombs), Cost(secret = 1),
         matchingBank = catalog.suitOf(catacombs)),
+      ClosePick(),
       Move(Piece.Card(topRelic),
         PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
         PositionedLocation(Location.Site(siteId)),

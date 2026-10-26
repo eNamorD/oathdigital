@@ -160,6 +160,23 @@ class ModifierChoiceSuite extends munit.FunSuite:
     assertEquals(options(second, on, walked), Vector(startWithOneModifier,
       unavailable(card(beta), "Needs 2 favor; you have 1")))
 
+  test("a pick's record holds what it paid, and the walk's end clears it"):
+    val on = tree()
+    val walked = powers(Stand("a", alpha, Cost(favor = 2)),
+      Stand("b", beta, Cost(favor = 2)))
+    val picked = answer(begin(table(favor = 3), on, walked), on, walked,
+      decisionId, DecisionOptionRef.Denizen(alpha))
+    assertEquals(picked.ready.game.current.walkerPicks, Vector(PlayedPick(
+      decisionId, DecisionOptionRef.Denizen(alpha), None,
+      OptionPrice(favor = 2), open = false)))
+    val begun = answer(picked, on, walked, decisionId, ModifierPicks.start)
+    accepted(ProcedureWalker.resolve(begun.ready, on, begun.pending,
+      Answered("stand.go", DecisionAnswer.ChooseOneAnswer(go), p1),
+      walked)) match
+      case WalkerOutcome.Finished(after, _) =>
+        assertEquals(after.game.current.walkerPicks, Vector.empty)
+      case other => fail(s"expected the walk to finish, got $other")
+
   test("a modifier's own reason makes it unavailable, or warns, from the " +
       "picks"):
     def after(ref: CardId)(ctx: PowerCtx): Boolean =

@@ -7,6 +7,11 @@ private[frontend] enum OptionState(val classes: Vector[String]):
     Vector("board-option", "board-option-selected"))
   case Locked extends OptionState(
     Vector("board-option", "board-option-locked"))
+  /** A pick a repeated choose-one already took, `order` counting from 1: a
+    * battle plan or modifier played. Settled like a locked option, but
+    * numbered rather than locked, since it was the viewer's own choice. */
+  case Played(order: Int) extends OptionState(
+    Vector("board-option", "board-option-played"))
   case Unavailable extends OptionState(
     Vector("board-option", "board-option-unavailable"))
   case Askable extends OptionState(
@@ -60,7 +65,8 @@ private[frontend] object BoardOptionViews:
 
   /** Each home's view: locked and unavailable as projected, then the draft's
     * picks, then what the draft's limits block. A choose-one's answers so
-    * far (a battle-plan window's played plans) show locked. A home that
+    * far (a battle-plan window's played plans) show played, numbered in the
+    * order they were taken. A home that
     * several options share is one view ([[shared]]).
     */
   def of(decision: WalkerDecisionState, query: DecisionQueryState,
@@ -69,7 +75,8 @@ private[frontend] object BoardOptionViews:
     val picks = current.fold(Vector.empty[String])(_.keys)
     val played = query match
       case _: DecisionQueryState.ChooseOne => decision.answeredOptions
-        .map(option => OptionView(option, OptionState.Locked, None))
+        .zipWithIndex.map((option, index) =>
+          OptionView(option, OptionState.Played(index + 1), None))
       case _ => Vector.empty
     val offered = options(query).map(view(query, picks, _))
       .groupBy(found => home(found.option)).map((at, views) =>

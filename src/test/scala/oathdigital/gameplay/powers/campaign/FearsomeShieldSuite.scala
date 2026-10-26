@@ -24,8 +24,9 @@ class FearsomeShieldSuite extends munit.FunSuite:
     val run = commit(rules(losingDice), b, 4)
     assert(awaits(run, b.rival, CampaignIds.defenderPlan))
     val picked = run.pick(b.rival, CampaignIds.defenderPlan, ref)
-    // The dice-pool change and the PayCost.
+    // The dice-pool change and the PayCost, inside the pick's record.
     assertEquals(picked.since(run).toSet, Set[CoreOperation](
+      OpenPick(CampaignIds.defenderPlan, ref), ClosePick(),
       ModifyDicePool(CampaignIds.defensePool, 2),
       PayCost(b.rival, Location.OnCard(relic), Cost(secretBurnt = 2),
         intoOccupied = true)))
@@ -34,6 +35,14 @@ class FearsomeShieldSuite extends munit.FunSuite:
     // Nothing rests on the relic.
     assertEquals(Look(picked.state).player(b.rival).relics.map(_.tokens),
       Vector(Tokens.empty))
+
+  test("the pick's record holds the two secrets it burnt"):
+    val b = defending(3)
+    val picked = commit(rules(losingDice), b, 4)
+      .pick(b.rival, CampaignIds.defenderPlan, ref)
+    assertEquals(oathdigital.testkit.Outcomes.ready(picked.state).game.current
+      .walkerPicks, Vector(PlayedPick(CampaignIds.defenderPlan, ref, None,
+        OptionPrice(secretsBurnt = 2), open = false)))
 
   test("with fewer than two faceup secrets the defender cannot pay, and the " +
       "plan is not offered"):

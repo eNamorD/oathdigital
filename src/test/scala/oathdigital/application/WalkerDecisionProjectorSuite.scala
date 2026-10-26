@@ -598,6 +598,16 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(projected.toVector.flatMap(_.answeredOptions).map(_.label),
       Vector("Sticky Fire"))
 
+  test("a played battle plan shows what it paid, and the window shows the " +
+      "forces, the dice and the total paid"):
+    val projected = project(campaignWithOnePlanPlayed, viewer = Some(attacker))
+    assertEquals(projected.toVector.flatMap(_.answeredOptions).map(option =>
+      option.label -> option.details), Vector("Sticky Fire" -> Vector("Free")))
+    assertEquals(projected.toVector.flatMap(_.status).map(line =>
+      line.label -> line.value), Vector("Attacking force" -> "2 warbands",
+      "Defending force" -> "2 warbands", "Attack dice" -> "2",
+      "Defense dice" -> "2", "Paid so far" -> "Nothing"))
+
   test("answers at other decisions do not count as answered options"):
     val projected = project(campaignAtSacrifice, viewer = Some(attacker))
     assertEquals(projected.map(_.decisionId), Some(CampaignIds.sacrifice))
