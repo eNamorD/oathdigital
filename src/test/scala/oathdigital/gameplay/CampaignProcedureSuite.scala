@@ -227,7 +227,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
         DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
           brass)), "Battle Plan"),
         OptionPrice(secrets = 1)),
-      DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
+      DecisionOption.Button(CampaignIds.finish, "Finish with no battle plans")),
       Some("Choose a battle plan, or finish")))
     val picked = accepted(answer(plans.state, b.actor, CampaignIds.attackerPlan,
       planPick(DecisionOptionRef.Relic(brass))))
@@ -255,7 +255,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
         DecisionOption.Badged(DecisionOption.Relic(DecisionOptionRef.Relic(
           brass)), "Battle Plan"),
         OptionPrice(secrets = 1)),
-      DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
+      DecisionOption.Button(CampaignIds.finish, "Finish with 1 battle plan")),
       Some("Choose a battle plan, or finish")))
     val done = accepted(
       answer(first.state, b.actor, CampaignIds.attackerPlan, finish))
@@ -293,7 +293,7 @@ class CampaignProcedureSuite extends munit.FunSuite:
       "Oathkeeper title: add 1 defense die")
     assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Badged(title, "Defense Plan"),
-      DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
+      DecisionOption.Button(CampaignIds.finish, "Finish with no battle plans")),
       Some("Defender: choose a battle plan, or finish")))
     assertEquals(
       answer(plans.state, b.actor, CampaignIds.defenderPlan, finish),

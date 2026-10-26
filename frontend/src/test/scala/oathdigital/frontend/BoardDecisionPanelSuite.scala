@@ -123,18 +123,16 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
 
   test("a Decide button submits at once, under its own rule"):
     val ui = new RecordingControls()
-    val plans = DecisionQueryState.ChooseOne(Vector(option("hills"),
-      DecisionOptionState("button", "finish", "Finish battle plans")),
-      Some("Choose a battle plan, or finish"))
-    val panel = pane(ui, plans, decision.copy(decisionId =
-      "campaign.attacker-plan"))
+    val sites = DecisionQueryState.ChooseOne(Vector(option("hills"),
+      DecisionOptionState("button", "pass", "Pass")),
+      Some("Choose a site, or pass"))
+    val panel = pane(ui, sites, decision.copy(decisionId = "power.site"))
     assertEquals(all(panel, ".board-decision-rule").size, 1)
-    val finish = as[dom.html.Button](one(panel, ".board-decision-decide"))
-    assertEquals(finish.textContent, "Finish battle plans")
-    finish.click()
-    assertEquals(ui.submitted, Vector(Intent.ResolveWalker(
-      "campaign.attacker-plan",
-      DecisionAnswerWire.ChooseOneWire("button", "finish"))))
+    val pass = as[dom.html.Button](one(panel, ".board-decision-decide"))
+    assertEquals(pass.textContent, "Pass")
+    pass.click()
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker("power.site",
+      DecisionAnswerWire.ChooseOneWire("button", "pass"))))
     assertEquals(one(panel, ".board-decision-rule-labelled").textContent,
       "Decision")
 
@@ -203,6 +201,20 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("muster.modifiers",
       DecisionAnswerWire.ChooseOneWire("relic", "cup"))))
     assertEquals(ui.drafts.board, None)
+
+  test("a battle plan is picked by its click alone, with no Confirm"):
+    val ui = new RecordingControls()
+    val plans = DecisionQueryState.ChooseOne(Vector(
+      DecisionOptionState("relic", "cup", "Cup"),
+      DecisionOptionState("button", "finish", "Finish with no battle plans")),
+      Some("Defender: choose a battle plan, or finish"))
+    val panel = pane(ui, plans, decision.copy(decisionId =
+      "campaign.defender-plan"))
+    assertEquals(all(panel, ".board-decision-confirm"), Vector.empty)
+    as[dom.html.Button](one(panel, ".board-decision-loose-option")).click()
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker(
+      "campaign.defender-plan", DecisionAnswerWire.ChooseOneWire("relic",
+        "cup"))))
 
   private val placement = DecisionQueryState.ChooseOne(
     Vector(adviserPlayAtRedSlot3("faceup"), adviserPlayAtRedSlot3("facedown")), Some("Play Wayward Spirit"))

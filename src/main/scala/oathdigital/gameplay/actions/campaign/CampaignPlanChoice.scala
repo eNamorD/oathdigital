@@ -14,7 +14,8 @@ import oathdigital.model._
   *  - A player asks a decision listing the plans still unchosen: those the
   *    user can pay for (a dry run of each says so, with every power's changes
   *    to its cost, and prices the option from what it recorded), the rest
-  *    shown unavailable with why, then "Finish". A plan its user can pay for
+  *    shown unavailable with why, then "Finish", worded with how many plans
+  *    are chosen (`finishWith`). A plan its user can pay for
   *    shows its offer's warning. Nothing usable means nothing
   *    is asked, the pass does nothing, and the `Repeat` ends.
   *  - The chosen plan is applied as a [[CampaignPlanApplication]].
@@ -91,7 +92,7 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
     if !playable && !pass.resuming then Vector.empty
     else Vector[Operation](
       Branch((_, _) => if !playable then Vector.empty
-        else Vector(decision(decisionId, user, listed))),
+        else Vector(decision(decisionId, user, listed, chosen.size))),
       Branch((_, tree) => CampaignAnswers.lastPick(tree, decisionId) match {
         case None => Vector.empty
         case Some(ref) => offers.find(offered =>
@@ -107,11 +108,21 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       }))
 
   private def decision(id: String, user: PlayerId,
-      listed: Vector[DecisionOption]): Decide = Decide(id, user,
+      listed: Vector[DecisionOption], picks: Int): Decide = Decide(id, user,
     DecisionQuery.ChooseOne(listed :+
-      DecisionOption.Button(CampaignIds.finish, "Finish battle plans"),
+      DecisionOption.Button(CampaignIds.finish,
+        CampaignPlanChoice.finishWith(picks)),
     heading = Some(side match {
       case CampaignPlanSide.Attacker => "Choose a battle plan, or finish"
       case CampaignPlanSide.Defender =>
         "Defender: choose a battle plan, or finish"
     })))
+
+object CampaignPlanChoice:
+  /** "Finish with no battle plans", or "with 2 battle plans": "Finish" says
+    * how many plans the side fights with, as the modifier decision's "Start"
+    * says how many modifiers the action starts with. */
+  def finishWith(picks: Int): String = picks match
+    case 0 => "Finish with no battle plans"
+    case 1 => "Finish with 1 battle plan"
+    case _ => s"Finish with $picks battle plans"
