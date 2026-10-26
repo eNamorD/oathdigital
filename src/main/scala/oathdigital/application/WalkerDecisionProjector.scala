@@ -130,7 +130,10 @@ private[application] final class WalkerDecisionProjector(
       decide.map(_.query).collect {
         case negotiate: DecisionQuery.Negotiate =>
           deals.project(context.ready, context.viewer, negotiate)
-      })
+      },
+      decide.fold(Vector.empty)(found =>
+        status(parked.procedure, context.ready, found.decisionId,
+          withRoll = true)))
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       actor: PlayerId, args: Vector[DecisionOptionRef]) =
@@ -179,7 +182,7 @@ private[application] final class WalkerDecisionProjector(
               answeredOptions = answeredOptions(ready, viewer, pending,
                 decide.decisionId),
               presentation = decide.presentation.key,
-              status = status(procedure, ready, awaited, decide.decisionId)))
+              status = status(procedure, ready, decide.decisionId)))
         }
 
   /** The decision's query as this viewer is offered it. For a procedure that
@@ -679,12 +682,22 @@ private[application] final class WalkerDecisionProjector(
     ready.game.current.walkerPicks.filter(_.decisionId == decisionId)
 
   /** What the procedure shows beside `decisionId`, then, once a
-    * pick-and-pay menu has taken a pick, what its picks paid in all. */
+    * pick-and-pay menu has taken a pick, what its picks paid in all. A total
+    * whose roll the decider's panel draws (`rollFeedback`) is left out for
+    * them; a viewer who waits sees no roll, so `withRoll` keeps it. */
   private def status(procedure: ProcedureRef, ready: ReadyGame,
-      actor: PlayerId, decisionId: String): Vector[WalkerStatusProjection] =
+      decisionId: String, withRoll: Boolean = false)
+      : Vector[WalkerStatusProjection] =
     val picks = played(ready, decisionId)
+    // The walk's own actor, whoever the decision waits on: a Campaign's
+    // facts are its attacker's setup even while the defender decides.
+    val actor = ready.game.current.walkActor
+    val shown = if withRoll then None
+      else WalkerProcedureRegistry.rollFeedback(procedure, catalog, ready,
+        actor, decisionId).map(_.pool)
     WalkerProcedureRegistry.status(procedure, catalog, ready, actor,
-        decisionId).map(line => WalkerStatusProjection(line.label, line.value)) ++
+        decisionId).filterNot(line => line.pool.exists(shown.contains))
+      .map(line => WalkerStatusProjection(line.label, line.value)) ++
       Option.when(picks.nonEmpty)(WalkerStatusProjection("Paid so far",
         PriceDetails.paidInAll(picks.map(_.paid))))
 

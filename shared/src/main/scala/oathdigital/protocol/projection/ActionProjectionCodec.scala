@@ -30,8 +30,7 @@ private[projection] object ActionProjectionCodec:
     "rollOutcome" -> option(value.rollOutcome)(encodeRollOutcome),
     "answeredOptions" -> encoded(value.answeredOptions)(encodeOptionRow),
     "presentation" -> value.presentation,
-    "status" -> encoded(value.status)(line => ujson.Obj(
-      "label" -> line.label, "value" -> line.value)))
+    "status" -> encoded(value.status)(encodeStatusLine))
   def decodeWalkerDecision(raw: ujson.Value, path: String): Result[WalkerDecisionProjection] = for
     value <- obj(raw, path)
     _ <- exact(value, Set("action", "decisionId", "query", "rollOutcome",
@@ -47,6 +46,9 @@ private[projection] object ActionProjectionCodec:
   yield WalkerDecisionProjection(action, decision, query, rollOutcome,
     answered, presentation, status)
 
+  private def encodeStatusLine(line: WalkerStatusProjection): ujson.Value =
+    ujson.Obj("label" -> line.label, "value" -> line.value)
+
   private def decodeStatusLine(raw: ujson.Value, path: String)
       : Result[WalkerStatusProjection] = for
     value <- obj(raw, path)
@@ -58,15 +60,19 @@ private[projection] object ActionProjectionCodec:
   def encodeWalkerWaiting(value: WalkerWaitingProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "heading" -> stringOption(value.heading),
     "coOwnerPlayerIds" -> encoded(value.coOwnerPlayerIds)(ujson.Str(_)),
-    "deal" -> option(value.deal)(encodeDeal))
+    "deal" -> option(value.deal)(encodeDeal),
+    "status" -> encoded(value.status)(encodeStatusLine))
   def decodeWalkerWaiting(raw: ujson.Value, path: String): Result[WalkerWaitingProjection] = for
     value <- obj(raw, path)
-    _ <- exact(value, Set("playerId", "heading", "coOwnerPlayerIds", "deal"), path)
+    _ <- exact(value, Set("playerId", "heading", "coOwnerPlayerIds", "deal",
+      "status"), path)
     playerId <- string(value, "playerId", path)
     heading <- optionalString(value, "heading", path)
     coOwners <- strings(value, "coOwnerPlayerIds", path)
     deal <- optionalAbsent(value, "deal", path)(decodeDeal)
-  yield WalkerWaitingProjection(playerId, heading, coOwners, deal)
+    statusRaws <- array(value, "status", path)
+    status <- traverse(statusRaws, s"$path.status")(decodeStatusLine)
+  yield WalkerWaitingProjection(playerId, heading, coOwners, deal, status)
 
   /** A projected decision query: the `form` discriminator and, per form,
     * exactly the fields that form declares. A payload carrying a field its

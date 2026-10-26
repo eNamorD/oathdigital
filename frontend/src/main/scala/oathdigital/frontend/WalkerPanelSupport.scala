@@ -78,6 +78,7 @@ private[frontend] object WalkerPanelSupport:
       case ParkedDecision.RecoverStep.Choice(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
+        statusFacts(decision.status, panel)
         val hasSupply = value.activePlayerResources.exists(_.supply >= 1)
         // One control per PROJECTED option, so a power that drops Continue
         // or adds a third choice changes this panel with no edit here. The
@@ -99,6 +100,7 @@ private[frontend] object WalkerPanelSupport:
       case ParkedDecision.RecoverStep.Relic(query) =>
         panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
+        statusFacts(decision.status, panel)
         // A relic at the site the actor stands on is one they can read, so
         // the option is the card itself. The button takes it; a click on the
         // card still opens the inspector, as everywhere else.
@@ -142,6 +144,7 @@ private[frontend] object WalkerPanelSupport:
     // first, as on every panel a roll belongs beside.
     rollFeedback(decision, panel)
     panel.appendChild(text("h2", "", decisionHeading(query)))
+    statusFacts(decision.status, panel)
     // The card a placement is about is not among its options; it is drawn
     // with the cards in hand (`temporaryHandPreview`), not here.
     // What this loop has already applied. A `Repeat` re-asks with the
@@ -221,6 +224,22 @@ private[frontend] object WalkerPanelSupport:
     case "Defense Plan" => "plan-side-defense"
     case "Battle Plan" => "plan-side-both"
     case _ => "option-cost"
+
+  /** The facts the server shows beside a decision, a label and its value a
+    * line: a Campaign's forces and dice, what the picks paid. Drawn for
+    * whoever decides and, from `walkerWaiting`, for everyone who waits. */
+  private[frontend] def statusFacts(
+      status: Vector[projection.WalkerStatusProjection],
+      panel: dom.Element): Unit =
+    if status.nonEmpty then
+      val facts = element("div", "walker-status")
+      status.foreach { fact =>
+        val line = element("p", "walker-status-line")
+        line.appendChild(text("span", "", fact.label))
+        line.appendChild(text("b", "", fact.value))
+        facts.appendChild(line)
+      }
+      panel.appendChild(facts)
 
   /** The faces as the symbols printed on them, then one line of totals: what
     * the roll came to, the number it is measured against where there is one,

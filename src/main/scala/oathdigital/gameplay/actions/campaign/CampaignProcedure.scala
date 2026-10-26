@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.campaign
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.dice.RollStep
+import oathdigital.gameplay.actions.dice.{RerollChoice, RollStep}
 import oathdigital.gameplay.walker.{ModifierChoice, WalkerRollFeedback,
   WalkerStatusLine}
 import oathdigital.model._
@@ -159,27 +159,66 @@ object CampaignProcedure:
         Some(WalkerRollFeedback(CampaignIds.defensePool))
       case _ => None
 
-  /** While a side chooses its battle plans, both forces and both pools as
-    * they stand, so each plan's effect shows as it is played. A pool not yet
-    * gathered counts no dice. */
+  /** The battle as it stands, beside every Campaign decision from the force
+    * question on, for whoever decides and everyone who waits:
+    *
+    *  - choosing the force: the defending force and the printed defense;
+    *  - before the attack roll: both forces and both pools;
+    *  - after it: the attacking force left after the losses, the defending
+    *    force, the attack total and the defense dice still to roll;
+    *  - after the defense roll: both totals and the winner. A reroll of
+    *    the defense dice comes before the defending force is added, so it
+    *    shows the attack total alone.
+    *
+    * Each total names its pool, so a decision that shows that roll already
+    * leaves it out. */
   def status(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       decisionId: String): Vector[WalkerStatusLine] =
-    if decisionId != CampaignIds.attackerPlan &&
-        decisionId != CampaignIds.defenderPlan then Vector.empty
-    else
-      val pending = ready.game.current.walkerPending
-        .getOrElse(PendingTree(Vector.empty, Vector.empty))
-      def dice(pool: PoolKey): String = ready.game.current.rollPools.get(pool)
-        .fold(0)(_.count).toString
-      def warbands(count: Int): String =
-        s"$count warband${if count == 1 then "" else "s"}"
-      CampaignSetup.setup(ready, actor, pending).toVector.flatMap(setup =>
-        Vector(
+    val current = ready.game.current
+    val pending = current.walkerPending
+      .getOrElse(PendingTree(Vector.empty, Vector.empty))
+    val attack = current.rollOutcomes.get(CampaignIds.attackPool)
+    val defense = current.rollOutcomes.get(CampaignIds.defensePool)
+    def dice(pool: PoolKey): String =
+      current.rollPools.get(pool).fold(0)(_.count).toString
+    def warbands(count: Int): String =
+      s"$count warband${if count == 1 then "" else "s"}"
+    def defending(setup: CampaignSetup) = WalkerStatusLine("Defending force",
+      warbands(CampaignBattle.defenderForce(ready, setup)))
+    def attackTotal(score: Int) = WalkerStatusLine("Attack total",
+      (score + CampaignAnswers.sacrificed(pending) *
+        CampaignBattle.sacrificeWorth(ready)).toString,
+      Some(CampaignIds.attackPool))
+    if decisionId == CampaignIds.force then
+      CampaignSetup.targeted(ready, actor, pending).toVector.flatMap(setup =>
+        Vector(defending(setup), WalkerStatusLine("Defense dice",
+          CampaignBattle.printedDefense(catalog, setup).toString)))
+    else CampaignSetup.setup(ready, actor, pending).toVector.flatMap(setup =>
+      (attack, defense) match
+        case (None, _) => Vector(
           WalkerStatusLine("Attacking force", warbands(setup.force)),
-          WalkerStatusLine("Defending force", warbands(CampaignBattle
-            .targetRefs(setup).map(CampaignBattle.forceOf(ready, _)).sum)),
+          defending(setup),
           WalkerStatusLine("Attack dice", dice(CampaignIds.attackPool)),
-          WalkerStatusLine("Defense dice", dice(CampaignIds.defensePool))))
+          WalkerStatusLine("Defense dice", dice(CampaignIds.defensePool)))
+        case (Some(rolled), None) =>
+          val lost = rolled.skulls + CampaignAnswers.sacrificed(pending)
+          Vector(
+            WalkerStatusLine("Attacking force",
+              if lost == 0 then warbands(setup.force)
+              else s"${setup.force - lost} of ${warbands(setup.force)}"),
+            defending(setup), attackTotal(rolled.score),
+            WalkerStatusLine("Defense dice", dice(CampaignIds.defensePool)))
+        case (Some(rolled), Some(_))
+            if RerollChoice.poolOf(decisionId).contains(CampaignIds.defensePool) =>
+          Vector(attackTotal(rolled.score))
+        case (Some(rolled), Some(held)) =>
+          val total = rolled.score + CampaignAnswers.sacrificed(pending) *
+            CampaignBattle.sacrificeWorth(ready)
+          Vector(attackTotal(rolled.score),
+            WalkerStatusLine("Defense total", held.score.toString,
+              Some(CampaignIds.defensePool)),
+            WalkerStatusLine("Winner",
+              if total > held.score then "Attacker" else "Defender")))
 
   /** Omitted when no force survives the skulls. */
   private def sacrificeStep(actor: PlayerId): Operation =

@@ -662,7 +662,7 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .board-decision-summary-empty { color: var(--ink-dim); font-size: .82rem;
   font-weight: 400; }
 .board-decision-rows { margin: 0 0 6px; padding: 0; list-style: none; }
-.board-decision-row, .board-decision-total { display: flex;
+.board-decision-row, .board-decision-total, .walker-status-line { display: flex;
   justify-content: space-between; gap: 8px; margin: 0; padding: 3px 0;
   border-bottom: 1px dotted var(--line-dim); font-size: 13px; }
 .board-decision-row.board-option-hover { background: var(--selection-fill); }
@@ -672,7 +672,10 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 .board-decision-variant[aria-pressed="true"] { border-color: var(--selection);
   background: var(--selection-fill); }
 .board-decision-row-values { color: #c4b89f; text-align: right; }
-.board-decision-total b { color: var(--cream-bright); }
+.board-decision-total b, .walker-status-line b { color: var(--cream-bright); }
+/* The facts beside a decision sit in their own block, apart from the
+   question's controls. */
+.walker-status { margin: 0 0 8px; }
 .board-decision-total-over b { color: var(--error-line); }
 .board-decision-rule { margin: 12px 0 6px; border: 0;
   border-top: 1px solid var(--line-dim); }

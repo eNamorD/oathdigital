@@ -1,6 +1,8 @@
 package oathdigital.frontend
 
+import oathdigital.frontend.Dom.all
 import oathdigital.frontend.ServerModeFixtures.twoSeatProjection
+import oathdigital.protocol.projection.WalkerStatusProjection
 
 import munit.FunSuite
 
@@ -57,6 +59,19 @@ class ViewerPresentationSuite extends FunSuite:
     assertEquals(status.textContent,
       "Waiting for Blue Exile: Choose your starting site")
     assertEquals(status.querySelector(".player-ref").textContent, "Blue Exile")
+
+  test("a viewer who waits sees the facts the awaited player sees"):
+    val value = twoSeatProjection(activeParticipantId = "red-exile")
+      .copy(walkerWaiting = Some(WalkerWaitingState("blue-exile",
+        Some("Sacrifice up to 2 warbands for one attack each"),
+        status = Vector(WalkerStatusProjection("Attack total", "3"),
+          WalkerStatusProjection("Defense dice", "2")))))
+    val panel = ActionDecisionRenderer.actionsPanel(value,
+      ServerUiSupport.viewerPresentation(value, "red-exile"),
+      ParkedDecision.Routed(None, None), canControl = false,
+      SessionDrafts.empty, new RecordingControls())
+    assertEquals(all(panel, ".walker-status-line").map(_.textContent),
+      Vector("Attack total3", "Defense dice2"))
 
   test("a parked Roll's wait names only the player, having no question"):
     val value = twoSeatProjection(activeParticipantId = "red-exile")

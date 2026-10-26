@@ -84,12 +84,7 @@ private[frontend] object BoardDecisionPanel:
         query, option, s"${index + 1}. ${label(option)}",
         "board-decision-row-played")))
       panel.appendChild(rows)
-    decision.status.foreach { fact =>
-      val line = element("p", "board-decision-total board-decision-status")
-      line.appendChild(text("span", "", fact.label))
-      line.appendChild(text("b", "", fact.value))
-      panel.appendChild(line)
-    }
+    WalkerPanelSupport.statusFacts(decision.status, panel)
 
     // Decided already: a choose-many's locked options. Then what this draft
     // holds.

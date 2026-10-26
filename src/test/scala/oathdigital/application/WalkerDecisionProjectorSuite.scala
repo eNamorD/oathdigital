@@ -14,7 +14,7 @@ import oathdigital.model._
 import oathdigital.protocol.projection.{CountedConfirmProjection,
   DecisionQueryProjection, DecisionSummaryProjection, DecisionTallyProjection,
   DecisionTallyValueProjection, DieFace => RolledFace,
-  WalkerDecisionProjection, WalkerWaitingProjection}
+  WalkerDecisionProjection, WalkerStatusProjection, WalkerWaitingProjection}
 import oathdigital.testkit.Unwrap.{accepted, as, present}
 
 /** A park on a `Roll` node projects nothing: every production roll is
@@ -653,6 +653,60 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite:
     assertEquals(outcome.map(_.score), Some(3))
     assertEquals(outcome.flatMap(_.target), None)
     assertEquals(outcome.map(_.detail), Some(Vector("1 skull loss")))
+
+  private def facts(projected: Vector[WalkerStatusProjection])
+      : Vector[(String, String)] = projected.map(line => line.label -> line.value)
+
+  private def answered(ready: ReadyGame, id: String, answer: DecisionAnswer)
+      : ReadyGame =
+    val b = CampaignFixture.board(warbands = 5, supply = 7)
+    val defense = Vector.fill(present(catalog.sites.find(_.id == b.origin),
+      "the origin").defense)(DefenseDieFace.Blank)
+    val g = CampaignFixture.rules(CampaignFixture.dice(
+      Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword), defense))
+    g.resolveWalker(Ready(ready), ready.game.current.walkActor, id, answer)
+      .fold(e => fail(s"$id must be accepted: $e"), _.state) match
+      case Ready(next) => next
+      case other => fail(s"expected a ready game, got $other")
+
+  private lazy val campaignAtForce: ReadyGame =
+    val b = CampaignFixture.board(warbands = 5, supply = 7)
+    CampaignFixture.rules().startWalker(Ready(b.ready), ActionRef.Campaign,
+      b.actor).fold(e => fail(s"Campaign must start: $e"), _.state) match
+      case Ready(ready) => ready
+      case other => fail(s"expected a ready game, got $other")
+
+  test("the force question shows the defending force and the printed " +
+      "defense"):
+    val projected = project(campaignAtForce, viewer = Some(attacker))
+    assertEquals(projected.map(_.decisionId), Some(CampaignIds.force))
+    assertEquals(facts(projected.toVector.flatMap(_.status)), Vector(
+      "Defending force" -> "2 warbands", "Defense dice" -> "2"))
+
+  test("the sacrifice shows the force left and the defense to come, and " +
+      "leaves the attack total to the roll it shows"):
+    val projected = project(campaignAtSacrifice, viewer = Some(attacker))
+    assertEquals(facts(projected.toVector.flatMap(_.status)), Vector(
+      "Attacking force" -> "1 of 2 warbands",
+      "Defending force" -> "2 warbands", "Defense dice" -> "2"))
+
+  test("a viewer waiting on the sacrifice sees the attack total too"):
+    val waiting = new WalkerDecisionProjector(catalog,
+      new GamePresentationProjector(catalog)).waiting(
+      ScopedProjectionContext(campaignAtSacrifice, Some(p2)))
+    assertEquals(facts(waiting.toVector.flatMap(_.status)), Vector(
+      "Attacking force" -> "1 of 2 warbands",
+      "Defending force" -> "2 warbands", "Attack total" -> "3",
+      "Defense dice" -> "2"))
+
+  test("after the defense roll the totals and the winner show"):
+    val after = answered(campaignAtSacrifice, CampaignIds.sacrifice,
+      ChooseAmountAnswer(0))
+    val projected = project(after, viewer = Some(attacker))
+    // The placement draws the defense roll, so its total is left to it.
+    assertEquals(projected.map(_.decisionId), Some(CampaignIds.placement))
+    assertEquals(facts(projected.toVector.flatMap(_.status)), Vector(
+      "Attack total" -> "3", "Winner" -> "Attacker"))
 
   private def siteRef(name: String): DecisionOptionRef.Site =
     DecisionOptionRef.Site(CatalogNames.site(name))

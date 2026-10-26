@@ -224,7 +224,7 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
       Vector("1. Oathkeeper title: add 1 defense dieFree",
         "2. Shield Wall1 favor"))
     assertEquals(all(panel, ".board-decision-row-locked"), Vector.empty)
-    assertEquals(all(panel, ".board-decision-status").map(_.textContent),
+    assertEquals(all(panel, ".walker-status-line").map(_.textContent),
       Vector("Defense dice2", "Paid so far1 favor"))
 
   test("a battle plan is picked by its click alone, with no Confirm"):
