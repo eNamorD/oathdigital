@@ -61,38 +61,6 @@ Left behind by earlier phases:
   procedures its scripts play.
 
 Left behind by the
-[Travel destination work](superpowers/specs/2026-10-07-travel-destination-walker-design.md):
-
-- [ ] **Play-test Travel in a browser.** The Travel button, the parked
-  destination decision with each site's badge or hover reason, and Way
-  Station's question are covered by tests only.
-
-Left behind by the
-[Search source work](superpowers/specs/2026-10-07-search-source-walker-design.md):
-
-- [ ] **Play-test Search in a browser.** The Search button, the parked source
-  decision with a badge or hover reason on the world deck and the region's
-  discard pile, and Clay Rattle's piles on the board are covered by tests
-  only.
-
-Left behind by the
-[follow-up actions work](superpowers/specs/2026-10-08-follow-up-actions-design.md):
-
-- [ ] **Play-test follow-ups in a browser.** Knights Errant, Hunting Party
-  and Second Wind, Skip, and a queued Travel with Special Envoy are covered
-  by tests only.
-
-Left behind by the
-[walker-driven game loop](superpowers/specs/2026-10-09-walker-game-loop-design.md):
-
-- [ ] **Play-test the phase menus in a browser.** The Wake, Act and Rest
-  menus, their price badges and hover reasons, a source with two powers of
-  one phase, Undo back to a menu and the minor actions on the walker are
-  covered by tests only. They replaced the Act buttons that the playtest of
-  2026-10-01 found unresponsive, or showing for things the player did not
-  expect.
-
-Left behind by the
 [consent work](superpowers/specs/2026-10-08-consent-system-design.md):
 
 - [ ] **Arranged-start event for game save and load.** A journal must begin
@@ -112,20 +80,6 @@ Left behind by the
   with Undo are covered by tests only. Seeding a game with a player-ruled
   Narrow Pass, Secret Police, Hall of Ministers or toll card needs the journaled
   arranged start.
-
-Left behind by
-[catalog batch 7](superpowers/specs/2026-10-09-catalog-batch-7-design.md) and
-[catalog batch 8](superpowers/specs/2026-10-12-catalog-batch-8-design.md):
-
-- [ ] **Play-test catalog batches 7 and 8 in a browser.** Batch 7: the
-  reroll decision after each roll, Silver Charm's choice of earlier dice, the
-  amount questions of Arcane Armor, Unstable Summon and Mountain Giant, the
-  defense rolling first under Careful Plans, Zealots' warning on its option
-  and Signal Trees' revealed cards. Batch 8: a ruler's prompt to deactivate
-  an automatic power, Palanquin's target, toll and Pass question, the
-  either-or and payer confirmations, Small Friends' site question, Sneak
-  Attack's off-turn offer and True Oath's goal choice. All are covered by
-  server tests only.
 
 ### Phase - Campaign battle summary
 
