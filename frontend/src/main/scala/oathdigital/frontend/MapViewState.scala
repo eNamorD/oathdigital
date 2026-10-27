@@ -45,7 +45,7 @@ private[frontend] object MapViewState:
   /** A mouse notch reports 100 pixels in Chrome and 3 lines in Firefox; both
     * are one step. A page is the viewport. */
   private val NotchPixels = 100.0
-  private val LinePixels = NotchPixels / 3
+  private[frontend] val LinePixels = NotchPixels / 3
   /** A trackpad pinch reports a few pixels per event, so it counts more. */
   private val PinchGain = 5.0
 

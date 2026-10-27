@@ -1406,9 +1406,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    answered on, and the Log, least needed, as the shortest row at the foot. */
 @media (max-aspect-ratio: 4/5), (max-width: 620px) {
   .game-table { grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(150px, 34%) minmax(95px, 16%) minmax(0, 1fr)
+    /* The players' row is as tall as its tallest board, so it never scrolls
+       vertically; the map takes what is left. */
+    grid-template-rows: minmax(150px, 34%) auto minmax(0, 1fr)
       minmax(90px, 13%);
     grid-template-areas: "actions" "players" "world" "log"; }
+  /* Sized to its boards, the strip has nothing below to scroll to; a
+     sideways scrollbar's own height is not left to start one. */
+  .pane-players > .pane-content { overflow-y: hidden; }
   .pane-header { padding: 4px 7px; gap: 4px; }
   .pane-heading { font-size: .72rem; letter-spacing: .025em; }
   .pane-content { --pane-pad: 8px; }
@@ -1452,7 +1457,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    wider than the phone still scrolls through to its last card. */
 @media (max-width: 620px) {
   .game-table { grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(200px, 45%) minmax(110px, 18%) minmax(0, 1fr);
+    grid-template-rows: minmax(200px, 45%) auto minmax(120px, 1fr);
     grid-template-areas: "actions" "players" "world"; }
   .pane-actions, .pane-log { grid-area: actions; }
   .game-table:not([data-phone-pane="log"]) > .pane-log,
