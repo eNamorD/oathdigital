@@ -142,8 +142,11 @@ private[frontend] object PartitionDrag:
       scrollNearEdges(held)
 
     /** Ends the gesture; `restore` puts the cards back where the staged
-      * draft has them. */
+      * draft has them. Only a drag has moved them: a press that never lifted
+      * its card leaves them alone, since a browser drops the click of a card
+      * moved between press and release, even back to its own place. */
     def finish(restore: Boolean): Unit =
+      val previewed = lift.nonEmpty
       lift.foreach { held =>
         held.frame.foreach(dom.window.cancelAnimationFrame)
         held.ghost.remove()
@@ -151,7 +154,7 @@ private[frontend] object PartitionDrag:
         release(zones, held.press.pointerId)
       }
       press.foreach(_.card.classList.remove("partition-pressed"))
-      if restore then arrange(draft)
+      if restore && previewed then arrange(draft)
       press = None
       lift = None
 

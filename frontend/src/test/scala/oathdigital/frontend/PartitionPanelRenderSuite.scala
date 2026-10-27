@@ -380,6 +380,23 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
       assertEquals(clicks, 2, "the guard resets between gestures")
     finally panel.remove()
 
+  test("a plain press leaves every card where it is, so its click still comes"):
+    // A browser drops the click when its card is moved between the press
+    // and the release, even back to the same place; jsdom does not, so the
+    // test watches for the move itself.
+    val panel = render(controls(), forgeDraft())
+    val zones = one(panel, ".partition-zones")
+    val moves = new dom.MutationObserver((_, _) => ())
+    moves.observe(zones, new dom.MutationObserverInit {
+      childList = true; subtree = true })
+    val card = optionNode(panel, 1)
+    pointer("pointerdown", card, (10, 10))
+    letGo(panel, at = (10, 10))
+    pointer("pointerdown", card, (10, 10), touch = true, time = 0)
+    letGo(panel, at = (10, 10), touch = true)
+    assertEquals(moves.takeRecords().length, 0)
+    moves.disconnect()
+
   test("a finger that moves at once scrolls the pane rather than the card"):
     val ui = controls()
     val panel = render(ui, forgeDraft())
