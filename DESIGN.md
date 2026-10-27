@@ -437,29 +437,30 @@ The play surface is one fixed viewport, no page scroll: `html, body` are
 `overflow: hidden`, and `#app` fills `100dvh`. Inside it, `.game-table` is a
 CSS grid with 4px gaps on a Table background, four panes:
 
-- Wide (default): columns `minmax(0, 2.4fr) minmax(300px, 1fr)`; rows
-  `minmax(188px, 21%) minmax(120px, 24%) minmax(0, 1fr)`; areas Players
-  across the top, World left spanning two rows, Log then Actions stacked
-  right. The Log row is a reading pane, not a footer: at 1440×900 it shows
-  nine lines of the log, and Actions keeps the larger share under it.
-- Narrow or squarer than 4:3, or under 1050px: columns `1.65fr / minmax(260px,
-  1fr)`, Actions above Log on the right; the Log row is `minmax(120px, 23%)`,
-  seven lines at 1024×768. The point under the wide layout's share is what
-  keeps the starting-site decision (three cards in hand and Confirm) out of
-  scroll in the Actions pane at that size. The World pane spans both
-  right-column rows in either layout, so the Log's share never moves the
-  map's Fit scale.
-- Portrait-ish (under 4:5, a tablet held upright): World spans the full
-  width in the middle row; Actions and Log share the bottom row side by side.
-  Pane padding drops to 8px and headings shrink.
-- Phone (under 620px wide): one column, rows `minmax(120px, 20%) /
-  minmax(150px, 30%) / 1fr`. Actions and Log take turns in the bottom row at
-  full width, picked by a segmented switch that replaces both pane headings:
+- Wide (default): columns `minmax(300px, 1fr) minmax(0, 2.4fr)`; rows
+  `minmax(188px, 21%) minmax(0, 1fr) minmax(120px, 24%)`; areas Actions top
+  left spanning two rows, the Log under it, Players across the top right and
+  World under them spanning two rows. The parked decision leads the table,
+  beside the players and the map it is answered on; the Log, least needed,
+  takes the bottom-left corner.
+- Narrow or squarer than 4:3, or under 1050px: the same arrangement at
+  `minmax(260px, 1fr) / 1.65fr`, the Log row `minmax(120px, 23%)`. The point
+  under the wide layout's share keeps the starting-site decision (three
+  cards in hand and Confirm) out of scroll in the Actions pane at 1024×768.
+  The World pane spans both rows beside Actions and Log in either layout, so
+  the Log's share never moves the map's Fit scale.
+- Upright (under 4:5, a tablet held upright): one column, rows
+  `minmax(150px, 34%) / minmax(95px, 16%) / 1fr / minmax(90px, 13%)`:
+  Actions, Players, World, then the Log, shortest, at the foot. Pane padding
+  drops to 8px and headings shrink.
+- Phone (under 620px wide): one column, rows `minmax(200px, 45%) /
+  minmax(110px, 18%) / 1fr`: Actions, Players, World. Actions and Log take
+  turns in the top row at full width, picked by a segmented switch that replaces both pane headings:
   the chosen side on the Pressed fill, the Log side carrying a Brass count of
   the events not yet seen, and the Actions side a Bright Brass dot when a
   decision parks while the log is in front. The Log pane keeps a Full log
-  button in place of its heading. Each player board takes the strip's width
-  and snaps into place as the strip scrolls sideways.
+  button in place of its heading. Player boards snap loosely to the strip's
+  edge as it scrolls sideways.
 - Under 500px tall in landscape: rows compress to `24% / 1fr / 20%`.
 
 Where the main pointer is coarse (a finger), pane and map controls grow to
@@ -487,16 +488,19 @@ opening never shifts the board. The card row inside a site is three cards
 wide: `--card-w: min(8.6rem, (100% - 2 gaps) / 3)`.
 
 The Players pane is a horizontal strip of player boards, each `flex: 1 0
-300px`, divided by 1px Line-mid right borders. A board is a two-column grid:
+auto` from a 300px floor, divided by 1px Line-mid right borders. A board is a two-column grid:
 identity, resources, the title or Vision row and any banner on the left
 (8.5–17rem, taking what the board can spare so a banner stays one line), the
-card row on the right (7.5rem at least), spanning the rows. The tallest
+card row on the right (7.5rem at least, as wide as its cards), spanning
+the rows. The tallest
 board is a banner holder's four-line left column, about 134px, which the
-strip row's 188px floor holds; a card at 0.86em is shorter. The card row
-scrolls sideways inside the board when it holds more than fits; the strip
-scrolls sideways past four boards at 1024px. Nothing in the strip scrolls
-vertically. The Actions pane stacks
-decision zones in one column with 10px gaps. Spacing runs 4, 6, 8, 12, 18px;
+strip row's 188px floor holds; a card at 0.86em is shorter. A board grows
+to hold every card it has, so nothing inside it scrolls: the strip is the
+one sideways scroll, past as many boards and cards as there are. Nothing in
+the strip scrolls vertically. The Actions pane stacks
+decision zones in one column with 10px gaps and never scrolls sideways: its
+content wraps to the pane's width, a word breaking only where nothing else
+fits. Spacing runs 4, 6, 8, 12, 18px;
 `min-height: 44px` is the touch floor for every action button.
 
 The trusted-host page (game creation) is the one page-scrolling surface: a
@@ -814,7 +818,8 @@ One board per player in the strip: 300px minimum, `6px 12px` padding,
 0.82rem, a Line-mid right border. The active board gets a dashed `#c8b48b`
 outline and a `#29251d` fill. The identity line joins name, role and title
 with drawn "·" separators in Ink Separator. Cards on a board render at 0.86em
-in a sideways-scrolling row beside the identity column (Layout). The Supply
+in one row beside the identity column, the board as wide as the row
+(Layout). The Supply
 figure and a region's discard pile are buttons on the pill hover that open
 the text and card-list overlays: Supply at Rest and the pile's cards.
 

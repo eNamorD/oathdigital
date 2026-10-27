@@ -574,8 +574,9 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 /* The answer stays in view: the footer pins to the pane's bottom edge on
    the pane's own fill while the zones scroll above it, and its negative
    margins run it out to the pane's padding so nothing shows beneath. */
-.partition-footer { position: sticky; bottom: 0; margin: 12px -12px 0;
-  padding: 10px 12px 12px; border-top: 1px solid var(--line-pane);
+.partition-footer { position: sticky; bottom: 0;
+  margin: 12px calc(-1 * var(--pane-pad)) 0;
+  padding: 10px var(--pane-pad) 12px; border-top: 1px solid var(--line-pane);
   background: var(--pane); }
 /* A sticky box never leaves its containing block, so the pane's own bottom
    padding would hold the footer 12px short of the edge: the footer carries
@@ -966,10 +967,12 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 /* Arcs-inspired persistent table. Existing content styles stay in styles.css. */
 html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
 #app { width: 100%; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; }
+/* Actions lead the table, top left and two rows tall, beside the players
+   and the map they are answered on; the Log takes the corner under them. */
 .game-table { width: 100%; height: 100%; display: grid; gap: 4px; padding: 4px;
-  background: #0f0e0c; grid-template-columns: minmax(0, 2.4fr) minmax(300px, 1fr);
-  grid-template-rows: minmax(188px, 21%) minmax(120px, 24%) minmax(0, 1fr);
-  grid-template-areas: "players players" "world log" "world actions"; }
+  background: #0f0e0c; grid-template-columns: minmax(300px, 1fr) minmax(0, 2.4fr);
+  grid-template-rows: minmax(188px, 21%) minmax(0, 1fr) minmax(120px, 24%);
+  grid-template-areas: "actions players" "actions world" "log world"; }
 .game-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column;
   background: var(--pane); border: 1px solid #40382b; overflow: hidden; }
 .pane-players { grid-area: players; }.pane-world { grid-area: world; }
@@ -979,7 +982,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   border-bottom: 1px solid var(--line-pane); background: #26231d; }
 .pane-heading { margin: 0; color: var(--brass-label); font-size: .8rem; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase; }
-.pane-content { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 12px;
+.pane-content { --pane-pad: 12px; flex: 1 1 auto; min-width: 0; min-height: 0;
+  padding: var(--pane-pad);
   overflow: auto; overscroll-behavior: contain; scrollbar-width: thin;
   scrollbar-color: #8c7959 var(--pane); }
 .game-table .panel { border: 0; border-radius: 0; background: transparent;
@@ -1001,17 +1005,17 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    sideways inside the board instead of wrapping into a second row. The
    tallest board is a banner holder's left column (four lines, about
    134px), which is what the strip row's 188px floor holds; a card at
-   0.86em is shorter. The strip itself scrolls sideways past four boards
-   at 1024px rather than growing downward. */
-.game-table .player-board { display: grid; flex: 1 0 300px; min-width: 300px;
+   0.86em is shorter. A board is as wide as its cards, so it never scrolls
+   on its own: the strip is the one thing that scrolls sideways, past as
+   many boards and cards as there are, rather than growing downward. */
+.game-table .player-board { display: grid; flex: 1 0 auto; min-width: 300px;
   margin: 0; padding: 6px 12px; border: 0; border-right: 1px solid #4a4032;
   border-radius: 0; font-size: .82rem; column-gap: 12px; align-items: start;
-  grid-template-columns: minmax(8.5rem, 17rem) minmax(7.5rem, 1fr);
+  grid-template-columns: minmax(8.5rem, 17rem) minmax(7.5rem, max-content);
   grid-template-rows: auto; }
 .game-table .player-board > * { grid-column: 1; }
 .game-table .player-board > .board-cards { grid-column: 2; grid-row: 1;
-  margin: 0; padding-bottom: 3px; flex-wrap: nowrap; overflow-x: auto;
-  overflow-y: hidden; scrollbar-width: thin; }
+  margin: 0; padding-bottom: 3px; flex-wrap: nowrap; }
 .game-table .player-board-active { outline: 1px dashed #c8b48b; outline-offset: -2px;
   background: #29251d; }
 /* The block that stands for the player when a decision picks one. The
@@ -1217,7 +1221,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   text-transform: none;
   font-size: clamp(1.6rem, calc(12.5px / var(--map-scale, 1)), 2.2rem); }
 .map-dragging, .map-dragging * { cursor: grabbing !important; user-select: none !important; }
-.pane-actions .pane-content { font-size: .9rem; }
+/* The Actions pane scrolls only downward: what it holds wraps and shrinks
+   to its width, a word broken where nothing else fits, and anything that
+   still will not is cut rather than scrolled to. */
+.pane-actions .pane-content { font-size: .9rem; overflow-x: hidden;
+  overflow-wrap: anywhere; }
 .pane-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 /* Two button faces in the pane, both the system's own, so no control wears
    the browser's. The Action face is the load-game and adviser button: a
@@ -1388,20 +1396,22 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
 .game-table button:focus-visible, .development-panel button:focus-visible,
 .game-table [tabindex]:focus-visible { outline: 2px solid var(--cream-focus); outline-offset: -3px; }
 @media (max-aspect-ratio: 4/3), (max-width: 1050px) {
-  .game-table { grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
+  .game-table { grid-template-columns: minmax(260px, 1fr) minmax(0, 1.65fr);
     /* A point under the wide layout's 24%: at 1024x768 that point is what
        keeps the starting-site decision, three cards and Confirm, out of
        scroll in the Actions pane above. */
-    grid-template-rows: minmax(188px, 21%) minmax(0, 1fr) minmax(120px, 23%);
-    grid-template-areas: "players players" "world actions" "world log"; }
+    grid-template-rows: minmax(188px, 21%) minmax(0, 1fr) minmax(120px, 23%); }
 }
+/* Upright, one column: Actions on top, then the players and the map it is
+   answered on, and the Log, least needed, as the shortest row at the foot. */
 @media (max-aspect-ratio: 4/5), (max-width: 620px) {
-  .game-table { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    grid-template-rows: minmax(95px, 22%) minmax(120px, 43%) minmax(0, 1fr);
-    grid-template-areas: "players players" "world world" "actions log"; }
+  .game-table { grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(150px, 34%) minmax(95px, 16%) minmax(0, 1fr)
+      minmax(90px, 13%);
+    grid-template-areas: "actions" "players" "world" "log"; }
   .pane-header { padding: 4px 7px; gap: 4px; }
   .pane-heading { font-size: .72rem; letter-spacing: .025em; }
-  .pane-content { padding: 8px; }
+  .pane-content { --pane-pad: 8px; }
   .pane-log .game-log .log-turn, .log-overlay .game-log .log-round { top: -8px; }
   .log-new { bottom: -8px; }
 }
@@ -1436,14 +1446,15 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   background: var(--brass-bright); }
 
 /* A phone in portrait: one column. The parked decision is the focus, so the
-   Actions pane takes the full width and the most height; the Log shares its
-   place and the switch picks between them. The players' boards each take
-   the strip's width and snap into place as it scrolls sideways. */
+   Actions pane takes the top, the full width and the most height; the Log
+   shares its place and the switch picks between them. A player's board
+   snaps to the strip's edge as it scrolls sideways, loosely, so a board
+   wider than the phone still scrolls through to its last card. */
 @media (max-width: 620px) {
   .game-table { grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(120px, 20%) minmax(150px, 30%) minmax(0, 1fr);
-    grid-template-areas: "players" "world" "bottom"; }
-  .pane-actions, .pane-log { grid-area: bottom; }
+    grid-template-rows: minmax(200px, 45%) minmax(110px, 18%) minmax(0, 1fr);
+    grid-template-areas: "actions" "players" "world"; }
+  .pane-actions, .pane-log { grid-area: actions; }
   .game-table:not([data-phone-pane="log"]) > .pane-log,
   .game-table[data-phone-pane="log"] > .pane-actions { display: none; }
   /* The switch names both panes, so their headings leave the screen and
@@ -1453,9 +1464,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
     clip-path: inset(50%); white-space: nowrap; border: 0; }
   .pane-switch { display: flex; }
   .log-expand { display: inline-flex; align-items: center; margin-left: auto; }
-  .pane-players > .pane-content { scroll-snap-type: x mandatory; }
-  .game-table .player-board { flex: 0 0 100%; min-width: 0;
-    scroll-snap-align: start; }
+  .pane-players > .pane-content { scroll-snap-type: x proximity; }
+  .game-table .player-board { min-width: 100%; scroll-snap-align: start; }
   /* Keep-one beside a two-card Discard fits a 360px phone with the zones'
      side padding at the pane's own 8px; at 12px they stack and the answer
      takes a scroll. */
