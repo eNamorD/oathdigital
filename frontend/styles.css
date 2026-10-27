@@ -555,6 +555,21 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 /* The held card stays in the row at the place a drop would put it, faded,
    so the row reads as the answer it would become. */
 .partition-zone .decision-option.dragging { opacity: 0.4; }
+/* A card is taken by pressing it, so a press neither selects its text nor
+   asks a phone for its callout. */
+.partition-zone .decision-option { cursor: grab; user-select: none;
+  -webkit-user-select: none; -webkit-touch-callout: none; }
+/* A finger that has rested long enough sees the card ringed: moving now
+   carries it rather than scrolling the pane. */
+.partition-zone .decision-option.partition-pressed > .card-face {
+  outline: 2px solid var(--brass-bright); outline-offset: 2px; }
+/* The copy under the pointer, at the card's size, above the pane's edges.
+   Every hit passes through it to the zone beneath. It is a true overlay,
+   so it is the one card that casts a shadow. */
+.partition-ghost { position: fixed; z-index: 320; display: flex;
+  pointer-events: none; user-select: none; -webkit-user-select: none; }
+.partition-ghost > .card-face { width: 100%; height: 100%;
+  box-shadow: 0 10px 24px #000b; }
 .partition-instruction { color: var(--ink-dim); font-size: 0.9rem; }
 /* The answer stays in view: the footer pins to the pane's bottom edge on
    the pane's own fill while the zones scroll above it, and its negative
@@ -622,9 +637,16 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
   padding-bottom: calc(max(0.62em, 0.7rem) * 1.35 + 0.3em); }
 .card-face-down { align-items: center; justify-content: center;
   border-style: solid; background: #2a2333; }
-.card-back-letter { font-size: 1.9em; font-weight: 700; color: #cbb7dd; }
-.card-knowable-pip { position: absolute; top: 0.3em; right: 0.3em;
-  width: 0.55em; height: 0.55em; border-radius: 50%;
+/* The letter and the pip are sized off the card as well as the type, so a
+   back stays a back wherever the card is small for its font: on the
+   zoomed-out map a site's card carries text counter-scaled for reading, and
+   at 1.9em the letter was wider than the card. */
+.card-face-down { container-type: inline-size; }
+.card-back-letter { font-size: min(1.9em, 62cqi); font-weight: 700;
+  line-height: 1; color: #cbb7dd; }
+.card-knowable-pip { position: absolute; top: min(0.3em, 7cqi);
+  right: min(0.3em, 7cqi); width: min(0.55em, 14cqi);
+  height: min(0.55em, 14cqi); border-radius: 50%;
   background: var(--token-secret); }
 /* Hover reveal is CSS only and holds no client state: PanelContent.replace
    rebuilds the pane on every poll, so a persistent flag would have to become
@@ -1138,6 +1160,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
    start under it, not behind it. */
 .map-compact .site .card-face { padding: 1.7em 0.25em 0.25em;
   justify-content: center; align-items: center; text-align: center; }
+/* A back has no corner glyph to clear, and at the counter-scaled size any
+   padding in em is wider than the card, so a face-down card keeps its
+   type's box with none. */
+.map-compact .site .card-face-down { padding: 0; }
 .map-compact .card-header { display: contents; }
 .map-compact .card-header .token-glyph { position: absolute; top: 0.2em;
   left: 0.2em; width: 1.5em; height: 1.5em; }
@@ -1383,6 +1409,61 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   .game-table { grid-template-rows: minmax(76px, 24%) minmax(0, 1fr) minmax(65px, 20%); }
 }
 
+/* The phone switch between Actions and Log (GameTableShell.PaneSwitch), and
+   the button that opens the whole log in its place of the heading. Shown on
+   a phone only. A segmented control in the pane-heading's own letterforms:
+   the chosen side takes the pressed fill. */
+.pane-switch, .log-expand { display: none; }
+.pane-switch { flex: 0 0 auto; border: 1px solid var(--brass-line);
+  border-radius: 6px; overflow: hidden; }
+.pane-switch-option { display: inline-flex; align-items: center; gap: 6px;
+  min-height: 30px; margin: 0; padding: 4px 14px; border: 0;
+  background: transparent; color: var(--parchment-dim); font: inherit;
+  font-size: .78rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; }
+.pane-switch-option + .pane-switch-option {
+  border-left: 1px solid var(--brass-line); }
+.pane-switch-option[aria-selected="true"] { background: var(--pressed);
+  color: var(--cream-bright); }
+/* The count of log events the viewer has not seen, as a brass token. */
+.pane-switch-count { min-width: 1.5em; padding: 0 .4em; border-radius: 999px;
+  background: var(--brass); color: var(--base); font-size: .78rem;
+  line-height: 1.4; letter-spacing: 0; text-align: center; }
+.pane-switch-count:empty { display: none; }
+/* A decision parked while the log was in front: Actions is marked. */
+.game-table[data-actions-fresh] .pane-switch-option[aria-controls="actions-pane"]::after {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--brass-bright); }
+
+/* A phone in portrait: one column. The parked decision is the focus, so the
+   Actions pane takes the full width and the most height; the Log shares its
+   place and the switch picks between them. The players' boards each take
+   the strip's width and snap into place as it scrolls sideways. */
+@media (max-width: 620px) {
+  .game-table { grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(120px, 20%) minmax(150px, 30%) minmax(0, 1fr);
+    grid-template-areas: "players" "world" "bottom"; }
+  .pane-actions, .pane-log { grid-area: bottom; }
+  .game-table:not([data-phone-pane="log"]) > .pane-log,
+  .game-table[data-phone-pane="log"] > .pane-actions { display: none; }
+  /* The switch names both panes, so their headings leave the screen and
+     stay in the outline a screen reader walks. */
+  .pane-actions .pane-heading, .pane-log .pane-heading { position: absolute;
+    width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .pane-switch { display: flex; }
+  .log-expand { display: inline-flex; align-items: center; margin-left: auto; }
+  .pane-players > .pane-content { scroll-snap-type: x mandatory; }
+  .game-table .player-board { flex: 0 0 100%; min-width: 0;
+    scroll-snap-align: start; }
+  /* Keep-one beside a two-card Discard fits a 360px phone with the zones'
+     side padding at the pane's own 8px; at 12px they stack and the answer
+     takes a scroll. */
+  .decision-zones.partition-zones { gap: 6px; }
+  .partition-zones > .partition-zone { padding-right: 8px; padding-left: 8px; }
+}
+
+
 /* Document level, above .game-pane -- which is what lets that pane keep
    overflow: hidden without clipping anything a card needs to show. It sits
    one step above the log overlay, so a card list opened from the full log
@@ -1503,3 +1584,11 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   transform: translateX(-50%) rotate(45deg); }
 .hover-tip[data-side="below"]::after { top: -5px; bottom: auto;
   border-width: 1px 0 0 1px; }
+
+/* A finger needs a larger target than a pointer: the pane controls grow to
+   the 44px minimum wherever the main pointer is coarse, desktop or not. */
+@media (pointer: coarse) {
+  .map-control, .dev-toggle, .dev-close, .log-new, .log-overlay-close,
+  .card-overlay-close, .pane-switch-option { min-width: 44px; min-height: 44px; }
+  .pane-header { min-height: 52px; }
+}
