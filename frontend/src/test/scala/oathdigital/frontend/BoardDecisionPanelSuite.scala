@@ -137,6 +137,15 @@ class BoardDecisionPanelSuite extends munit.FunSuite:
     assertEquals(one(panel, ".board-decision-rule-labelled").textContent,
       "Decision")
 
+  test("the Decision rule, Clear and Confirm close the panel in one footer"):
+    val panel = pane(new RecordingControls(), targets, decision,
+      picked("site:hills"))
+    val footer = one(panel, ".board-decision-footer")
+    assertEquals(panel.lastElementChild, footer)
+    assertEquals(footer.children.toVector.map(_.getAttribute("class")), Vector(
+      "board-decision-rule-labelled", "board-decision-clear",
+      "board-decision-confirm"))
+
   test("with nothing on the table to choose, the panel says so and offers " +
       "Continue alone"):
     val ui = new RecordingControls()

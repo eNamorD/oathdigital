@@ -581,7 +581,8 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
 /* A sticky box never leaves its containing block, so the pane's own bottom
    padding would hold the footer 12px short of the edge: the footer carries
    that padding instead. */
-.pane-actions > .pane-content:has(.partition-footer) { padding-bottom: 0; }
+.pane-actions > .pane-content:has(.partition-footer, .board-decision-footer) {
+  padding-bottom: 0; }
 .partition-footer .partition-confirm { display: block; width: 100%;
   margin: 0; }
 /* One box per card type, in ex so a pane's font size scales every card in it
@@ -727,6 +728,13 @@ h2 { margin-top: 0; font-size: 1rem; color: var(--brass); }
   color: var(--ink-dim); opacity: 1; }
 .board-decision-reason { margin: 5px 0 0;
   color: var(--brass-bright); font-size: 12px; }
+/* A board decision's answer pins to the pane's bottom edge as the partition
+   footer does, on the pane's own fill; its labelled rule is the divider. */
+.board-decision-footer { position: sticky; bottom: 0;
+  margin: 12px calc(-1 * var(--pane-pad)) 0;
+  padding: 0 var(--pane-pad) 12px; background: var(--pane); }
+.board-decision-footer .board-decision-rule-labelled { margin-top: 0;
+  padding-top: 6px; }
 /* The amount field and the list of amounts it allows (AmountCombobox). The
    field draws the border, so the input and the toggle inside it have none,
    and the list opens over whatever sits below. */
@@ -1451,13 +1459,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
   background: var(--brass-bright); }
 
 /* A phone in portrait: one column. The parked decision is the focus, so the
-   Actions pane takes the top, the full width and the most height; the Log
+   Actions pane takes the top and the full width at a fixed third of the
+   height, the map the rest; the Log
    shares its place and the switch picks between them. A player's board
    snaps to the strip's edge as it scrolls sideways, loosely, so a board
    wider than the phone still scrolls through to its last card. */
 @media (max-width: 620px) {
   .game-table { grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(200px, 45%) auto minmax(120px, 1fr);
+    grid-template-rows: minmax(200px, 33%) auto minmax(120px, 1fr);
     grid-template-areas: "actions" "players" "world"; }
   .pane-actions, .pane-log { grid-area: actions; }
   .game-table:not([data-phone-pane="log"]) > .pane-log,
@@ -1476,6 +1485,19 @@ html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: n
      takes a scroll. */
   .decision-zones.partition-zones { gap: 6px; }
   .partition-zones > .partition-zone { padding-right: 8px; padding-left: 8px; }
+  /* A third of a phone leaves the rows above a pinned footer little room,
+     so the footer drops its labelled rule for a plain line and sets Clear
+     beside Confirm in one row: a card in hand still shows whole above it. */
+  .board-decision-footer { display: flex; flex-wrap: wrap; gap: 5px 8px;
+    padding-top: 8px; padding-bottom: 8px;
+    border-top: 1px solid var(--line-pane); }
+  .board-decision-footer .board-decision-rule-labelled { display: none; }
+  .pane-actions .board-decision-footer .board-decision-clear {
+    flex: 0 0 auto; width: auto; margin: 0; }
+  .pane-actions .board-decision-footer .board-decision-confirm {
+    flex: 1 1 0; width: auto; min-width: 0; }
+  .board-decision-footer .board-decision-reason { flex-basis: 100%;
+    margin: 0; }
 }
 
 
