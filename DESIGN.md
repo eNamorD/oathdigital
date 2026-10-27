@@ -449,10 +449,23 @@ CSS grid with 4px gaps on a Table background, four panes:
   scroll in the Actions pane at that size. The World pane spans both
   right-column rows in either layout, so the Log's share never moves the
   map's Fit scale.
-- Portrait-ish (under 4:5 or 620px): World spans the full width in the middle
-  row; Actions and Log share the bottom row side by side. Pane padding drops
-  to 8px and headings shrink.
+- Portrait-ish (under 4:5, a tablet held upright): World spans the full
+  width in the middle row; Actions and Log share the bottom row side by side.
+  Pane padding drops to 8px and headings shrink.
+- Phone (under 620px wide): one column, rows `minmax(120px, 20%) /
+  minmax(150px, 30%) / 1fr`. Actions and Log take turns in the bottom row at
+  full width, picked by a segmented switch that replaces both pane headings:
+  the chosen side on the Pressed fill, the Log side carrying a Brass count of
+  the events not yet seen, and the Actions side a Bright Brass dot when a
+  decision parks while the log is in front. The Log pane keeps a Full log
+  button in place of its heading. Each player board takes the strip's width
+  and snaps into place as the strip scrolls sideways.
 - Under 500px tall in landscape: rows compress to `24% / 1fr / 20%`.
+
+Where the main pointer is coarse (a finger), pane and map controls grow to
+44px and the header strip to 52px; the map pinches about the fingers'
+midpoint, and a partition card is taken by resting a finger on it a quarter
+second, so a quick swipe still scrolls the pane.
 
 Each pane is a `section` with a 39px header strip and a scrolling
 `.pane-content` (12px padding, thin scrollbar in Brass Line on Pane). The

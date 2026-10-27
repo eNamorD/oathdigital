@@ -13,7 +13,7 @@ private[frontend] trait PointerCapture extends js.Object:
 
 /** Scales the existing DOM board while retaining native scroll and target access.
   * The pane still scrolls underneath, for the drag and the keys, but its
-  * scrollbar is hidden and the wheel zooms instead. */
+  * scrollbar is hidden and the wheel and a two-finger pinch zoom instead. */
 private[frontend] final class MapViewport(
     viewport: dom.html.Div, content: dom.html.Div, onScale: Double => Unit):
   private val surface = dom.document.createElement("div").asInstanceOf[dom.html.Div]
@@ -92,6 +92,34 @@ private[frontend] final class MapViewport(
     dragging = false
     viewport.classList.remove("map-dragging")
   }
+  // Two fingers pinch the map about their midpoint, as the wheel zooms about
+  // the pointer; one finger keeps native panning. The browser never pinches
+  // this pane itself (`touch-action: pan-x pan-y`), so the gesture is the
+  // map's to take. A pinch that starts once a pan is under way is the
+  // browser's, which no longer lets the move be refused.
+  private var pinchSpan = Option.empty[Double]
+  private def fingers(e: dom.TouchEvent): Option[(Double, Double, Double)] =
+    Option.when(e.touches.length == 2) {
+      val (a, b) = (e.touches(0), e.touches(1))
+      (math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+        (a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2)
+    }
+  private val touchStart: dom.TouchEvent => Unit = e => {
+    pinchSpan = fingers(e).map(_._1).filter(_ > 0)
+  }
+  private val touchMove: dom.TouchEvent => Unit = e => {
+    for
+      span <- pinchSpan
+      (next, x, y) <- fingers(e)
+      if next > 0 && e.cancelable
+    do
+      e.preventDefault()
+      zoomAt(next / span, x, y)
+      pinchSpan = Some(next)
+  }
+  private val touchEnd: dom.TouchEvent => Unit = e => {
+    if e.touches.length < 2 then pinchSpan = None
+  }
   private val click: dom.MouseEvent => Unit = e => {
     if suppressClick && e.detail != 0 then
       e.preventDefault()
@@ -115,6 +143,11 @@ private[frontend] final class MapViewport(
   viewport.addEventListener("pointermove", move)
   viewport.addEventListener("pointerup", up)
   viewport.addEventListener("pointercancel", up)
+  viewport.addEventListener("touchstart", touchStart)
+  viewport.addEventListener("touchmove", touchMove, js.Dynamic.literal(
+    passive = false).asInstanceOf[dom.EventListenerOptions])
+  viewport.addEventListener("touchend", touchEnd)
+  viewport.addEventListener("touchcancel", touchEnd)
   viewport.addEventListener("click", click, true)
   viewport.addEventListener("keydown", key)
 
@@ -126,5 +159,9 @@ private[frontend] final class MapViewport(
     viewport.removeEventListener("pointermove", move)
     viewport.removeEventListener("pointerup", up)
     viewport.removeEventListener("pointercancel", up)
+    viewport.removeEventListener("touchstart", touchStart)
+    viewport.removeEventListener("touchmove", touchMove)
+    viewport.removeEventListener("touchend", touchEnd)
+    viewport.removeEventListener("touchcancel", touchEnd)
     viewport.removeEventListener("click", click, true)
     viewport.removeEventListener("keydown", key)

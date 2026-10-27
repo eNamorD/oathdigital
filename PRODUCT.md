@@ -44,7 +44,8 @@ is heavily inspired by the HRF (haunt-roll-fail) implementation of Arcs.
   See `docs/operations/quick-start.md`.
 - Seat links grant full control of a seat. There are no accounts, passwords,
   invitations, revocation, or remote administration.
-- Players use a desktop web browser on the LAN or over HTTPS.
+- Players use a web browser on the LAN or over HTTPS: a desktop, a tablet,
+  or a phone held upright.
 - Server mode adds developer tools to the UI: switching between players and
   inspecting raw event logs.
 - Game setup is a Chronicle, shaped like the Tabletop Simulator export format,
@@ -63,7 +64,9 @@ is heavily inspired by the HRF (haunt-roll-fail) implementation of Arcs.
   are future work (`docs/ROADMAP.md`).
 - Only part of the denizen, relic and edifice catalog is implemented. Setup
   draws only implemented cards.
-- Mobile support is undecided. No mobile requirement has been confirmed.
+- Phones (portrait, from 360px wide) and tablets are supported with touch
+  input. The desktop table stays the primary layout; a phone gets one column
+  with Actions and Log taking turns at the bottom.
 
 ## Brand Commitments
 

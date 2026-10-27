@@ -12,7 +12,7 @@ import scala.scalajs.js
   * state; this drives the controls the panel actually builds, so renderer
   * wiring cannot break while a state-level test stays green: the zones and
   * options are read out of the rendered tree, the moves go through a real
-  * drop event, the confirm button's
+  * pointer drag, the confirm button's
   * disabled state is read off the element, and the submitted command is
   * whatever a click on it produced.
   *
@@ -257,8 +257,7 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   test("a card dropped short of a card's midpoint lands before it"):
     val ui = controls()
     val panel = layOutInRows(render(ui, forgeDraft()))
-    val dragged = dragStartPayload(optionNode(panel, 3))
-    drop(optionNode(panel, 1), dragged, at = (40, 70))
+    drop(optionNode(panel, 1), optionKey(3), at = (40, 70))
     assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
       Vector("Denizen 3", "Denizen 1", "Denizen 2"))
     assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-secret"),
@@ -270,82 +269,147 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
   test("a card dropped past its right-hand neighbour's midpoint lands after it"):
     val ui = controls()
     val panel = layOutInRows(render(ui, forgeDraft()))
-    val dragged = dragStartPayload(optionNode(panel, 1))
-    drop(optionNode(panel, 2), dragged, at = (170, 70))
+    drop(optionNode(panel, 2), optionKey(1), at = (170, 70))
     assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
       Vector("Denizen 2", "Denizen 1"))
 
   test("while a card is dragged the zones show where it would land"):
     val ui = controls()
     val panel = layOutInRows(render(ui, forgeDraft()))
-    dragStartPayload(optionNode(panel, 1))
-    dragOver(optionNode(panel, 2), at = (170, 70))
+    carry(optionNode(panel, 2), optionKey(1), at = (170, 70))
     assertEquals(optionLabelsIn(panel, "pay-favor"),
       Vector("Denizen 2", "Denizen 1"))
     assertEquals(ui.drafts.partition, None, "a preview stages nothing")
     // Back short of the neighbour's midpoint, the card returns before it.
-    dragOver(optionNode(panel, 2), at = (40, 70))
+    moveOver(optionNode(panel, 2), at = (40, 70))
     assertEquals(optionLabelsIn(panel, "pay-favor"),
       Vector("Denizen 1", "Denizen 2"))
+    cancel(panel)
 
-  test("a drag that ends without a drop puts every card back"):
+  test("a drag the browser takes over puts every card back"):
     val ui = controls()
     val panel = layOutInRows(render(ui, forgeDraft()))
-    dragStartPayload(optionNode(panel, 3))
-    dragOver(one(panel, """[data-section-key="pay-favor"]"""), at = (40, 70))
+    carry(one(panel, """[data-section-key="pay-favor"]"""), optionKey(3),
+      at = (40, 70))
     assertEquals(optionLabelsIn(panel, "pay-secret"), Vector.empty)
-    dragEnd(optionNode(panel, 3))
+    cancel(panel)
     assertEquals(optionLabelsIn(panel, "pay-favor"),
       Vector("Denizen 1", "Denizen 2"))
     assertEquals(optionLabelsIn(panel, "pay-secret"), Vector("Denizen 3"))
     assertEquals(ui.drafts.partition, None)
 
-  test("a drag that leaves the zones puts every card back"):
-    val panel = layOutInRows(render(controls(), forgeDraft()))
-    dragStartPayload(optionNode(panel, 1))
-    dragOver(optionNode(panel, 2), at = (170, 70))
-    val zones = one(panel, ".partition-zones")
-    zones.asInstanceOf[js.Dynamic].getBoundingClientRect = () =>
-      js.Dynamic.literal(left = 0.0, top = 0.0, right = 1000.0, bottom = 300.0)
-    // Crossing from one card onto another inside the zones leaves the card
-    // it crossed, not the zones.
-    optionNode(panel, 2).dispatchEvent(transferEvent("dragleave",
-      js.Dynamic.literal(), at = (120, 70)))
+  test("a card carried out of the zones goes back, and letting go there stages nothing"):
+    val ui = controls()
+    val panel = layOutInRows(render(ui, forgeDraft()))
+    carry(optionNode(panel, 2), optionKey(1), at = (170, 70))
     assertEquals(optionLabelsIn(panel, "pay-favor"),
       Vector("Denizen 2", "Denizen 1"))
-    zones.dispatchEvent(transferEvent("dragleave", js.Dynamic.literal()))
+    // Captured, the move reaches the zones from outside them.
+    pointingAt(dom.document.body)
+    pointer("pointermove", one(panel, ".partition-zones"), (900, 900))
     assertEquals(optionLabelsIn(panel, "pay-favor"),
       Vector("Denizen 1", "Denizen 2"))
+    letGo(panel, at = (900, 900))
+    assertEquals(ui.drafts.partition, None)
 
   /** The preview runs the move a drop would make, so the single slot's swap
     * shows before the card is let go.
     */
   test("dragging a discard over the keep zone previews the swap"):
     val panel = layOutInRows(pickPanel(keepOneDraft()))
-    dragStartPayload(optionNode(panel, 2))
-    dragOver(one(panel, """[data-section-key="keep"]"""), at = (40, 70))
+    carry(one(panel, """[data-section-key="keep"]"""), optionKey(2),
+      at = (40, 70))
     assertEquals(optionLabelsIn(panel, "keep"), Vector("Denizen 2"))
     assertEquals(optionLabelsIn(panel, "discard"),
       Vector("Denizen 1", "Denizen 3"))
     // Carried back over the discard zone, the swap is undone.
-    dragOver(one(panel, """[data-section-key="discard"]"""), at = (40, 70))
+    moveOver(one(panel, """[data-section-key="discard"]"""), at = (40, 70))
     assertEquals(optionLabelsIn(panel, "keep"), Vector("Denizen 1"))
     assertEquals(optionLabelsIn(panel, "discard"),
       Vector("Denizen 2", "Denizen 3"))
+    cancel(panel)
 
   test("dropping a dragged option on a zone moves it there"):
     val ui = controls()
-    val draft = forgeDraft()
-    val panel = render(ui, draft)
-    // Whatever `dragstart` puts on the transfer is exactly what the drop
-    // reads back, so the two halves of the drag are tested together.
-    val dragged = dragStartPayload(optionNode(panel, 3))
-    assertEquals(dragged, optionKey(3))
-    drop(one(panel, """[data-section-key="pay-favor"]"""), dragged)
+    val panel = render(ui, forgeDraft())
+    drop(one(panel, """[data-section-key="pay-favor"]"""), optionKey(3))
     val moved = render(ui, ui.drafts.partition)
     assertEquals(optionLabelsIn(moved, "pay-favor"),
       Vector("Denizen 1", "Denizen 2", "Denizen 3"))
     assertEquals(optionLabelsIn(moved, "pay-secret"), Vector.empty)
+
+  test("a copy of the held card follows the pointer and goes when it is let go"):
+    val panel = render(controls(), forgeDraft())
+    carry(one(panel, """[data-section-key="pay-favor"]"""), optionKey(3),
+      at = (40, 70))
+    val ghosts = all(panel, ".partition-ghost")
+    assertEquals(ghosts.size, 1)
+    assertEquals(ghosts.head.getAttribute("aria-hidden"), "true")
+    // jsdom lays nothing out, so the card's box is at the origin and the
+    // copy keeps the pointer where it took the card.
+    assertEquals(as[dom.html.Element](ghosts.head).style.left, "35px")
+    assert(optionNode(panel, 3).classList.contains("dragging"))
+    letGo(panel, at = (40, 70))
+    assertEquals(all(panel, ".partition-ghost"), Vector.empty)
+    assert(!optionNode(panel, 3).classList.contains("dragging"))
+
+  test("letting go of a drag swallows its click; a plain press keeps it"):
+    val panel = render(controls(), forgeDraft())
+    dom.document.body.appendChild(panel)
+    try
+      val card = optionNode(panel, 1)
+      var clicks = 0
+      card.addEventListener("click", (_: dom.Event) => clicks += 1)
+      def clickCard(): Unit = card.dispatchEvent(new dom.MouseEvent("click",
+        new dom.MouseEventInit { bubbles = true; cancelable = true }))
+
+      pointer("pointerdown", card, (10, 10))
+      pointer("pointermove", card, (12, 11))
+      letGo(panel, at = (12, 11))
+      clickCard()
+      assertEquals(clicks, 1, "a 2px wobble is a press, not a drag")
+      assertEquals(all(panel, ".partition-ghost"), Vector.empty)
+
+      drop(optionNode(panel, 2), optionKey(1), at = (40, 40))
+      clickCard()
+      assertEquals(clicks, 1, "a drag must not also open the overlay")
+
+      pointer("pointerdown", card, (10, 10))
+      letGo(panel, at = (10, 10))
+      clickCard()
+      assertEquals(clicks, 2, "the guard resets between gestures")
+    finally panel.remove()
+
+  test("a finger that moves at once scrolls the pane rather than the card"):
+    val ui = controls()
+    val panel = render(ui, forgeDraft())
+    val card = optionNode(panel, 3)
+    pointer("pointerdown", card, (5, 5), touch = true, time = 0)
+    pointingAt(one(panel, """[data-section-key="pay-favor"]"""))
+    pointer("pointermove", card, (5, 60), touch = true, time = 100)
+    assert(!card.classList.contains("dragging"))
+    assert(!touchMove(card).defaultPrevented, "the pane must still scroll")
+    // The rest of that swipe is the browser's too.
+    pointer("pointermove", card, (5, 90), touch = true,
+      time = PartitionDrag.HoldMs + 100)
+    assert(!card.classList.contains("dragging"))
+    letGo(panel, at = (5, 90), touch = true)
+    assertEquals(ui.drafts.partition, None)
+
+  test("a finger that rests on a card first drags it, and the pane holds still"):
+    val ui = controls()
+    val panel = render(ui, forgeDraft())
+    val card = optionNode(panel, 3)
+    pointer("pointerdown", card, (5, 5), touch = true, time = 0)
+    pointingAt(one(panel, """[data-section-key="pay-favor"]"""))
+    pointer("pointermove", card, (5, 60), touch = true,
+      time = PartitionDrag.HoldMs + 10)
+    assert(card.classList.contains("dragging"))
+    assert(touchMove(card).defaultPrevented,
+      "the pane must not scroll under a held card")
+    letGo(panel, at = pastEveryCard, touch = true)
+    assertEquals(optionLabelsIn(render(ui, ui.drafts.partition), "pay-favor"),
+      Vector("Denizen 1", "Denizen 2", "Denizen 3"))
 
   test("confirmation is refused until every projected minimum is met"):
     val ui = controls()
@@ -419,49 +483,76 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(all(panel, ".decision-option").size, 3)
 
 
-  /** Fires `dragstart` and returns what the handler wrote to the transfer.
-    * jsdom implements neither `DragEvent` nor `DataTransfer`, so the event
-    * carries a recording stand-in for the one property the handler reads.
+  override def afterEach(context: AfterEach): Unit =
+    js.special.delete(dom.document, "elementFromPoint")
+
+  /** jsdom lays nothing out, so the page answers what lies under the
+    * pointer with `under` until the next call.
     */
-  private def dragStartPayload(node: dom.Element): String =
-    var written = ""
-    val transfer = js.Dynamic.literal(
-      setData = (_: String, value: String) => written = value,
-      getData = (_: String) => written)
-    node.dispatchEvent(transferEvent("dragstart", transfer))
-    written
+  private def pointingAt(under: dom.Element): Unit =
+    dom.document.asInstanceOf[js.Dynamic].elementFromPoint =
+      (_: Double, _: Double) => under
+
+  /** Fires the pointer event `kind` on `target` at `at`. jsdom has no
+    * PointerEvent, so a mouse event carries the fields the drag reads, the
+    * way `MapViewportSuite` sends them.
+    */
+  private def pointer(kind: String, target: dom.EventTarget,
+      at: (Double, Double), touch: Boolean = false, time: Double = 0)
+      : dom.Event =
+    val event = new dom.MouseEvent(kind, new dom.MouseEventInit {
+      bubbles = true; cancelable = true; button = 0
+      clientX = at._1; clientY = at._2 })
+    val fields = js.Dynamic.literal(
+      pointerType = if touch then "touch" else "mouse", pointerId = 1.0,
+      timeStamp = time)
+    js.Object.keys(fields.asInstanceOf[js.Object]).foreach(key =>
+      js.Object.defineProperty(event, key, js.Dynamic.literal(
+        value = fields.selectDynamic(key)).asInstanceOf[js.PropertyDescriptor]))
+    target.dispatchEvent(event)
+    event
+
+  private def touchMove(target: dom.Element): dom.Event =
+    val event = new dom.Event("touchmove", new dom.EventInit {
+      bubbles = true; cancelable = true })
+    target.dispatchEvent(event)
+    event
 
   /** Past every card of any zone the tests lay out: a drop there lands
     * last.
     */
   private val pastEveryCard = (10000.0, 10000.0)
 
-  /** Fires `drop` on `target` with the pointer at `at`, carrying `item` the
-    * way a transfer written at `dragstart` would.
+  private def zonesOf(node: dom.Element): dom.Element =
+    as[dom.Element](node.closest(".partition-zones"))
+
+  /** Takes `item` with the mouse and carries it over `target`, a zone or a
+    * card, with the pointer at `at`.
     */
+  private def carry(target: dom.Element, item: String,
+      at: (Double, Double)): Unit =
+    val card = one(zonesOf(target), s"""[data-option-id="$item"]""")
+    pointer("pointerdown", card, (5, 5))
+    moveOver(target, at)
+
+  /** Moves the held card over `target` with the pointer at `at`. */
+  private def moveOver(target: dom.Element, at: (Double, Double)): Unit =
+    pointingAt(target)
+    pointer("pointermove", target, at)
+
+  /** Captured, the release reaches the zones wherever the pointer is. */
+  private def letGo(panel: dom.Element, at: (Double, Double),
+      touch: Boolean = false): Unit =
+    pointer("pointerup", one(panel, ".partition-zones"), at, touch)
+
+  private def cancel(panel: dom.Element): Unit =
+    pointer("pointercancel", one(panel, ".partition-zones"), pastEveryCard)
+
+  /** Drags `item` onto `target`, a zone or a card, and lets it go there. */
   private def drop(target: dom.Element, item: String,
       at: (Double, Double) = pastEveryCard): Unit =
-    val transfer = js.Dynamic.literal(getData = (_: String) => item)
-    target.dispatchEvent(transferEvent("drop", transfer, at))
-
-  /** Fires `dragover` on `target` with the pointer at `at`. A browser hides
-    * the transfer's data until the drop, so this one carries none.
-    */
-  private def dragOver(target: dom.Element, at: (Double, Double)): Unit =
-    target.dispatchEvent(transferEvent("dragover", js.Dynamic.literal(), at))
-
-  private def dragEnd(node: dom.Element): Unit =
-    node.dispatchEvent(transferEvent("dragend", js.Dynamic.literal(),
-      pastEveryCard))
-
-  private def transferEvent(name: String, transfer: js.Dynamic,
-      at: (Double, Double) = pastEveryCard): dom.Event =
-    val event = js.Dynamic.newInstance(js.Dynamic.global.Event)(name,
-      js.Dynamic.literal(bubbles = true, cancelable = true))
-    event.updateDynamic("dataTransfer")(transfer)
-    event.updateDynamic("clientX")(at._1)
-    event.updateDynamic("clientY")(at._2)
-    event.asInstanceOf[dom.Event]
+    carry(target, item, at)
+    letGo(as[dom.Element](zonesOf(target).parentNode), at)
 
   /** jsdom lays nothing out, so every option reports the box it would have
     * in a row of 100-wide cards 10 apart, from wherever it sits in its row
@@ -483,25 +574,3 @@ class PartitionPanelRenderSuite extends munit.FunSuite:
     assertEquals(options.map(_.getAttribute("tabindex")),
       Vector.fill(options.size)(null),
       "a decision-option has no keydown handler, so a tab stop here is dead")
-
-  test("a drag on an option swallows the click that follows; a plain press does not"):
-    val node = as[dom.html.Element](dom.document.createElement("div"))
-    dom.document.body.appendChild(node)
-    var clicks = 0
-    node.addEventListener("click", (_: dom.Event) => clicks += 1)
-    DragClickGuard.attach(node)
-
-    def at(kind: String, x: Double, y: Double): Unit =
-      node.dispatchEvent(new dom.MouseEvent(kind,
-        new dom.MouseEventInit { bubbles = true; clientX = x; clientY = y }))
-
-    at("mousedown", 10, 10); at("mousemove", 12, 11); at("click", 12, 11)
-    assertEquals(clicks, 1, "a 2px wobble is a press, not a drag")
-
-    at("mousedown", 10, 10); at("mousemove", 40, 40); at("click", 40, 40)
-    assertEquals(clicks, 1, "a 30px drag must not also open the overlay")
-
-    at("mousedown", 10, 10); at("click", 10, 10)
-    assertEquals(clicks, 2, "the guard resets between gestures")
-
-    node.remove()

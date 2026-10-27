@@ -61,6 +61,66 @@ private[frontend] final class GameTableShell(mount: dom.Element,
       openLog()
   private var logSeat = Option.empty[String]
   private var logSince = Option.empty[Long]
+
+  /** On a phone the Actions and Log panes share the bottom of the table, and
+    * a switch in each one's header picks which shows; the stylesheet hides
+    * the switch, and the full-log button, everywhere else. The Log's count
+    * is the events the viewer has not had in front of them: those after the
+    * stored marker, then those since the switch last showed the log. A new
+    * decision while the log shows marks Actions. */
+  private final class PaneSwitch(pane: Pane):
+    val strip = element("div", "pane-switch")
+    strip.setAttribute("role", "tablist")
+    strip.setAttribute("aria-label", "Bottom pane")
+    val toActions = tab("Actions", "actions")
+    val toLog = tab("Log", "log")
+    val count = text("span", "pane-switch-count", "")
+    toLog.appendChild(count)
+    strip.appendChild(toActions)
+    strip.appendChild(toLog)
+    pane.header.insertBefore(strip, pane.header.firstChild)
+
+    private def tab(label: String, id: String): dom.html.Button =
+      val node = button(label, "pane-switch-option")
+      node.setAttribute("role", "tab")
+      node.setAttribute("aria-controls", s"$id-pane")
+      node.onclick = _ => showPhonePane(id)
+      node
+
+  actions.node.id = "actions-pane"
+  log.node.id = "log-pane"
+  private val switches = Vector(new PaneSwitch(actions), new PaneSwitch(log))
+  private val fullLog = button("Full log", "map-control log-expand")
+  fullLog.setAttribute("aria-controls", "log-overlay")
+  fullLog.onclick = _ => openLog()
+  log.header.appendChild(fullLog)
+  private var phonePane = "actions"
+  private var logShown = Vector.empty[oathdigital.protocol.projection.LogEntry]
+  private var logSeenThrough = Option.empty[Long]
+
+  private def showPhonePane(id: String): Unit =
+    phonePane = id
+    table.setAttribute("data-phone-pane", id)
+    if id == "actions" then table.removeAttribute("data-actions-fresh")
+    switches.foreach { switch =>
+      switch.toActions.setAttribute("aria-selected", (id == "actions").toString)
+      switch.toLog.setAttribute("aria-selected", (id == "log").toString)
+    }
+    countUnseen()
+
+  private def countUnseen(): Unit =
+    // A seat with no stored marker has missed nothing: the first log it is
+    // shown, which may come after an empty one, counts as seen.
+    if phonePane == "log" || logSeenThrough.isEmpty then
+      logSeenThrough = logShown.lastOption.map(_.sequence).orElse(logSeenThrough)
+    val unseen = logShown.map(_.sequence).distinct
+      .count(sequence => logSeenThrough.forall(sequence > _))
+    switches.foreach { switch =>
+      switch.count.textContent = if unseen > 0 then unseen.toString else ""
+      switch.toLog.setAttribute("aria-label",
+        if unseen > 0 then s"Log, $unseen new" else "Log")
+    }
+  showPhonePane("actions")
   /** Either list at its end for a second marks the log seen (spec,
     * "Divider"). */
   private def watchLog(): Unit =
@@ -157,6 +217,9 @@ private[frontend] final class GameTableShell(mount: dom.Element,
     PanelContent.replace(mapContent, worldContent, world.heading)
     PanelContent.replace(actions.content, actionContent, actions.heading,
       changedGame || previousDecision != decisionKey)
+    if previousDecision.nonEmpty && previousDecision != decisionKey &&
+        phonePane == "log" then
+      table.setAttribute("data-actions-fresh", "")
     PanelContent.replace(devContent, development, devHeading)
     mapView.refresh(changedGame)
     previousGame = gameId
@@ -172,6 +235,9 @@ private[frontend] final class GameTableShell(mount: dom.Element,
     if !logSeat.contains(sessionKey) then
       logSince = marker.open(gameId, seatId)
       logSeat = Some(sessionKey)
+      logSeenThrough = logSince
+    logShown = entries
+    countUnseen()
     logPane.show(sessionKey, entries, colors, logSince)
     logOverlay.show(sessionKey, entries, colors, logSince)
     watchLog()

@@ -456,16 +456,14 @@ private[frontend] object WalkerPanelSupport:
   private def partitionOption(option: DecisionOptionState): dom.Element =
     val item = WalkerPartitionDraft.itemId(option)
     val node = element("article", "decision-option")
-    node.setAttribute("draggable", "true")
     node.setAttribute("data-option-id", item)
     node.setAttribute("aria-label", option.label)
     // The article has no keydown handler and never did, so it takes no tab
     // stop: in front of a modal trigger it would be a dead stop the user has
     // to pass through to reach the card.
-    DragClickGuard.attach(node.asInstanceOf[dom.html.Element])
     // Drag is the only way to move an option, as the instruction line says,
-    // and `PartitionDrag` handles it for every zone at once. The option
-    // holds nothing but its card.
+    // and `PartitionDrag` handles it for every zone at once, the click that
+    // ends a drag included. The option holds nothing but its card.
     node.appendChild(option.card.fold[dom.Element](
       text("span", "option-summary", option.label))(CardFace.render))
     node
