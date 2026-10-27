@@ -26,9 +26,11 @@ private[frontend] final class GameTableShell(mount: dom.Element,
     node.appendChild(content)
     table.appendChild(node)
 
+  // Actions first: the parked decision is what a viewer reads first, so it
+  // leads the document as it leads the table, and the log comes last.
+  private val actions = new Pane("actions", "Action Selection")
   private val players = new Pane("players", "Players")
   private val world = new Pane("world", "World Map")
-  private val actions = new Pane("actions", "Action Selection")
   private val log = new Pane("log", "Game Log")
   private val marker = new LogMarker(logStore)
   private val logPane = new GameLogPane(log.content, scrolled = () => watchLog())
