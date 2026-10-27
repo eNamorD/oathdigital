@@ -455,8 +455,13 @@ CSS grid with 4px gaps on a Table background, four panes:
   drops to 8px and headings shrink. The Players row is `auto`, as tall as
   its tallest board, so the strip never scrolls vertically and the map takes
   what is left.
-- Phone (under 620px wide): one column, rows `minmax(200px, 45%) / auto /
-  minmax(120px, 1fr)`: Actions, Players, World. Actions and Log take
+- Phone (under 620px wide): one column, rows `minmax(200px, 33%) / auto /
+  minmax(120px, 1fr)`: Actions, Players, World. Actions holds a fixed third
+  of the height whatever its content, and the map takes the rest; a board
+  decision's Decision footer and a partition's footer pin to the pane's
+  bottom edge, so Confirm stays in view while the rows above scroll. On a
+  phone the Decision footer trades its labelled rule for a plain line and
+  sets Clear beside Confirm, one 44px row, so a card in hand shows above it. Actions and Log take
   turns in the top row at full width, picked by a segmented switch that replaces both pane headings:
   the chosen side on the Pressed fill, the Log side carrying a Brass count of
   the events not yet seen, and the Actions side a Bright Brass dot when a

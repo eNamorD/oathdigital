@@ -10,8 +10,9 @@ import org.scalajs.dom
   * locked and picked option with its tally values (a choose-one's pick only
   * when it carries details the button does not), the tally totals, the options
   * with no place on the table, the open home's toggle, the Decide buttons under an unlabelled rule,
-  * then a rule labelled "Decision" over Clear and the confirm button, which a
-  * decision that picks at once leaves out. The table draws
+  * then a footer pinned to the pane's bottom edge: a rule labelled
+  * "Decision" over Clear and the confirm button, which a decision that picks
+  * at once leaves out. The table draws
   * the options themselves, through `BoardOptions`. A choose-one with no
   * option on the table to choose or ask about is a Continue screen: it says
   * nothing can be chosen and shows only its Decide buttons.
@@ -187,14 +188,17 @@ private[frontend] object BoardDecisionPanel:
         WalkerPanelSupport.withholds(decide, option)
       }
 
-    // A decision that picks at once has no draft to clear or confirm.
+    // A decision that picks at once has no draft to clear or confirm. The
+    // answer closes the panel in a footer that pins to the pane's bottom
+    // edge, so Confirm stays in view however long the rows above it run.
     if boardChoices && !BoardOptions.picksAtOnce(surface) then
-      panel.appendChild(text("p", "board-decision-rule-labelled", "Decision"))
+      val footer = element("div", "board-decision-footer")
+      footer.appendChild(text("p", "board-decision-rule-labelled", "Decision"))
       if picks.nonEmpty || draft.exists(_.home.nonEmpty) then
         val clear = button("Clear", "board-decision-clear")
         clear.disabled = !canControl
         clear.onclick = _ => controls.stage(Draft.Board(draft.map(_.cleared)))
-        panel.appendChild(clear)
+        footer.appendChild(clear)
       // The button says what pressing it does: a choose-many counts its
       // selection, a choose-one names its pick after the query's verb,
       // "Travel to Deep Woods", or after "Confirm" where it declares none.
@@ -212,9 +216,10 @@ private[frontend] object BoardDecisionPanel:
       confirm.disabled = !canControl || blocked.nonEmpty || current.isEmpty
       confirm.onclick = _ =>
         current.flatMap(_.command).foreach(controls.submitCommand)
-      panel.appendChild(confirm)
+      footer.appendChild(confirm)
       blocked.foreach(reason =>
-        panel.appendChild(text("p", "board-decision-reason", reason)))
+        footer.appendChild(text("p", "board-decision-reason", reason)))
+      panel.appendChild(footer)
 
   /** One played, locked or picked option: its name as shown, then its tally
     * values and what the engine annotated on it, such as a battle plan's
