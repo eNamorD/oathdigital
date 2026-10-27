@@ -450,11 +450,13 @@ CSS grid with 4px gaps on a Table background, four panes:
   The World pane spans both rows beside Actions and Log in either layout, so
   the Log's share never moves the map's Fit scale.
 - Upright (under 4:5, a tablet held upright): one column, rows
-  `minmax(150px, 34%) / minmax(95px, 16%) / 1fr / minmax(90px, 13%)`:
+  `minmax(150px, 34%) / auto / 1fr / minmax(90px, 13%)`:
   Actions, Players, World, then the Log, shortest, at the foot. Pane padding
-  drops to 8px and headings shrink.
-- Phone (under 620px wide): one column, rows `minmax(200px, 45%) /
-  minmax(110px, 18%) / 1fr`: Actions, Players, World. Actions and Log take
+  drops to 8px and headings shrink. The Players row is `auto`, as tall as
+  its tallest board, so the strip never scrolls vertically and the map takes
+  what is left.
+- Phone (under 620px wide): one column, rows `minmax(200px, 45%) / auto /
+  minmax(120px, 1fr)`: Actions, Players, World. Actions and Log take
   turns in the top row at full width, picked by a segmented switch that replaces both pane headings:
   the chosen side on the Pressed fill, the Log side carrying a Brass count of
   the events not yet seen, and the Actions side a Bright Brass dot when a
@@ -496,7 +498,8 @@ the rows. The tallest
 board is a banner holder's four-line left column, about 134px, which the
 strip row's 188px floor holds; a card at 0.86em is shorter. A board grows
 to hold every card it has, so nothing inside it scrolls: the strip is the
-one sideways scroll, past as many boards and cards as there are. Nothing in
+one sideways scroll, past as many boards and cards as there are; a mouse
+wheel turned over it scrolls it sideways while it has room. Nothing in
 the strip scrolls vertically. The Actions pane stacks
 decision zones in one column with 10px gaps and never scrolls sideways: its
 content wraps to the pane's width, a word breaking only where nothing else
